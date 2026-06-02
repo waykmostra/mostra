@@ -6,7 +6,8 @@ import type { PhaseStatus, ProjectPhase, SubPhase } from '@/lib/types'
 interface ProjectTimelineProps {
   phases: Pick<ProjectPhase, 'id' | 'name' | 'status' | 'sort_order'>[]
   subPhasesByPhase?: Record<string, Pick<SubPhase, 'id' | 'status' | 'name'>[]>
-  mini?: boolean  // version compacte pour les cards dashboard
+  mini?: boolean        // version compacte pour les cards dashboard
+  showLegend?: boolean  // afficher ou masquer la légende (default: true)
 }
 
 const STATUS_COLOR: Record<PhaseStatus, string> = {
@@ -40,12 +41,14 @@ function PhaseSegment({
   isFirst,
   isLast,
   mini,
+  showDots,
 }: {
   phase: Pick<ProjectPhase, 'id' | 'name' | 'status'>
   subPhases: Pick<SubPhase, 'id' | 'status' | 'name'>[]
   isFirst: boolean
   isLast: boolean
   mini: boolean
+  showDots: boolean
 }) {
   const [hovering, setHovering] = useState(false)
   const status = phase.status as PhaseStatus
@@ -86,7 +89,7 @@ function PhaseSegment({
       />
 
       {/* Sub-phase dots */}
-      {!mini && subPhases.length > 0 && (
+      {!mini && showDots && subPhases.length > 0 && (
         <div className="flex items-center justify-center gap-0.5 mt-1.5">
           {subPhases.map((sp) => (
             <SubPhaseDot key={sp.id} status={sp.status as PhaseStatus} />
@@ -101,6 +104,7 @@ export default function ProjectTimeline({
   phases,
   subPhasesByPhase = {},
   mini = false,
+  showLegend = true,
 }: ProjectTimelineProps) {
   if (phases.length === 0) return null
 
@@ -132,12 +136,13 @@ export default function ProjectTimeline({
             isFirst={i === 0}
             isLast={i === sorted.length - 1}
             mini={mini}
+            showDots={showLegend}
           />
         ))}
       </div>
 
-      {/* Legend — only in full mode */}
-      {!mini && (
+      {/* Legend — only in full mode and when enabled */}
+      {!mini && showLegend && (
         <div className="flex items-center gap-4 mt-3 flex-wrap">
           {(
             [

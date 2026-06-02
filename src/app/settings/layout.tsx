@@ -1,24 +1,14 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { getCurrentProfile } from '@/lib/auth'
 import Sidebar from '@/components/dashboard/Sidebar'
 import AdminHeader from '@/components/dashboard/AdminHeader'
 import { Toaster } from 'sonner'
 import SettingsNav from './SettingsNav'
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect('/login')
-
-  const memberData = await getCurrentMember(supabase, user.id)
-  const role = memberData?.member.role
-  if (role !== 'super_admin' && role !== 'agency_admin') {
-    redirect('/dashboard')
-  }
+  const profile = await getCurrentProfile()
+  if (!profile) redirect('/login')
+  if (!profile.is_admin) redirect('/client/dashboard')
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">

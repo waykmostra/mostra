@@ -558,7 +558,7 @@ export default function DesignEditor({
 
   const comments = useRealtimeBlockComments(projectId, subPhaseId, initialComments)
 
-  const isAdmin = userRole === 'super_admin' || userRole === 'agency_admin'
+  const isAdmin = userRole === 'admin'
   const canEdit = subPhaseStatus === 'pending' || subPhaseStatus === 'in_progress'
 
   // Only image files go into the lightbox, in order

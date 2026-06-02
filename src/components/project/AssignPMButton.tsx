@@ -21,9 +21,7 @@ interface AssignPMButtonProps {
 }
 
 const ROLE_LABEL: Record<UserRole, string> = {
-  super_admin: 'Admin',
-  agency_admin: 'Admin',
-  creative: 'Créatif',
+  admin: 'Admin',
   client: 'Client',
 }
 

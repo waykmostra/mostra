@@ -1,30 +1,21 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, FileText, Star, Copy, Trash2, Pencil } from 'lucide-react'
+import { Plus, FileText, Star, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { getCurrentProfile } from '@/lib/auth'
 import FormTemplateActions from '@/components/settings/FormTemplateActions'
 import type { FormTemplate } from '@/lib/types'
 
 export default async function FormsSettingsPage() {
+  const profile = await getCurrentProfile()
+  if (!profile) redirect('/login')
+  if (!profile.is_admin) redirect('/client/dashboard')
+
   const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const memberData = await getCurrentMember(supabase, user.id)
-  if (!memberData) redirect('/login')
-
-  const { member } = memberData
-  const isAdmin = member.role === 'super_admin' || member.role === 'agency_admin'
-  if (!isAdmin) redirect('/dashboard')
-
   const { data: rawTemplates } = await db(supabase)
     .from('form_templates')
     .select('*')
-    .eq('agency_id', member.agency_id)
     .order('created_at', { ascending: false })
 
   const templates: FormTemplate[] = (rawTemplates ?? []) as FormTemplate[]

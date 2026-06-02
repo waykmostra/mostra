@@ -16,10 +16,9 @@ const ACTION_LABELS: Record<ActivityAction, string> = {
   phase_approved: 'a approuvé la phase',
   comment_added: 'a ajouté un commentaire',
   status_changed: 'a changé le statut',
-  member_invited: 'a invité un membre',
-  member_joined: 'a rejoint le projet',
   project_created: 'a créé le projet',
   project_archived: 'a archivé le projet',
+  pm_assigned: 'a assigné un PM',
 }
 
 // ── Dot d'activité ────────────────────────────────────────────────

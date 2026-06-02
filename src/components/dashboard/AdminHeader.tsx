@@ -4,7 +4,7 @@ import UserMenuDropdown from '@/components/dashboard/UserMenuDropdown'
 import type { Profile } from '@/lib/types'
 
 /**
- * Sticky header for all admin/creative pages.
+ * Sticky header for all admin pages.
  * Fixed-positioned after the 180px sidebar on md+ screens.
  * Server component — fetches profile, passes data to client dropdown.
  */

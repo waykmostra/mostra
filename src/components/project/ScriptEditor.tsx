@@ -481,8 +481,8 @@ export default function ScriptEditor({
   phaseId,
   initialComments = [],
 }: ScriptEditorProps) {
-  const isAdmin = userRole === 'super_admin' || userRole === 'agency_admin'
-  const canAct = isAdmin || userRole === 'creative'
+  const isAdmin = userRole === 'admin'
+  const canAct = isAdmin
   const readOnly = subPhaseStatus === 'in_review' || subPhaseStatus === 'completed' || subPhaseStatus === 'approved'
 
   const [blocks, setBlocks] = useState<ScriptBlock[]>(() =>

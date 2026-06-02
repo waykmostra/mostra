@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { requireAdmin } from '@/lib/auth'
 import type { Profile, ProjectPhase } from '@/lib/types'
 
 export type VideoActionResult = { success: true } | { success: false; error: string }
@@ -38,19 +38,9 @@ export interface VideoComment {
 // ── Auth helper ───────────────────────────────────────────────────
 
 async function getCreativeContext() {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return null
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin' && role !== 'creative') return null
-
-  return { supabase, user, membership }
+  const auth = await requireAdmin()
+  if ('error' in auth) return null
+  return { supabase: auth.supabase, user: auth.user }
 }
 
 // ── Video MIME types ──────────────────────────────────────────────
@@ -469,9 +459,8 @@ export async function deleteVideoComment(commentId: string): Promise<VideoAction
   if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
 
   const { user } = ctx
-  const isAdmin =
-    ctx.membership.member.role === 'super_admin' ||
-    ctx.membership.member.role === 'agency_admin'
+  // Si on a passé requireAdmin, on est admin.
+  const isAdmin = true
 
   const admin = createAdminClient()
 

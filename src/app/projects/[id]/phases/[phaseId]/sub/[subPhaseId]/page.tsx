@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ChevronRight, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { getCurrentProfile } from '@/lib/auth'
 import StatusBadge from '@/components/shared/StatusBadge'
 import RevisionAlert from '@/components/project/RevisionAlert'
 import SubPhaseActions from '@/components/project/SubPhaseActions'
@@ -83,29 +83,23 @@ export async function generateMetadata({ params }: SubPhasePageProps): Promise<M
 }
 
 export default async function SubPhasePage({ params }: SubPhasePageProps) {
+  const profile = await getCurrentProfile()
+  if (!profile) redirect('/login')
+  if (!profile.is_admin) redirect('/client/dashboard')
+
   const supabase = createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) notFound()
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) notFound()
-
-  const userRole = membership.member.role as UserRole
-  const isAdmin = userRole === 'super_admin' || userRole === 'agency_admin'
+  const userRole: UserRole = 'admin'
+  const isAdmin = true
 
   // Projet
   const { data: rawProject } = await supabase
     .from('projects')
-    .select('id, name, agency_id')
+    .select('id, name')
     .eq('id', params.id)
     .maybeSingle()
 
-  const project = rawProject as Pick<Project, 'id' | 'name' | 'agency_id'> | null
+  const project = rawProject as Pick<Project, 'id' | 'name'> | null
   if (!project) notFound()
-  if (project.agency_id !== membership.agency?.id) notFound()
 
   // Phase
   const { data: rawPhase } = await supabase
@@ -187,7 +181,6 @@ export default async function SubPhasePage({ params }: SubPhasePageProps) {
       db(supabase)
         .from('form_templates')
         .select('id, name, description, questions, is_default')
-        .eq('agency_id', membership.member.agency_id)
         .order('is_default', { ascending: false })
         .order('created_at', { ascending: true }),
     ])

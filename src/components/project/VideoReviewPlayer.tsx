@@ -711,8 +711,7 @@ export default function VideoReviewPlayer({
   const [isVersionDropOpen, setIsVersionDropOpen] = useState(false)
   const [highlightedComment, setHighlightedComment] = useState<string | null>(null)
 
-  const isAdmin =
-    userRole === 'super_admin' || userRole === 'agency_admin' || userRole === 'creative'
+  const isAdmin = userRole === 'admin'
 
   // ── Derived ────────────────────────────────────────────────────
   const displayedComments = comments.filter(

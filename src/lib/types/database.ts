@@ -1,9 +1,9 @@
 // ============================================================
 // MOSTRA — Types TypeScript (basés sur le schema Supabase)
-// Ref: supabase/migrations/001_initial_schema.sql
-//      supabase/migrations/011_subphases_and_blocks.sql
+// Ref: supabase/migrations/017_radical_simplification.sql
 // ============================================================
-// Pour regénérer automatiquement :
+// Architecture : 2 rôles (admin/client), pas de multi-agence.
+// Pour regénérer auto :
 //   npx supabase gen types typescript --local > src/lib/types/database.ts
 // ============================================================
 
@@ -13,13 +13,54 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 // Enums (valeurs CHECK dans le schema)
 // ----------------------------------------------------------
 
-export type UserRole = 'super_admin' | 'agency_admin' | 'creative' | 'client'
+/** Rôle de l'utilisateur. Dérivé de profiles.is_admin (true = 'admin', false = 'client'). */
+export type UserRole = 'admin' | 'client'
 
 export type ContactMethod = 'email' | 'whatsapp' | 'phone'
 
 export type ProjectStatus = 'active' | 'completed' | 'archived' | 'on_hold'
 
+/** Statut de paiement d'un projet (P3 — carte 360°). */
+export type PaymentStatus = 'pending' | 'invoiced' | 'paid' | 'overdue' | 'partial'
+
 export type PhaseStatus = 'pending' | 'in_progress' | 'in_review' | 'approved' | 'completed'
+
+// ── CRM (migration 018) ───────────────────────────────────────────
+
+export type ClientStatus = 'cold' | 'interest' | 'warm' | 'active' | 'former' | 'lost'
+
+export type ClientSource =
+  | 'instagram'
+  | 'linkedin'
+  | 'word_of_mouth'
+  | 'website'
+  | 'referral'
+  | 'cold_outreach'
+  | 'other'
+
+/**
+ * Étape du funnel commercial (migration 021). NULL = hors funnel.
+ * Prospection (froids) : froid → contacte → a_relancer
+ * Pipeline (chauds)    : repondu → call_booke → proposition
+ * Terminal             : signe (→ conversion client) | perdu
+ */
+export type PipelineStage =
+  | 'froid'
+  | 'contacte'
+  | 'a_relancer'
+  | 'repondu'
+  | 'call_booke'
+  | 'proposition'
+  | 'signe'
+  | 'perdu'
+
+export type InteractionType =
+  | 'message_sent'
+  | 'message_received'
+  | 'call'
+  | 'meeting'
+  | 'note'
+  | 'email'
 
 export type ActivityAction =
   | 'file_uploaded'
@@ -30,10 +71,9 @@ export type ActivityAction =
   | 'phase_approved'
   | 'comment_added'
   | 'status_changed'
-  | 'member_invited'
-  | 'member_joined'
   | 'project_created'
   | 'project_archived'
+  | 'pm_assigned'
 
 export type BlockType =
   | 'form_question'
@@ -43,19 +83,32 @@ export type BlockType =
   | 'audio_track'
   | 'design_file'
 
+export type NotificationType =
+  | 'comment_added'
+  | 'phase_approved'
+  | 'revision_requested'
+  | 'form_submitted'
+  | 'phase_ready'
+  | 'file_uploaded'
+  | 'project_created'
+
+// ── Finance / Cashflow (migration 020) ────────────────────────────
+
+/** Catégorie de dépense / abonnement (partagée expenses + subscriptions). */
+export type FinanceCategory =
+  | 'software'
+  | 'hardware'
+  | 'subcontracting'
+  | 'marketing'
+  | 'office'
+  | 'other'
+
+/** Périodicité d'un abonnement récurrent. */
+export type BillingCycle = 'monthly' | 'yearly'
+
 // ----------------------------------------------------------
 // Row types (lignes telles que retournées par Supabase)
 // ----------------------------------------------------------
-
-export interface Agency {
-  id: string
-  name: string
-  slug: string
-  logo_url: string | null
-  primary_color: string
-  created_at: string
-  updated_at: string
-}
 
 export interface Profile {
   id: string
@@ -64,45 +117,90 @@ export interface Profile {
   avatar_url: string | null
   phone: string | null
   contact_method: ContactMethod
+  /** Si true → admin (Tarik). Si false → client externe. */
+  is_admin: boolean
   created_at: string
   updated_at: string
 }
 
-export interface AgencyMember {
-  id: string
-  agency_id: string
-  user_id: string
-  role: UserRole
-  invited_at: string
-  accepted_at: string | null
-  is_active: boolean
-}
-
 export interface PhaseTemplate {
   id: string
-  agency_id: string
   name: string
   slug: string
   icon: string | null
   sort_order: number
   is_default: boolean
-  /** Définition des sous-phases par défaut. Format: SubPhaseDefinition[] */
+  /** Définition des sous-phases par défaut. */
   sub_phases: SubPhaseDefinition[]
   created_at: string
 }
 
 export interface Project {
   id: string
-  agency_id: string
   name: string
   description: string | null
+  /** Le client CRM (table clients) propriétaire du projet. NULL si non rattaché. */
   client_id: string | null
+  /** Admin assigné comme project manager. */
   project_manager_id: string | null
   status: ProjectStatus
   progress: number
+  /** Token public pour le lien client (lecture seule sans login). Régénérable. */
   share_token: string | null
+  /** Date limite (P1/P3). */
+  deadline: string | null
+  /** Valeur en euros (P1/P3). */
+  value_eur: number | null
+  /** Statut de paiement (P3). */
+  payment_status: PaymentStatus
+  /** Lien vers le devis (PDF, Notion, Drive…) (P3). */
+  quote_url: string | null
+  /** Lien vers la facture (P3). */
+  invoice_url: string | null
+  /** Date d'encaissement effectif (P4 — alimente le récap mensuel exact). */
+  paid_at: string | null
   created_at: string
   updated_at: string
+}
+
+// ── CRM Clients ──────────────────────────────────────────────────
+
+export interface Client {
+  id: string
+  /** Raison sociale (NULL si freelance/particulier). */
+  company_name: string | null
+  /** Nom du contact principal (toujours requis). */
+  contact_name: string
+  email: string | null
+  phone: string | null
+  website: string | null
+  /** URL profil prospect (LinkedIn / Instagram / X…), migration 021. */
+  profile_url: string | null
+  source: ClientSource
+  status: ClientStatus
+  /** Étape du funnel commercial (migration 021). NULL = hors funnel. */
+  pipeline_stage: PipelineStage | null
+  /** Date de prochaine relance (migration 021). Tri de la vue Prospection. */
+  next_follow_up_on: string | null
+  last_message_sent_at: string | null
+  last_reply_at: string | null
+  follow_up_pending: boolean
+  notes: string | null
+  /** Si lié à un compte auth (profiles), c'est ici. NULL = prospect. */
+  profile_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ClientInteraction {
+  id: string
+  client_id: string
+  type: InteractionType
+  content: string
+  channel: string | null
+  occurred_at: string
+  created_by: string | null
+  created_at: string
 }
 
 export interface ProjectPhase {
@@ -147,7 +245,6 @@ export interface PhaseBlock {
 
 export interface FormTemplate {
   id: string
-  agency_id: string
   name: string
   description: string | null
   questions: FormQuestion[]
@@ -179,9 +276,9 @@ export interface Comment {
   content: string
   is_resolved: boolean
   parent_id: string | null
-  /** Secondes dans la vidéo (Video Review — Sprint 14) */
+  /** Secondes dans la vidéo (Video Review). */
   timecode_seconds: number | null
-  /** Version de la vidéo liée au commentaire */
+  /** Version de la vidéo liée au commentaire. */
   video_version: number | null
   created_at: string
   updated_at: string
@@ -196,16 +293,56 @@ export interface ActivityLog {
   created_at: string
 }
 
-export interface Invitation {
+export interface Notification {
   id: string
-  agency_id: string
-  email: string
-  role: Exclude<UserRole, 'super_admin'>
-  invited_by: string
-  token: string | null
-  accepted_at: string | null
+  user_id: string
+  project_id: string | null
+  type: NotificationType
+  title: string
+  message: string | null
+  link: string | null
+  is_read: boolean
+  created_at: string
+}
+
+export interface PasswordSetupToken {
+  id: string
+  user_id: string
+  token: string
+  used_at: string | null
   expires_at: string
   created_at: string
+}
+
+// ── Finance / Cashflow (migration 020) ────────────────────────────
+
+/** Dépense ponctuelle, optionnellement rattachée à un projet. */
+export interface Expense {
+  id: string
+  label: string
+  amount_eur: number
+  category: FinanceCategory
+  incurred_on: string
+  /** Rattache la dépense à un projet (rentabilité projet). NULL sinon. */
+  project_id: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Abonnement récurrent (mensuel / annuel). */
+export interface Subscription {
+  id: string
+  label: string
+  amount_eur: number
+  billing_cycle: BillingCycle
+  category: FinanceCategory
+  active: boolean
+  started_on: string
+  notes: string | null
+  created_at: string
+  updated_at: string
 }
 
 // ----------------------------------------------------------
@@ -236,7 +373,6 @@ export interface FormQuestionContent {
 
 export interface ScriptSectionContent {
   title: string
-  /** Couleur hex de la section (ex: '#00D76B') */
   color: string
   content: string
   description?: string
@@ -272,7 +408,6 @@ export interface DesignFileContent {
   description?: string
 }
 
-/** Map du type de bloc vers son type de contenu */
 export type BlockContentByType = {
   form_question:   FormQuestionContent
   script_section:  ScriptSectionContent
@@ -282,13 +417,11 @@ export type BlockContentByType = {
   design_file:     DesignFileContent
 }
 
-/** PhaseBlock avec le contenu typé selon le type de bloc */
 export type TypedPhaseBlock<T extends BlockType> = Omit<PhaseBlock, 'content'> & {
   type: T
   content: BlockContentByType[T]
 }
 
-/** Définition d'une sous-phase dans un PhaseTemplate */
 export interface SubPhaseDefinition {
   name: string
   slug: string
@@ -296,23 +429,14 @@ export interface SubPhaseDefinition {
 }
 
 // ----------------------------------------------------------
-// Insert types (champs requis lors d'un INSERT)
+// Insert types
 // ----------------------------------------------------------
-
-export type AgencyInsert = Omit<Agency, 'id' | 'created_at' | 'updated_at'> & {
-  id?: string
-}
 
 export type ProfileInsert = Omit<Profile, 'created_at' | 'updated_at'> & {
   avatar_url?: string | null
   phone?: string | null
   contact_method?: ContactMethod
-}
-
-export type AgencyMemberInsert = Omit<AgencyMember, 'id' | 'invited_at'> & {
-  id?: string
-  invited_at?: string
-  accepted_at?: string | null
+  is_admin?: boolean
 }
 
 export type PhaseTemplateInsert = Omit<PhaseTemplate, 'id' | 'created_at'> & {
@@ -320,9 +444,40 @@ export type PhaseTemplateInsert = Omit<PhaseTemplate, 'id' | 'created_at'> & {
   sub_phases?: SubPhaseDefinition[]
 }
 
-export type ProjectInsert = Omit<Project, 'id' | 'created_at' | 'updated_at' | 'share_token'> & {
+export type ProjectInsert = Omit<Project, 'id' | 'created_at' | 'updated_at' | 'share_token' | 'deadline' | 'value_eur' | 'payment_status' | 'quote_url' | 'invoice_url' | 'paid_at'> & {
   id?: string
   share_token?: string | null
+  deadline?: string | null
+  value_eur?: number | null
+  payment_status?: PaymentStatus
+  quote_url?: string | null
+  invoice_url?: string | null
+  paid_at?: string | null
+}
+
+export type ClientInsert = Omit<Client, 'id' | 'created_at' | 'updated_at' | 'last_message_sent_at' | 'last_reply_at' | 'follow_up_pending' | 'profile_id' | 'notes' | 'company_name' | 'email' | 'phone' | 'website' | 'profile_url' | 'pipeline_stage' | 'next_follow_up_on'> & {
+  id?: string
+  company_name?: string | null
+  email?: string | null
+  phone?: string | null
+  website?: string | null
+  profile_url?: string | null
+  pipeline_stage?: PipelineStage | null
+  next_follow_up_on?: string | null
+  notes?: string | null
+  follow_up_pending?: boolean
+  last_message_sent_at?: string | null
+  last_reply_at?: string | null
+  profile_id?: string | null
+}
+
+export type ClientUpdate = Partial<Omit<Client, 'id' | 'created_at'>>
+
+export type ClientInteractionInsert = Omit<ClientInteraction, 'id' | 'created_at' | 'occurred_at' | 'channel' | 'created_by'> & {
+  id?: string
+  occurred_at?: string
+  channel?: string | null
+  created_by?: string | null
 }
 
 export type ProjectPhaseInsert = Omit<ProjectPhase, 'id' | 'created_at' | 'updated_at'> & {
@@ -366,17 +521,40 @@ export type ActivityLogInsert = Omit<ActivityLog, 'id' | 'created_at'> & {
   details?: Json | null
 }
 
-export type InvitationInsert = Omit<Invitation, 'id' | 'token' | 'accepted_at' | 'created_at'> & {
+export type NotificationInsert = Omit<Notification, 'id' | 'created_at' | 'is_read'> & {
   id?: string
-  token?: string | null
-  accepted_at?: string | null
+  is_read?: boolean
+}
+
+export type PasswordSetupTokenInsert = Omit<PasswordSetupToken, 'id' | 'token' | 'used_at' | 'expires_at' | 'created_at'> & {
+  id?: string
+  token?: string
+  used_at?: string | null
+  expires_at?: string
+}
+
+export type ExpenseInsert = Omit<Expense, 'id' | 'created_at' | 'updated_at' | 'category' | 'incurred_on' | 'project_id' | 'notes' | 'created_by'> & {
+  id?: string
+  category?: FinanceCategory
+  incurred_on?: string
+  project_id?: string | null
+  notes?: string | null
+  created_by?: string | null
+}
+
+export type SubscriptionInsert = Omit<Subscription, 'id' | 'created_at' | 'updated_at' | 'billing_cycle' | 'category' | 'active' | 'started_on' | 'notes'> & {
+  id?: string
+  billing_cycle?: BillingCycle
+  category?: FinanceCategory
+  active?: boolean
+  started_on?: string
+  notes?: string | null
 }
 
 // ----------------------------------------------------------
-// Update types (tous les champs optionnels sauf id)
+// Update types
 // ----------------------------------------------------------
 
-export type AgencyUpdate      = Partial<Omit<Agency, 'id' | 'created_at'>>
 export type ProfileUpdate     = Partial<Omit<Profile, 'id' | 'created_at'>>
 export type ProjectUpdate     = Partial<Omit<Project, 'id' | 'created_at'>>
 export type ProjectPhaseUpdate = Partial<Omit<ProjectPhase, 'id' | 'created_at'>>
@@ -385,7 +563,9 @@ export type PhaseBlockUpdate  = Partial<Omit<PhaseBlock, 'id' | 'created_at'>>
 export type FormTemplateUpdate = Partial<Omit<FormTemplate, 'id' | 'created_at'>>
 export type PhaseFileUpdate   = Partial<Omit<PhaseFile, 'id' | 'created_at'>>
 export type CommentUpdate     = Partial<Omit<Comment, 'id' | 'created_at'>>
-export type AgencyMemberUpdate = Partial<Omit<AgencyMember, 'id' | 'agency_id' | 'user_id'>>
+export type NotificationUpdate = Partial<Omit<Notification, 'id' | 'user_id' | 'created_at'>>
+export type ExpenseUpdate      = Partial<Omit<Expense, 'id' | 'created_at' | 'created_by'>>
+export type SubscriptionUpdate = Partial<Omit<Subscription, 'id' | 'created_at'>>
 
 // ----------------------------------------------------------
 // Composite types (avec JOINs fréquents)
@@ -401,24 +581,19 @@ export interface ProjectWithDetails extends Project {
   project_manager: Profile | null
 }
 
-/** Phase avec ses sous-phases (nouveau modèle Sprint 9) */
 export interface PhaseWithSubPhases extends ProjectPhase {
   sub_phases: SubPhaseWithBlocks[]
-  /** Fichiers directs sur la phase (Animation & Rendu sans sous-phases) */
   files: PhaseFile[]
 }
 
-/** Sous-phase avec ses blocs */
 export interface SubPhaseWithBlocks extends SubPhase {
   blocks: PhaseBlock[]
 }
 
-/** Sous-phase avec ses blocs et commentaires */
 export interface SubPhaseWithBlocksAndComments extends SubPhase {
   blocks: PhaseBlockWithComments[]
 }
 
-/** Bloc avec ses commentaires */
 export interface PhaseBlockWithComments extends PhaseBlock {
   comments: CommentWithAuthor[]
 }
@@ -439,10 +614,6 @@ export interface CommentWithAuthor extends Comment {
   replies?: CommentWithAuthor[]
 }
 
-export interface AgencyMemberWithProfile extends AgencyMember {
-  profile: Profile
-}
-
 export interface ActivityLogWithUser extends ActivityLog {
   user: Profile | null
 }
@@ -453,8 +624,113 @@ export interface ProjectSummary {
   status: ProjectStatus
   progress: number
   current_phase: ProjectPhase | null
-  client: Pick<Profile, 'id' | 'full_name' | 'avatar_url'> | null
+  /** Client CRM lié au projet (NULL si non rattaché). */
+  client: Pick<Client, 'id' | 'contact_name' | 'company_name'> | null
+  deadline: string | null
+  value_eur: number | null
+  payment_status: PaymentStatus
+  paid_at: string | null
   updated_at: string
+}
+
+/** Client + stats agrégées (utilisé sur /clients). */
+export interface ClientWithStats extends Client {
+  active_projects: number
+  total_projects: number
+  last_project_name: string | null
+}
+
+/** Dépense + nom du projet rattaché (utilisé sur /finance). */
+export interface ExpenseWithProject extends Expense {
+  project_name: string | null
+}
+
+/** Revenu dérivé d'un projet payé (utilisé sur /finance, lecture seule). */
+export interface RevenueEntry {
+  id: string
+  name: string
+  client_name: string | null
+  value_eur: number
+  paid_at: string | null
+  payment_status: PaymentStatus
+}
+
+// ── Cockpit Founder (migration 022) ───────────────────────────────
+
+export type ObjectiveMetric = 'manual' | 'revenue_month' | 'new_leads_month' | 'calls_booked'
+export type ContentPlatform = 'linkedin' | 'instagram' | 'x'
+export type ContentStatus = 'idea' | 'in_progress' | 'published'
+
+export interface DailyWorkflowTask {
+  id: string
+  label: string
+  sort_order: number
+  active: boolean
+  created_at: string
+}
+
+export interface DailyWorkflowLog {
+  id: string
+  task_id: string
+  done_on: string
+  created_at: string
+}
+
+export interface Objective {
+  id: string
+  label: string
+  metric: ObjectiveMetric
+  target_value: number
+  manual_value: number
+  deadline: string | null
+  is_priority: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface WeeklyKpi {
+  id: string
+  week_start: string
+  prospects_contacted: number
+  replies: number
+  calls_held: number
+  posts_linkedin: number
+  posts_instagram: number
+  what_worked: string | null
+  what_didnt: string | null
+  one_change: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Competitor {
+  id: string
+  name: string
+  website: string | null
+  positioning: string | null
+  their_methods: string | null
+  replicate: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ContentIdea {
+  id: string
+  content: string
+  platform: ContentPlatform
+  status: ContentStatus
+  created_at: string
+  updated_at: string
+}
+
+/** Tâche quotidienne + état "fait aujourd'hui" (vue Daily Workflow). */
+export interface DailyWorkflowItem extends DailyWorkflowTask {
+  done_today: boolean
+}
+
+/** Objectif + valeur courante résolue (manuelle ou calculée). */
+export interface ObjectiveWithProgress extends Objective {
+  current_value: number
 }
 
 // ----------------------------------------------------------
@@ -464,20 +740,10 @@ export interface ProjectSummary {
 export interface Database {
   public: {
     Tables: {
-      agencies: {
-        Row:    Agency
-        Insert: AgencyInsert
-        Update: AgencyUpdate
-      }
       profiles: {
         Row:    Profile
         Insert: ProfileInsert
         Update: ProfileUpdate
-      }
-      agency_members: {
-        Row:    AgencyMember
-        Insert: AgencyMemberInsert
-        Update: AgencyMemberUpdate
       }
       phase_templates: {
         Row:    PhaseTemplate
@@ -524,27 +790,74 @@ export interface Database {
         Insert: ActivityLogInsert
         Update: never
       }
-      invitations: {
-        Row:    Invitation
-        Insert: InvitationInsert
-        Update: Partial<Omit<Invitation, 'id' | 'created_at'>>
+      notifications: {
+        Row:    Notification
+        Insert: NotificationInsert
+        Update: NotificationUpdate
+      }
+      password_setup_tokens: {
+        Row:    PasswordSetupToken
+        Insert: PasswordSetupTokenInsert
+        Update: never
+      }
+      clients: {
+        Row:    Client
+        Insert: ClientInsert
+        Update: ClientUpdate
+      }
+      client_interactions: {
+        Row:    ClientInteraction
+        Insert: ClientInteractionInsert
+        Update: Partial<Omit<ClientInteraction, 'id' | 'created_at' | 'client_id'>>
+      }
+      expenses: {
+        Row:    Expense
+        Insert: ExpenseInsert
+        Update: ExpenseUpdate
+      }
+      subscriptions: {
+        Row:    Subscription
+        Insert: SubscriptionInsert
+        Update: SubscriptionUpdate
+      }
+      daily_workflow_tasks: {
+        Row:    DailyWorkflowTask
+        Insert: Partial<DailyWorkflowTask>
+        Update: Partial<DailyWorkflowTask>
+      }
+      daily_workflow_log: {
+        Row:    DailyWorkflowLog
+        Insert: Partial<DailyWorkflowLog>
+        Update: Partial<DailyWorkflowLog>
+      }
+      objectives: {
+        Row:    Objective
+        Insert: Partial<Objective>
+        Update: Partial<Objective>
+      }
+      weekly_kpis: {
+        Row:    WeeklyKpi
+        Insert: Partial<WeeklyKpi>
+        Update: Partial<WeeklyKpi>
+      }
+      competitors: {
+        Row:    Competitor
+        Insert: Partial<Competitor>
+        Update: Partial<Competitor>
+      }
+      content_ideas: {
+        Row:    ContentIdea
+        Insert: Partial<ContentIdea>
+        Update: Partial<ContentIdea>
       }
     }
     Functions: {
-      get_user_agencies: {
+      is_admin: {
         Args:    Record<string, never>
-        Returns: string[]
-      }
-      get_user_role: {
-        Args:    { p_agency_id: string }
-        Returns: UserRole | null
-      }
-      is_agency_admin: {
-        Args:    { p_agency_id: string }
         Returns: boolean
       }
-      is_agency_member: {
-        Args:    { p_agency_id: string }
+      is_project_client: {
+        Args:    { p_project_id: string }
         Returns: boolean
       }
     }

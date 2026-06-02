@@ -4,13 +4,11 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
-import type { Agency, AgencyMember, Profile, UserRole } from '@/lib/types'
+import type { Profile, UserRole } from '@/lib/types'
 
 interface AuthState {
   user: User | null
   profile: Profile | null
-  member: AgencyMember | null
-  agency: Agency | null
   role: UserRole | null
   loading: boolean
 }
@@ -19,9 +17,7 @@ interface UseAuthReturn extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   isAdmin: boolean
-  isCreative: boolean
   isClient: boolean
-  isSuperAdmin: boolean
 }
 
 export function useAuth(): UseAuthReturn {
@@ -31,49 +27,22 @@ export function useAuth(): UseAuthReturn {
   const [state, setState] = useState<AuthState>({
     user: null,
     profile: null,
-    member: null,
-    agency: null,
     role: null,
     loading: true,
   })
 
   const fetchUserData = useCallback(
     async (user: User) => {
-      // Requêtes séparées pour éviter les problèmes d'inférence TypeScript avec les joins
-      const [profileResult, memberResult] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-        supabase
-          .from('agency_members')
-          .select('id, agency_id, user_id, role, invited_at, accepted_at, is_active')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-          .order('invited_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ])
+      const { data: rawProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle()
 
-      const profile = profileResult.data as Profile | null
-      const member = memberResult.data as AgencyMember | null
+      const profile = rawProfile as Profile | null
+      const role: UserRole | null = profile ? (profile.is_admin ? 'admin' : 'client') : null
 
-      // Récupère l'agence séparément si un member a été trouvé
-      let agency: Agency | null = null
-      if (member?.agency_id) {
-        const { data } = await supabase
-          .from('agencies')
-          .select('*')
-          .eq('id', member.agency_id)
-          .maybeSingle()
-        agency = data as Agency | null
-      }
-
-      setState({
-        user,
-        profile,
-        member,
-        agency,
-        role: (member?.role as UserRole) ?? null,
-        loading: false,
-      })
+      setState({ user, profile, role, loading: false })
     },
     [supabase],
   )
@@ -93,14 +62,7 @@ export function useAuth(): UseAuthReturn {
       if (session?.user) {
         fetchUserData(session.user)
       } else {
-        setState({
-          user: null,
-          profile: null,
-          member: null,
-          agency: null,
-          role: null,
-          loading: false,
-        })
+        setState({ user: null, profile: null, role: null, loading: false })
       }
     })
 
@@ -131,9 +93,7 @@ export function useAuth(): UseAuthReturn {
     ...state,
     signIn,
     signOut,
-    isSuperAdmin: state.role === 'super_admin',
-    isAdmin: state.role === 'agency_admin' || state.role === 'super_admin',
-    isCreative: state.role === 'creative',
+    isAdmin: state.role === 'admin',
     isClient: state.role === 'client',
   }
 }

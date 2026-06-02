@@ -1,46 +1,39 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { updateSession } from '@/lib/supabase/middleware'
+import type { Database } from '@/lib/types/database'
 
-// Routes accessibles sans authentification
-const PUBLIC_ROUTES = ['/login', '/register']
+// ============================================================
+// MOSTRA — Middleware (2 rôles : admin + client)
+// ============================================================
 
-// Routes accessibles aux users auth sans membership
-const MEMBERLESS_ROUTES = ['/onboarding']
+// Routes accessibles sans authentification.
+const PUBLIC_ROUTES = ['/login']
 
-const PUBLIC_PREFIXES = ['/invite/', '/client/']
+// Préfixes publics — accessibles sans auth.
+// - /client/{token} : accès projet par token public (lecture seule sans login)
+// - /setup-password/{token} : flow initial pour définir le mot de passe
+const PUBLIC_PREFIXES = ['/client/', '/setup-password/']
 
-// Routes réservées aux membres d'agence (super_admin, agency_admin, creative)
-// Un client qui tente d'y accéder est redirigé vers /client/dashboard
-const AGENCY_PREFIXES = ['/dashboard', '/projects', '/settings', '/clients', '/admin']
+// Routes réservées à l'admin (Tarik).
+// Un client connecté qui tente d'y accéder est redirigé vers /client/dashboard.
+const ADMIN_PREFIXES = ['/dashboard', '/projects', '/settings', '/clients']
 
 function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.includes(pathname)) return true
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
 }
 
-// Redirige vers le bon dashboard selon le rôle
-function getDashboardByRole(role: string | null): string {
-  switch (role) {
-    case 'super_admin':
-      return '/admin'
-    case 'client':
-      return '/client/dashboard'
-    default:
-      return '/dashboard'
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMemberRole(supabase: any, userId: string): Promise<string | null> {
+async function getIsAdmin(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<boolean> {
   const { data } = await supabase
-    .from('agency_members')
-    .select('role')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .order('invited_at', { ascending: false })
-    .limit(1)
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', userId)
     .maybeSingle()
-  return (data as { role: string } | null)?.role ?? null
+  return (data as { is_admin: boolean } | null)?.is_admin ?? false
 }
 
 export async function middleware(request: NextRequest) {
@@ -48,48 +41,28 @@ export async function middleware(request: NextRequest) {
   const { supabaseResponse, user, supabase } = await updateSession(request)
 
   // Utilisateur non authentifié sur une route protégée → /login
-  // (les routes MEMBERLESS sont auth-required mais pas membership-required)
-  if (!user && !isPublicRoute(pathname) && !MEMBERLESS_ROUTES.includes(pathname)) {
+  if (!user && !isPublicRoute(pathname)) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(url)
   }
 
-  // Utilisateur authentifié sur /login ou /register → dashboard selon rôle
-  if (user && (pathname === '/login' || pathname === '/register')) {
-    const role = await getMemberRole(supabase, user.id)
-
-    // Pas de membership → envoyer vers /onboarding
-    if (!role) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/onboarding'
-      url.search = ''
-      return NextResponse.redirect(url)
-    }
-
+  // Utilisateur authentifié sur /login → dashboard selon rôle
+  if (user && pathname === '/login') {
+    const isAdmin = await getIsAdmin(supabase, user.id)
     const url = request.nextUrl.clone()
-    url.pathname = getDashboardByRole(role)
+    url.pathname = isAdmin ? '/dashboard' : '/client/dashboard'
     url.search = ''
     return NextResponse.redirect(url)
   }
 
-  // Protection des routes agence : les clients n'ont pas accès
-  // Redirige vers /client/dashboard si le rôle est 'client'
-  if (user && AGENCY_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-    const role = await getMemberRole(supabase, user.id)
-
-    if (role === 'client') {
+  // Protection des routes admin : un client connecté est redirigé.
+  if (user && ADMIN_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    const isAdmin = await getIsAdmin(supabase, user.id)
+    if (!isAdmin) {
       const url = request.nextUrl.clone()
       url.pathname = '/client/dashboard'
-      url.search = ''
-      return NextResponse.redirect(url)
-    }
-
-    // Protection de la route /admin — réservée aux super_admin
-    if (pathname.startsWith('/admin') && role !== 'super_admin') {
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
       url.search = ''
       return NextResponse.redirect(url)
     }

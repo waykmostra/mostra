@@ -1,46 +1,27 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { requireAdmin } from '@/lib/auth'
 import { FormTemplateSchema } from './schemas'
 
 export type FormActionResult = { success: true; id?: string } | { success: false; error: string }
 
-// ── Auth helper ───────────────────────────────────────────────────
-
-async function getAdminContext() {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return null
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin') return null
-
-  return { supabase, membership }
-}
-
 // ── createFormTemplate ────────────────────────────────────────────
 
 export async function createFormTemplate(data: unknown): Promise<FormActionResult> {
-  const ctx = await getAdminContext()
-  if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
 
   const parsed = FormTemplateSchema.safeParse(data)
   if (!parsed.success) return { success: false, error: 'Données invalides' }
 
   const { name, description, questions } = parsed.data
 
-  const { data: row, error } = await db(ctx.supabase)
+  const { data: row, error } = await db(supabase)
     .from('form_templates')
     .insert({
-      agency_id: ctx.membership.member.agency_id,
       name,
       description: description || null,
       questions,
@@ -58,19 +39,19 @@ export async function createFormTemplate(data: unknown): Promise<FormActionResul
 // ── updateFormTemplate ────────────────────────────────────────────
 
 export async function updateFormTemplate(id: string, data: unknown): Promise<FormActionResult> {
-  const ctx = await getAdminContext()
-  if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
 
   const parsed = FormTemplateSchema.safeParse(data)
   if (!parsed.success) return { success: false, error: 'Données invalides' }
 
   const { name, description, questions } = parsed.data
 
-  const { error } = await db(ctx.supabase)
+  const { error } = await db(supabase)
     .from('form_templates')
     .update({ name, description: description || null, questions })
     .eq('id', id)
-    .eq('agency_id', ctx.membership.member.agency_id)
 
   if (error) return { success: false, error: error.message }
 
@@ -82,15 +63,11 @@ export async function updateFormTemplate(id: string, data: unknown): Promise<For
 // ── deleteFormTemplate ────────────────────────────────────────────
 
 export async function deleteFormTemplate(id: string): Promise<FormActionResult> {
-  const ctx = await getAdminContext()
-  if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
 
-  const { error } = await db(ctx.supabase)
-    .from('form_templates')
-    .delete()
-    .eq('id', id)
-    .eq('agency_id', ctx.membership.member.agency_id)
-
+  const { error } = await db(supabase).from('form_templates').delete().eq('id', id)
   if (error) return { success: false, error: error.message }
 
   revalidatePath('/settings/forms')
@@ -100,23 +77,22 @@ export async function deleteFormTemplate(id: string): Promise<FormActionResult> 
 // ── duplicateFormTemplate ─────────────────────────────────────────
 
 export async function duplicateFormTemplate(id: string): Promise<FormActionResult> {
-  const ctx = await getAdminContext()
-  if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
 
-  const { data: rawTpl } = await ctx.supabase
+  const { data: rawTpl } = await supabase
     .from('form_templates')
     .select('name, description, questions')
     .eq('id', id)
-    .eq('agency_id', ctx.membership.member.agency_id)
     .maybeSingle()
 
   if (!rawTpl) return { success: false, error: 'Template introuvable' }
   const tpl = rawTpl as { name: string; description: string | null; questions: unknown[] }
 
-  const { data: row, error } = await db(ctx.supabase)
+  const { data: row, error } = await db(supabase)
     .from('form_templates')
     .insert({
-      agency_id: ctx.membership.member.agency_id,
       name: `${tpl.name} (copie)`,
       description: tpl.description,
       questions: tpl.questions,
@@ -134,21 +110,19 @@ export async function duplicateFormTemplate(id: string): Promise<FormActionResul
 // ── setDefaultFormTemplate ────────────────────────────────────────
 
 export async function setDefaultFormTemplate(id: string): Promise<FormActionResult> {
-  const ctx = await getAdminContext()
-  if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
 
-  const agencyId = ctx.membership.member.agency_id
-
-  await db(ctx.supabase)
+  await db(supabase)
     .from('form_templates')
     .update({ is_default: false })
-    .eq('agency_id', agencyId)
+    .neq('id', '00000000-0000-0000-0000-000000000000')
 
-  const { error } = await db(ctx.supabase)
+  const { error } = await db(supabase)
     .from('form_templates')
     .update({ is_default: true })
     .eq('id', id)
-    .eq('agency_id', agencyId)
 
   if (error) return { success: false, error: error.message }
 

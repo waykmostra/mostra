@@ -3,19 +3,21 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Settings, LogOut, Shield, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Rocket, Users, Wallet, Settings, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import Logo from '@/components/shared/Logo'
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
+  { href: '/founder', label: 'Founder', icon: Rocket, adminOnly: true },
   { href: '/clients', label: 'Clients', icon: Users, adminOnly: false },
+  { href: '/finance', label: 'Finance', icon: Wallet, adminOnly: true },
   { href: '/settings', label: 'Settings', icon: Settings, adminOnly: true },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const { signOut, isSuperAdmin, isAdmin } = useAuth()
+  const { signOut, isAdmin } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const close = () => setMobileOpen(false)
@@ -92,22 +94,6 @@ export default function Sidebar() {
 
         {/* Bottom */}
         <div className="px-3 py-4 border-t border-[#2a2a2a] space-y-1">
-          {isSuperAdmin && (
-            <Link
-              href="/admin"
-              onClick={close}
-              aria-label="Vue Super Admin"
-              className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: '#8B5CF620',
-                border: '1px solid #8B5CF640',
-                color: '#8B5CF6',
-              }}
-            >
-              <Shield className="h-3.5 w-3.5 flex-shrink-0" />
-              Vue Super Admin
-            </Link>
-          )}
           <button
             onClick={signOut}
             aria-label="Se déconnecter"

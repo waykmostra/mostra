@@ -1,4 +1,5 @@
 import ClientPhaseCard from './ClientPhaseCard'
+import ClientActionBanner from './ClientActionBanner'
 import ProjectTimeline from '@/components/project/ProjectTimeline'
 import type { Project, ProjectPhase, SubPhase } from '@/lib/types'
 
@@ -9,9 +10,23 @@ interface ClientProjectViewProps {
   token: string
 }
 
-export default function ClientProjectView({ project, phases, subPhasesByPhase, token }: ClientProjectViewProps) {
+export default function ClientProjectView({
+  project,
+  phases,
+  subPhasesByPhase,
+  token,
+}: ClientProjectViewProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* ── Bandeau d'action principale (au-dessus de tout) ──────── */}
+      {phases.length > 0 && (
+        <ClientActionBanner
+          phases={phases}
+          subPhasesByPhase={subPhasesByPhase}
+          token={token}
+        />
+      )}
+
       {/* ── Header ──────────────────────────────────────────────── */}
       <div>
         <h1 className="text-2xl font-bold text-white">{project.name}</h1>
@@ -25,7 +40,7 @@ export default function ClientProjectView({ project, phases, subPhasesByPhase, t
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-[10px] text-[#444444] uppercase tracking-widest font-medium">
-              Overall Progress
+              Avancement global
             </p>
             <p className="text-xs text-[#666666] mt-0.5">
               {phases.filter((p) => p.status === 'completed' || p.status === 'approved').length}
@@ -47,18 +62,22 @@ export default function ClientProjectView({ project, phases, subPhasesByPhase, t
           />
         </div>
 
-        {/* Timeline des phases */}
+        {/* Timeline des phases — sans légende (bulles retirées) */}
         {phases.length > 0 && (
           <div className="mt-4">
-            <ProjectTimeline phases={phases} subPhasesByPhase={subPhasesByPhase} />
+            <ProjectTimeline
+              phases={phases}
+              subPhasesByPhase={subPhasesByPhase}
+              showLegend={false}
+            />
           </div>
         )}
       </div>
 
       {/* ── Pipeline ────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-sm font-semibold text-white mb-3">Pipeline</h2>
-        <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-white mb-3">Étapes du projet</h2>
+        <div className="space-y-3">
           {phases.length === 0 ? (
             <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
               <p className="text-xs text-[#444444] italic">Aucune phase configurée.</p>

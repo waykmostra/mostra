@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import {
+  AlertCircle,
   CheckCircle,
   Loader2,
+  LogIn,
   MessageSquare,
   RotateCcw,
   Send,
@@ -43,6 +46,7 @@ interface StoryboardViewerClientProps {
   clientId: string | null
   initialShots: StoryboardShot[]
   initialComments: BlockComment[]
+  isAuthenticated: boolean
 }
 
 // ── Column grid classes ───────────────────────────────────────────
@@ -211,12 +215,14 @@ function BlockComments({
   blockId,
   comments,
   clientId,
+  canComment,
   onAdd,
   onResolve,
 }: {
   blockId: string
   comments: BlockComment[]
   clientId: string | null
+  canComment: boolean
   onAdd: (blockId: string, content: string) => Promise<void>
   onResolve: (commentId: string) => void
 }) {
@@ -251,7 +257,13 @@ function BlockComments({
         </div>
       )}
 
-      {!open ? (
+      {!canComment ? (
+        blockComments.length > 0 ? (
+          <p className="text-[10px] text-[#444444]">
+            {blockComments.length} commentaire{blockComments.length > 1 ? 's' : ''}
+          </p>
+        ) : null
+      ) : !open ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -307,6 +319,7 @@ export default function StoryboardViewerClient({
   clientId,
   initialShots,
   initialComments,
+  isAuthenticated,
 }: StoryboardViewerClientProps) {
   const [shots, setShots] = useState<StoryboardShot[]>(initialShots)
   const [comments, setComments] = useState<BlockComment[]>(initialComments)
@@ -399,8 +412,25 @@ export default function StoryboardViewerClient({
         </div>
       )}
 
+      {/* ── Auth gate (anonymous viewer) ── */}
+      {!isApproved && status === 'in_review' && !isAuthenticated && (
+        <div className="bg-[#F59E0B]/5 border border-[#F59E0B]/20 rounded-xl p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-white">Connectez-vous pour valider</p>
+              <p className="text-xs text-[#666666] mt-0.5">Vous devez être connecté pour valider, commenter ou modifier cette phase.</p>
+            </div>
+          </div>
+          <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 transition-colors">
+            <LogIn className="h-4 w-4" />
+            Se connecter
+          </Link>
+        </div>
+      )}
+
       {/* ── Approval panel ── */}
-      {!isApproved && status === 'in_review' && (
+      {!isApproved && status === 'in_review' && isAuthenticated && (
         <div className="bg-[#111111] border border-[#F59E0B]/25 rounded-2xl p-5 space-y-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center flex-shrink-0">
@@ -547,6 +577,7 @@ export default function StoryboardViewerClient({
                 blockId={shot.id}
                 comments={comments}
                 clientId={clientId}
+                canComment={isAuthenticated}
                 onAdd={handleAddComment}
                 onResolve={handleResolve}
               />

@@ -2,61 +2,37 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database'
 import type {
   ActivityLog,
-  Agency,
-  AgencyMember,
+  Client,
+  ClientInteraction,
+  ClientWithStats,
   Comment,
+  Expense,
+  ExpenseWithProject,
+  PaymentStatus,
   PhaseFile,
   PhaseTemplate,
   Profile,
   Project,
   ProjectPhase,
   ProjectSummary,
+  RevenueEntry,
   SubPhase,
-  UserRole,
+  Subscription,
 } from '@/lib/types'
 
-type Client = SupabaseClient<Database>
-
-// ─────────────────────────────────────────────────────────────────
-// Membre courant + agence
-// ─────────────────────────────────────────────────────────────────
-
-export async function getCurrentMember(supabase: Client, userId: string) {
-  const { data: rawMember } = await supabase
-    .from('agency_members')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .order('invited_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const member = rawMember as AgencyMember | null
-  if (!member) return null
-
-  const { data: rawAgency } = await supabase
-    .from('agencies')
-    .select('*')
-    .eq('id', member.agency_id)
-    .maybeSingle()
-
-  const agency = rawAgency as Agency | null
-
-  return { member, agency }
-}
+type Sb = SupabaseClient<Database>
 
 // ─────────────────────────────────────────────────────────────────
 // Stats dashboard
 // ─────────────────────────────────────────────────────────────────
 
 export async function getProjectStats(
-  supabase: Client,
-  agencyId: string,
-  options?: { creativeUserId?: string },
+  supabase: Sb,
+  options?: { projectManagerId?: string },
 ) {
-  let query = supabase.from('projects').select('*').eq('agency_id', agencyId)
-  if (options?.creativeUserId) {
-    query = query.eq('project_manager_id', options.creativeUserId)
+  let query = supabase.from('projects').select('*')
+  if (options?.projectManagerId) {
+    query = query.eq('project_manager_id', options.projectManagerId)
   }
   const { data, error } = await query
 
@@ -71,7 +47,7 @@ export async function getProjectStats(
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Liste des projets (dashboard)
+// Liste des projets (dashboard admin)
 // ─────────────────────────────────────────────────────────────────
 
 type ProjectRow = Project & {
@@ -79,41 +55,37 @@ type ProjectRow = Project & {
 }
 
 export async function getProjects(
-  supabase: Client,
-  agencyId: string,
-  options?: { creativeUserId?: string },
+  supabase: Sb,
+  options?: { projectManagerId?: string },
 ): Promise<ProjectSummary[]> {
   let query = supabase
     .from('projects')
     .select('*, project_phases(*)')
-    .eq('agency_id', agencyId)
     .order('updated_at', { ascending: false })
 
-  if (options?.creativeUserId) {
-    query = query.eq('project_manager_id', options.creativeUserId)
+  if (options?.projectManagerId) {
+    query = query.eq('project_manager_id', options.projectManagerId)
   }
 
   const { data: rawProjects, error } = await query
-
   if (error || !rawProjects) return []
 
   const projects = rawProjects as unknown as ProjectRow[]
 
-  // Collect client profile IDs
+  // Fetch clients (CRM) liés
   const clientIds = [...new Set(
-    projects.map((p) => p.client_id).filter(Boolean) as string[]
+    projects.map((p) => p.client_id).filter(Boolean) as string[],
   )]
 
-  // Fetch client profiles separately
-  const clientMap = new Map<string, Pick<Profile, 'id' | 'full_name' | 'avatar_url'>>()
+  const clientMap = new Map<string, Pick<Client, 'id' | 'contact_name' | 'company_name'>>()
   if (clientIds.length > 0) {
-    const { data: rawProfiles } = await supabase
-      .from('profiles')
-      .select('*')
+    const { data: rawClients } = await supabase
+      .from('clients')
+      .select('id, contact_name, company_name')
       .in('id', clientIds)
 
-    const profiles = rawProfiles as Profile[] | null
-    profiles?.forEach((p) => clientMap.set(p.id, { id: p.id, full_name: p.full_name, avatar_url: p.avatar_url }))
+    const clients = rawClients as Pick<Client, 'id' | 'contact_name' | 'company_name'>[] | null
+    clients?.forEach((c) => clientMap.set(c.id, c))
   }
 
   return projects.map((project) => {
@@ -121,7 +93,6 @@ export async function getProjects(
       (a, b) => a.sort_order - b.sort_order,
     )
 
-    // Current phase = first non-completed/approved, or last phase if all done
     const currentPhase =
       phases.find((ph) => ph.status !== 'completed' && ph.status !== 'approved') ??
       phases[phases.length - 1] ??
@@ -136,68 +107,82 @@ export async function getProjects(
       progress: project.progress,
       current_phase: currentPhase,
       client,
+      deadline: project.deadline,
+      value_eur: project.value_eur,
+      // Fallback 'pending' si migration 019 pas encore appliquée.
+      payment_status: project.payment_status ?? 'pending',
+      paid_at: project.paid_at ?? null,
       updated_at: project.updated_at,
     }
   })
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Membres d'une agence avec leur profil (pour les dropdowns)
+// Sélecteurs pour dropdowns
 // ─────────────────────────────────────────────────────────────────
 
-export interface MemberWithProfile {
-  memberId: string
-  userId: string
-  role: UserRole
-  profile: Pick<Profile, 'id' | 'full_name' | 'email' | 'avatar_url'>
+export interface AdminOption {
+  id: string
+  fullName: string
+  email: string
+  avatarUrl: string | null
 }
 
-export async function getAgencyMembersWithProfiles(
-  supabase: Client,
-  agencyId: string,
-  roles: UserRole[],
-): Promise<MemberWithProfile[]> {
-  const { data: members } = await supabase
-    .from('agency_members')
-    .select('*')
-    .eq('agency_id', agencyId)
-    .eq('is_active', true)
-    .in('role', roles)
+export interface ClientOption {
+  id: string                      // clients.id (CRM)
+  contactName: string
+  companyName: string | null
+  email: string | null
+  hasAccount: boolean             // true si profile_id non null
+}
 
-  if (!members?.length) return []
-
-  const userIds = (members as AgencyMember[]).map((m) => m.user_id)
-  const { data: profiles } = await supabase
+/** Liste de tous les admins (pour assigner un PM à un projet). */
+export async function getAllAdmins(supabase: Sb): Promise<AdminOption[]> {
+  const { data } = await supabase
     .from('profiles')
     .select('id, full_name, email, avatar_url')
-    .in('id', userIds)
+    .eq('is_admin', true)
+    .order('full_name', { ascending: true })
 
-  const profileMap = new Map<string, Pick<Profile, 'id' | 'full_name' | 'email' | 'avatar_url'>>()
-  ;(profiles as Pick<Profile, 'id' | 'full_name' | 'email' | 'avatar_url'>[] | null)?.forEach(
-    (p) => profileMap.set(p.id, p),
+  return ((data as Pick<Profile, 'id' | 'full_name' | 'email' | 'avatar_url'>[] | null) ?? []).map(
+    (p) => ({
+      id: p.id,
+      fullName: p.full_name,
+      email: p.email,
+      avatarUrl: p.avatar_url,
+    }),
   )
+}
 
-  return (members as AgencyMember[])
-    .map((m) => {
-      const profile = profileMap.get(m.user_id)
-      if (!profile) return null
-      return { memberId: m.id, userId: m.user_id, role: m.role, profile }
-    })
-    .filter(Boolean) as MemberWithProfile[]
+/**
+ * Liste de tous les clients CRM (pour le dropdown de création de projet).
+ * Inclut prospects (sans compte) et clients actifs.
+ */
+export async function getAllClients(supabase: Sb): Promise<ClientOption[]> {
+  const { data } = await supabase
+    .from('clients')
+    .select('id, contact_name, company_name, email, profile_id')
+    .order('contact_name', { ascending: true })
+
+  return ((data as (Pick<Client, 'id' | 'contact_name' | 'company_name' | 'email' | 'profile_id'>)[] | null) ?? []).map(
+    (c) => ({
+      id: c.id,
+      contactName: c.contact_name,
+      companyName: c.company_name,
+      email: c.email,
+      hasAccount: c.profile_id !== null,
+    }),
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Phase templates d'une agence
+// Phase templates (globaux Mostra)
 // ─────────────────────────────────────────────────────────────────
 
-export async function getPhaseTemplates(
-  supabase: Client,
-  agencyId: string,
-): Promise<PhaseTemplate[]> {
+export async function getPhaseTemplates(supabase: Sb): Promise<PhaseTemplate[]> {
   const { data } = await supabase
     .from('phase_templates')
     .select('*')
-    .eq('agency_id', agencyId)
     .order('sort_order', { ascending: true })
 
   return (data as PhaseTemplate[] | null) ?? []
@@ -209,7 +194,6 @@ export async function getPhaseTemplates(
 
 export interface CommentWithDetails extends Comment {
   author: Pick<Profile, 'id' | 'full_name' | 'avatar_url'> | null
-  /** Nom de la phase parente (pour le contexte sur la page projet) */
   phase_name: string | null
 }
 
@@ -219,7 +203,10 @@ export interface ActivityWithUser extends ActivityLog {
 
 export interface ProjectDetailData {
   project: Project
-  client: Profile | null
+  /** Client CRM (table clients) ; NULL si projet non rattaché à un client. */
+  client: Client | null
+  /** Profile auth du client si un compte a été créé (clients.profile_id). */
+  clientProfile: Profile | null
   projectManager: Profile | null
   phases: ProjectPhase[]
   subPhasesByPhase: Record<string, SubPhase[]>
@@ -229,7 +216,7 @@ export interface ProjectDetailData {
 }
 
 export async function getProjectDetail(
-  supabase: Client,
+  supabase: Sb,
   projectId: string,
 ): Promise<ProjectDetailData | null> {
   // 1. Project
@@ -242,101 +229,123 @@ export async function getProjectDetail(
   const project = rawProject as Project | null
   if (!project) return null
 
-  // 2. Phases (ordonnées)
-  const { data: rawPhases } = await supabase
-    .from('project_phases')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('sort_order', { ascending: true })
+  // 2. Phases + Client CRM + PM + Commentaires + Activity en parallèle
+  const pmIds = project.project_manager_id ? [project.project_manager_id] : []
 
-  const phases = (rawPhases as ProjectPhase[] | null) ?? []
+  const [phasesRes, clientRes, pmRes, commentsRes, activityRes] = await Promise.all([
+    supabase
+      .from('project_phases')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('sort_order', { ascending: true }),
+    project.client_id
+      ? supabase.from('clients').select('*').eq('id', project.client_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    pmIds.length > 0
+      ? supabase.from('profiles').select('*').in('id', pmIds)
+      : Promise.resolve({ data: [] }),
+    supabase
+      .from('comments')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true })
+      .limit(100),
+    supabase
+      .from('activity_logs')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(15),
+  ])
 
-  // 2b. Sous-phases par phase (ordonnées par sort_order)
+  const phases = (phasesRes.data as ProjectPhase[] | null) ?? []
+
+  // 2b. Sous-phases + fichiers en parallèle (dépendent de phases.length)
   const subPhasesByPhase: Record<string, SubPhase[]> = {}
+  const filesByPhase: Record<string, PhaseFile[]> = {}
+
   if (phases.length > 0) {
     const phaseIds = phases.map((p) => p.id)
-    const { data: rawSubPhases } = await supabase
-      .from('sub_phases')
-      .select('*')
-      .in('phase_id', phaseIds)
-      .order('sort_order', { ascending: true })
-    ;(rawSubPhases as SubPhase[] | null)?.forEach((sp) => {
+    const [subPhasesRes, filesRes] = await Promise.all([
+      supabase
+        .from('sub_phases')
+        .select('*')
+        .in('phase_id', phaseIds)
+        .order('sort_order', { ascending: true }),
+      supabase
+        .from('phase_files')
+        .select('*')
+        .in('phase_id', phaseIds)
+        .order('version', { ascending: false }),
+    ])
+
+    ;(subPhasesRes.data as SubPhase[] | null)?.forEach((sp) => {
       if (!subPhasesByPhase[sp.phase_id]) subPhasesByPhase[sp.phase_id] = []
       subPhasesByPhase[sp.phase_id].push(sp)
     })
-  }
-
-  // 2c. Fichiers par phase (ordonnés par version décroissante)
-  const filesByPhase: Record<string, PhaseFile[]> = {}
-  if (phases.length > 0) {
-    const phaseIds = phases.map((p) => p.id)
-    const { data: phaseFiles } = await supabase
-      .from('phase_files')
-      .select('*')
-      .in('phase_id', phaseIds)
-      .order('version', { ascending: false })
-    ;(phaseFiles as PhaseFile[] | null)?.forEach((f) => {
+    ;(filesRes.data as PhaseFile[] | null)?.forEach((f) => {
       if (!filesByPhase[f.phase_id]) filesByPhase[f.phase_id] = []
       filesByPhase[f.phase_id].push(f)
     })
   }
 
-  // 3. Profils client + PM en une seule requête
-  const profileIds = [project.client_id, project.project_manager_id].filter(Boolean) as string[]
-  const profileMap = new Map<string, Profile>()
-  if (profileIds.length > 0) {
-    const { data: rawProfiles } = await supabase
-      .from('profiles').select('*').in('id', profileIds)
-    ;(rawProfiles as Profile[] | null)?.forEach((p) => profileMap.set(p.id, p))
-  }
-
-  const client = project.client_id ? (profileMap.get(project.client_id) ?? null) : null
+  // 3. Client CRM + PM + Profile auth du client (si compte créé)
+  const client = (clientRes.data as Client | null) ?? null
+  const pmList = (pmRes.data as Profile[] | null) ?? []
   const projectManager = project.project_manager_id
-    ? (profileMap.get(project.project_manager_id) ?? null)
+    ? (pmList.find((p) => p.id === project.project_manager_id) ?? null)
     : null
 
-  // 4. Commentaires du projet (avec phase_id optionnel)
-  const phaseNameMap = new Map(phases.map((ph) => [ph.id, ph.name]))
-
-  const { data: rawComments } = await supabase
-    .from('comments')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true })
-    .limit(100)
-
-  const comments = (rawComments as Comment[] | null) ?? []
-
-  // Auteurs des commentaires
-  const authorIds = [...new Set(comments.map((c) => c.user_id).filter(Boolean))]
-  const authorMap = new Map<string, Pick<Profile, 'id' | 'full_name' | 'avatar_url'>>()
-  if (authorIds.length > 0) {
-    const { data: rawAuthors } = await supabase
-      .from('profiles').select('id, full_name, avatar_url').in('id', authorIds)
-    ;(rawAuthors as Pick<Profile, 'id' | 'full_name' | 'avatar_url'>[] | null)
-      ?.forEach((p) => authorMap.set(p.id, p))
+  // Profile du client (si lié) — pour avoir l'avatar_url et l'email pour les comments
+  let clientProfile: Profile | null = null
+  if (client?.profile_id) {
+    const { data: rawClientProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', client.profile_id)
+      .maybeSingle()
+    clientProfile = rawClientProfile as Profile | null
   }
 
-  // 5. Activity logs (15 dernières)
-  const { data: rawActivity } = await supabase
-    .from('activity_logs')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: false })
-    .limit(15)
+  // Map des profils connus (PM + client si compte) pour résoudre les auteurs/acteurs
+  const profileMap = new Map<string, Profile>()
+  if (projectManager) profileMap.set(projectManager.id, projectManager)
+  if (clientProfile) profileMap.set(clientProfile.id, clientProfile)
 
-  const activity = (rawActivity as ActivityLog[] | null) ?? []
+  // 4. Commentaires + auteurs
+  const phaseNameMap = new Map(phases.map((ph) => [ph.id, ph.name]))
+  const comments = (commentsRes.data as Comment[] | null) ?? []
 
-  // Profils des acteurs (récupère ceux qu'on n'a pas encore)
+  // 5. Activity
+  const activity = (activityRes.data as ActivityLog[] | null) ?? []
+
+  // 6. Auteurs (comments + activity) — une seule query pour tous les profils manquants
+  const authorIds = [...new Set(comments.map((c) => c.user_id).filter(Boolean))]
   const actorIds = [...new Set(activity.map((a) => a.user_id).filter(Boolean) as string[])]
+  const allMissingIds = [...new Set([...authorIds, ...actorIds])].filter(
+    (id) => !profileMap.has(id),
+  )
+
+  const authorMap = new Map<string, Pick<Profile, 'id' | 'full_name' | 'avatar_url'>>()
   const actorMap = new Map<string, Pick<Profile, 'id' | 'full_name'>>()
-  const missingActorIds = actorIds.filter((id) => !profileMap.has(id) && !authorMap.has(id))
-  if (missingActorIds.length > 0) {
-    const { data: rawActors } = await supabase
-      .from('profiles').select('id, full_name').in('id', missingActorIds)
-    ;(rawActors as Pick<Profile, 'id' | 'full_name'>[] | null)?.forEach((p) =>
-      actorMap.set(p.id, p),
-    )
+
+  if (allMissingIds.length > 0) {
+    const { data: rawMissing } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .in('id', allMissingIds)
+    ;(rawMissing as Pick<Profile, 'id' | 'full_name' | 'avatar_url'>[] | null)?.forEach((p) => {
+      if (authorIds.includes(p.id)) authorMap.set(p.id, p)
+      if (actorIds.includes(p.id)) actorMap.set(p.id, { id: p.id, full_name: p.full_name })
+    })
+  }
+
+  // Les profils déjà dans profileMap (client/PM) servent aussi pour authors/actors
+  for (const id of authorIds) {
+    if (!authorMap.has(id) && profileMap.has(id)) {
+      const p = profileMap.get(id)!
+      authorMap.set(id, { id: p.id, full_name: p.full_name, avatar_url: p.avatar_url })
+    }
   }
 
   const getActor = (id: string | null) =>
@@ -345,6 +354,7 @@ export async function getProjectDetail(
   return {
     project,
     client,
+    clientProfile,
     projectManager,
     phases,
     subPhasesByPhase,
@@ -359,4 +369,233 @@ export async function getProjectDetail(
       user: getActor(a.user_id),
     })),
   }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CRM Clients
+// ─────────────────────────────────────────────────────────────────
+
+/** Liste des clients CRM + stats projets (pour la page /clients). */
+export async function getClientsWithStats(supabase: Sb): Promise<ClientWithStats[]> {
+  const { data: rawClients } = await supabase
+    .from('clients')
+    .select('*')
+    .order('updated_at', { ascending: false })
+
+  const clients = (rawClients as Client[] | null) ?? []
+  if (clients.length === 0) return []
+
+  // Stats projets
+  const clientIds = clients.map((c) => c.id)
+  const { data: rawProjects } = await supabase
+    .from('projects')
+    .select('id, name, status, client_id, updated_at')
+    .in('client_id', clientIds)
+    .order('updated_at', { ascending: false })
+
+  const projects = (rawProjects as {
+    id: string
+    name: string
+    status: string
+    client_id: string
+    updated_at: string
+  }[] | null) ?? []
+
+  const byClient = new Map<string, { active: number; total: number; lastName: string | null }>()
+  projects.forEach((p) => {
+    const entry = byClient.get(p.client_id) ?? { active: 0, total: 0, lastName: null }
+    entry.total += 1
+    if (p.status === 'active') entry.active += 1
+    if (!entry.lastName) entry.lastName = p.name
+    byClient.set(p.client_id, entry)
+  })
+
+  return clients.map((c) => {
+    const stats = byClient.get(c.id)
+    return {
+      ...c,
+      active_projects: stats?.active ?? 0,
+      total_projects:  stats?.total  ?? 0,
+      last_project_name: stats?.lastName ?? null,
+    }
+  })
+}
+
+/**
+ * Prospects de la zone "froide" (vue Prospection) : pipeline_stage ∈
+ * froid / contacte / a_relancer. Triés par date de relance (la plus proche
+ * d'abord, NULL en dernier), puis par dernière activité.
+ * Renvoie [] si la migration 021 n'est pas encore appliquée (dégradation douce).
+ */
+export async function getProspects(supabase: Sb): Promise<Client[]> {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .in('pipeline_stage', ['froid', 'contacte', 'a_relancer'])
+    .order('next_follow_up_on', { ascending: true, nullsFirst: false })
+    .order('updated_at', { ascending: false })
+
+  if (error) return []
+  return (data as Client[] | null) ?? []
+}
+
+/** Détail d'un client CRM + projets liés + interactions. */
+export interface ClientDetailData {
+  client: Client
+  projects: {
+    id: string
+    name: string
+    status: string
+    progress: number
+    deadline: string | null
+    value_eur: number | null
+    updated_at: string
+  }[]
+  interactions: ClientInteraction[]
+}
+
+export async function getClientDetail(
+  supabase: Sb,
+  clientId: string,
+): Promise<ClientDetailData | null> {
+  const { data: rawClient } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', clientId)
+    .maybeSingle()
+
+  const client = rawClient as Client | null
+  if (!client) return null
+
+  const [projectsRes, interactionsRes] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('id, name, status, progress, deadline, value_eur, updated_at')
+      .eq('client_id', clientId)
+      .order('updated_at', { ascending: false }),
+    supabase
+      .from('client_interactions')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('occurred_at', { ascending: false })
+      .limit(50),
+  ])
+
+  return {
+    client,
+    projects: (projectsRes.data as ClientDetailData['projects'] | null) ?? [],
+    interactions: (interactionsRes.data as ClientInteraction[] | null) ?? [],
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Finance / Cashflow (migration 020)
+// ─────────────────────────────────────────────────────────────────
+// NB : ces lectures nécessitent la migration 020. Si les tables/colonnes
+// n'existent pas encore, Supabase renvoie une erreur (pas d'exception) et
+// on retombe sur des tableaux vides → la page Finance s'affiche vide.
+
+/** Dépenses ponctuelles + nom du projet rattaché (le cas échéant). */
+export async function getExpenses(supabase: Sb): Promise<ExpenseWithProject[]> {
+  const { data: rawExpenses } = await supabase
+    .from('expenses')
+    .select('*')
+    .order('incurred_on', { ascending: false })
+
+  const expenses = (rawExpenses as Expense[] | null) ?? []
+  if (expenses.length === 0) return []
+
+  // Résoudre le nom des projets rattachés
+  const projectIds = [...new Set(expenses.map((e) => e.project_id).filter(Boolean) as string[])]
+  const nameMap = new Map<string, string>()
+  if (projectIds.length > 0) {
+    const { data: rawProjects } = await supabase
+      .from('projects')
+      .select('id, name')
+      .in('id', projectIds)
+    ;(rawProjects as { id: string; name: string }[] | null)?.forEach((p) =>
+      nameMap.set(p.id, p.name),
+    )
+  }
+
+  return expenses.map((e) => ({
+    ...e,
+    project_name: e.project_id ? (nameMap.get(e.project_id) ?? null) : null,
+  }))
+}
+
+/** Abonnements récurrents (actifs d'abord, puis par montant décroissant). */
+export async function getSubscriptions(supabase: Sb): Promise<Subscription[]> {
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .order('active', { ascending: false })
+    .order('amount_eur', { ascending: false })
+  return (data as Subscription[] | null) ?? []
+}
+
+/** Revenus dérivés des projets valorisés (lecture seule, pas de table dédiée). */
+export async function getRevenueEntries(supabase: Sb): Promise<RevenueEntry[]> {
+  const { data: rawProjects } = await supabase
+    .from('projects')
+    .select('id, name, client_id, value_eur, paid_at, payment_status')
+    .not('value_eur', 'is', null)
+    .gt('value_eur', 0)
+
+  const projects = (rawProjects as {
+    id: string
+    name: string
+    client_id: string | null
+    value_eur: number | null
+    paid_at: string | null
+    payment_status: PaymentStatus
+  }[] | null) ?? []
+
+  if (projects.length === 0) return []
+
+  // Résoudre le nom des clients CRM liés
+  const clientIds = [...new Set(projects.map((p) => p.client_id).filter(Boolean) as string[])]
+  const clientMap = new Map<string, string>()
+  if (clientIds.length > 0) {
+    const { data: rawClients } = await supabase
+      .from('clients')
+      .select('id, contact_name, company_name')
+      .in('id', clientIds)
+    ;(rawClients as Pick<Client, 'id' | 'contact_name' | 'company_name'>[] | null)?.forEach((c) =>
+      clientMap.set(c.id, c.company_name || c.contact_name),
+    )
+  }
+
+  return projects
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      client_name: p.client_id ? (clientMap.get(p.client_id) ?? null) : null,
+      value_eur: p.value_eur ?? 0,
+      paid_at: p.paid_at ?? null,
+      payment_status: p.payment_status ?? 'pending',
+    }))
+    // Payés récents d'abord, puis le reste ; date d'encaissement décroissante.
+    .sort((a, b) => {
+      if (a.paid_at && b.paid_at) return b.paid_at.localeCompare(a.paid_at)
+      if (a.paid_at) return -1
+      if (b.paid_at) return 1
+      return b.value_eur - a.value_eur
+    })
+}
+
+/** Données Finance complètes (1 appel pour la page /finance). */
+export interface FinanceData {
+  expenses: ExpenseWithProject[]
+  subscriptions: Subscription[]
+  revenues: RevenueEntry[]
+}
+
+export async function getFinanceData(supabase: Sb): Promise<FinanceData> {
+  const [expenses, subscriptions, revenues] = await Promise.all([
+    getExpenses(supabase),
+    getSubscriptions(supabase),
+    getRevenueEntries(supabase),
+  ])
+  return { expenses, subscriptions, revenues }
 }

@@ -9,7 +9,6 @@ function db<T>(client: T): any { return client }
 export interface AppNotification {
   id: string
   user_id: string
-  agency_id: string | null
   project_id: string | null
   type: string
   title: string

@@ -9,39 +9,16 @@ import { Loader2, ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { createProject } from '../actions'
-import type { MemberWithProfile } from '@/lib/supabase/queries'
+import type { AdminOption, ClientOption } from '@/lib/supabase/queries'
 
 // ── Zod schema ──────────────────────────────────────────────────
 
-const schema = z
-  .object({
-    name: z.string().min(1, 'Le nom est requis').max(100, 'Nom trop long'),
-    description: z.string().max(500, 'Description trop longue').optional(),
-    clientMode: z.enum(['none', 'existing', 'new']),
-    existingClientId: z.string().optional(),
-    newClientName: z.string().optional(),
-    newClientEmail: z.string().optional(),
-    projectManagerId: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.clientMode === 'existing' && !data.existingClientId) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['existingClientId'],
-        message: 'Sélectionnez un client',
-      })
-    }
-    if (data.clientMode === 'new') {
-      if (!data.newClientName?.trim()) {
-        ctx.addIssue({ code: 'custom', path: ['newClientName'], message: 'Nom requis' })
-      }
-      if (!data.newClientEmail?.trim()) {
-        ctx.addIssue({ code: 'custom', path: ['newClientEmail'], message: 'Email requis' })
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.newClientEmail)) {
-        ctx.addIssue({ code: 'custom', path: ['newClientEmail'], message: 'Email invalide' })
-      }
-    }
-  })
+const schema = z.object({
+  name: z.string().min(1, 'Le nom est requis').max(100, 'Nom trop long'),
+  description: z.string().max(500, 'Description trop longue').optional(),
+  clientId: z.string().optional(),
+  projectManagerId: z.string().optional(),
+})
 
 type FormValues = z.infer<typeof schema>
 
@@ -79,31 +56,32 @@ const selectClass = `
 // ── Props ────────────────────────────────────────────────────────
 
 interface Props {
-  clients: MemberWithProfile[]
-  creatives: MemberWithProfile[]
+  clients: ClientOption[]
+  admins: AdminOption[]
 }
 
 // ── Composant principal ──────────────────────────────────────────
 
-export default function NewProjectForm({ clients, creatives }: Props) {
+export default function NewProjectForm({ clients, admins }: Props) {
   const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { clientMode: 'none' },
   })
-
-  const clientMode = watch('clientMode')
 
   async function onSubmit(values: FormValues) {
     setServerError(null)
-    const result = await createProject(values)
+    const result = await createProject({
+      name: values.name,
+      description: values.description,
+      crmClientId: values.clientId || null,
+      projectManagerId: values.projectManagerId || null,
+    })
 
     if ('error' in result) {
       setServerError(result.error)
@@ -111,7 +89,7 @@ export default function NewProjectForm({ clients, creatives }: Props) {
     }
 
     toast.success(`Projet "${result.data.name}" créé !`)
-    router.push(`/dashboard`)
+    router.push(`/projects/${result.data.id}`)
     router.refresh()
   }
 
@@ -165,95 +143,37 @@ export default function NewProjectForm({ clients, creatives }: Props) {
 
         {/* ── Client ── */}
         <div>
-          <Label>Client</Label>
-
-          {/* Segmented control */}
-          <div className="flex rounded-lg border border-[#2a2a2a] overflow-hidden mb-3">
-            {(
-              [
-                { value: 'none', label: 'Aucun' },
-                { value: 'existing', label: 'Existant' },
-                { value: 'new', label: 'Nouveau' },
-              ] as const
-            ).map(({ value, label }) => (
-              <label
-                key={value}
-                className={`
-                  flex-1 text-center py-2 text-sm cursor-pointer transition-colors select-none
-                  ${
-                    clientMode === value
-                      ? 'bg-[#00D76B]/10 text-[#00D76B] font-medium border-b-2 border-[#00D76B]'
-                      : 'text-[#666666] hover:text-[#a0a0a0] hover:bg-[#1a1a1a]'
-                  }
-                `}
-              >
-                <input
-                  type="radio"
-                  className="sr-only"
-                  value={value}
-                  {...register('clientMode')}
-                  disabled={isSubmitting}
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-
-          {/* Client existant */}
-          {clientMode === 'existing' && (
-            <div>
-              <select
-                {...register('existingClientId')}
-                className={selectClass}
-                disabled={isSubmitting}
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  Sélectionnez un client…
+          <Label htmlFor="clientId">Client</Label>
+          <select
+            id="clientId"
+            {...register('clientId')}
+            className={selectClass}
+            disabled={isSubmitting}
+            defaultValue=""
+          >
+            <option value="">Aucun client</option>
+            {clients.map((c) => {
+              const display = c.companyName ? `${c.companyName} — ${c.contactName}` : c.contactName
+              return (
+                <option key={c.id} value={c.id}>
+                  {display}
+                  {c.email ? ` (${c.email})` : ''}
                 </option>
-                {clients.map((c) => (
-                  <option key={c.userId} value={c.userId}>
-                    {c.profile.full_name} — {c.profile.email}
-                  </option>
-                ))}
-              </select>
-              <FieldError message={errors.existingClientId?.message} />
-            </div>
-          )}
-
-          {/* Nouveau client */}
-          {clientMode === 'new' && (
-            <div className="space-y-3">
-              <div>
-                <input
-                  type="text"
-                  placeholder="Nom du client *"
-                  {...register('newClientName')}
-                  className={inputClass}
-                  disabled={isSubmitting}
-                />
-                <FieldError message={errors.newClientName?.message} />
-              </div>
-              <div>
-                <input
-                  type="email"
-                  placeholder="Email du client *"
-                  {...register('newClientEmail')}
-                  className={inputClass}
-                  disabled={isSubmitting}
-                />
-                <FieldError message={errors.newClientEmail?.message} />
-              </div>
-              <p className="text-xs text-[#666666]">
-                Un compte sera créé et le client recevra un accès en lecture seule à son projet.
-              </p>
-            </div>
-          )}
+              )
+            })}
+          </select>
+          <p className="text-xs text-[#666666] mt-1.5">
+            Pour ajouter un nouveau client,{' '}
+            <Link href="/clients/new" className="text-[#00D76B] hover:underline">
+              créez-le ici
+            </Link>{' '}
+            avant.
+          </p>
         </div>
 
-        {/* ── Créatif assigné ── */}
+        {/* ── Admin assigné (PM) ── */}
         <div>
-          <Label htmlFor="projectManagerId">Créatif assigné</Label>
+          <Label htmlFor="projectManagerId">Admin assigné</Label>
           <select
             id="projectManagerId"
             {...register('projectManagerId')}
@@ -262,13 +182,12 @@ export default function NewProjectForm({ clients, creatives }: Props) {
             defaultValue=""
           >
             <option value="">Non assigné</option>
-            {creatives.map((c) => (
-              <option key={c.userId} value={c.userId}>
-                {c.profile.full_name}
+            {admins.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.fullName}
               </option>
             ))}
           </select>
-          <FieldError message={errors.projectManagerId?.message} />
         </div>
 
         {/* ── Erreur serveur ── */}

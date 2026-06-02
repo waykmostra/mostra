@@ -25,10 +25,10 @@ async function verifyToken(token: string) {
   const admin = createAdminClient()
   const { data: rawProject } = await admin
     .from('projects')
-    .select('id, client_id, agency_id, share_token')
+    .select('id, client_id, share_token')
     .eq('share_token', token)
     .maybeSingle()
-  return rawProject as Pick<Project, 'id' | 'client_id' | 'agency_id' | 'share_token'> | null
+  return rawProject as Pick<Project, 'id' | 'client_id' | 'share_token'> | null
 }
 
 async function verifySubPhaseOwnership(
@@ -60,20 +60,15 @@ async function verifySubPhaseOwnership(
 
 async function resolveClientUserId(
   admin: ReturnType<typeof createAdminClient>,
-  project: Pick<Project, 'id' | 'client_id' | 'agency_id'>,
+  project: Pick<Project, 'id' | 'client_id'>,
 ): Promise<string | null> {
-  if (project.client_id) return project.client_id
-
-  const { data: rawMember } = await admin
-    .from('agency_members')
-    .select('user_id')
-    .eq('agency_id', project.agency_id)
-    .eq('role', 'client')
-    .eq('is_active', true)
-    .limit(1)
+  if (!project.client_id) return null
+  const { data: rawClient } = await admin
+    .from('clients')
+    .select('profile_id')
+    .eq('id', project.client_id)
     .maybeSingle()
-
-  return (rawMember as { user_id: string } | null)?.user_id ?? null
+  return (rawClient as { profile_id: string | null } | null)?.profile_id ?? null
 }
 
 // ── fetchStoryboardData ───────────────────────────────────────────
@@ -344,7 +339,6 @@ export async function requestStoryboardRevisions(
     await createNotifications(
       recipientIds.map((uid) => ({
         userId: uid,
-        agencyId: r.agencyId,
         projectId: project.id,
         type: 'revision_requested' as const,
         title: notifTitle,

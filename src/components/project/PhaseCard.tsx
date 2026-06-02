@@ -85,9 +85,8 @@ export default function PhaseCard({
       subPhases.some((sp) => sp.status !== 'pending'),
   )
 
-  const isAdmin = userRole === 'super_admin' || userRole === 'agency_admin'
-  const canAct =
-    userRole === 'super_admin' || userRole === 'agency_admin' || userRole === 'creative'
+  const isAdmin = userRole === 'admin'
+  const canAct = userRole === 'admin'
   const isDone = phase.status === 'completed' || phase.status === 'approved'
   const isActive = phase.status === 'in_progress' || phase.status === 'in_review'
   const Icon = PHASE_ICONS[phase.slug] ?? FileText

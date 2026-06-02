@@ -277,7 +277,7 @@ function CommentRow({
 }: CommentRowProps) {
   const isResolveBusy = actionId === comment.id
   const isDeleteBusy = actionId === comment.id + '-del'
-  const isAdminRole = userRole === 'super_admin' || userRole === 'agency_admin'
+  const isAdminRole = userRole === 'admin'
   const canDelete = comment.user_id === userId || isAdminRole
   const isReplying = replyingTo === comment.id
 

@@ -12,11 +12,9 @@ export type NotificationType =
   | 'phase_ready'
   | 'file_uploaded'
   | 'project_created'
-  | 'member_joined'
 
 export interface CreateNotificationInput {
   userId: string
-  agencyId?: string | null
   projectId?: string | null
   type: NotificationType
   title: string
@@ -29,7 +27,6 @@ export async function createNotification(input: CreateNotificationInput): Promis
     const admin = createAdminClient()
     await db(admin).from('notifications').insert({
       user_id: input.userId,
-      agency_id: input.agencyId ?? null,
       project_id: input.projectId ?? null,
       type: input.type,
       title: input.title,
@@ -48,7 +45,6 @@ export async function createNotifications(inputs: CreateNotificationInput[]): Pr
     await db(admin).from('notifications').insert(
       inputs.map((input) => ({
         user_id: input.userId,
-        agency_id: input.agencyId ?? null,
         project_id: input.projectId ?? null,
         type: input.type,
         title: input.title,
@@ -65,22 +61,26 @@ export async function createNotifications(inputs: CreateNotificationInput[]): Pr
 
 export interface ProjectRecipients {
   projectName: string
-  agencyId: string
+  /** Toujours 'Mostra' — agence unique. */
   agencyName: string
   shareToken: string | null
-  clientId: string | null
+  /** CRM client id (projects.client_id → clients.id). NULL si projet non rattaché. */
+  crmClientId: string | null
+  /** Profile auth lié au client si un compte a été créé (clients.profile_id). */
+  clientUserId: string | null
   clientEmail: string | null
   projectManagerId: string | null
+  /** IDs des profiles avec is_admin = true. */
   adminIds: string[]
 }
 
 export async function getProjectRecipients(projectId: string): Promise<ProjectRecipients> {
   const empty: ProjectRecipients = {
     projectName: '',
-    agencyId: '',
-    agencyName: '',
+    agencyName: 'Mostra',
     shareToken: null,
-    clientId: null,
+    crmClientId: null,
+    clientUserId: null,
     clientEmail: null,
     projectManagerId: null,
     adminIds: [],
@@ -91,14 +91,13 @@ export async function getProjectRecipients(projectId: string): Promise<ProjectRe
 
     const { data: rawProject } = await admin
       .from('projects')
-      .select('id, name, agency_id, client_id, project_manager_id, share_token')
+      .select('id, name, client_id, project_manager_id, share_token')
       .eq('id', projectId)
       .maybeSingle()
 
     const project = rawProject as {
       id: string
       name: string
-      agency_id: string
       client_id: string | null
       project_manager_id: string | null
       share_token: string | null
@@ -106,32 +105,27 @@ export async function getProjectRecipients(projectId: string): Promise<ProjectRe
 
     if (!project) return empty
 
-    const [agencyResult, adminsResult, clientResult] = await Promise.all([
-      admin.from('agencies').select('name').eq('id', project.agency_id).maybeSingle(),
-      admin
-        .from('agency_members')
-        .select('user_id')
-        .eq('agency_id', project.agency_id)
-        .eq('is_active', true)
-        .in('role', ['super_admin', 'agency_admin']),
+    const [adminsResult, clientResult] = await Promise.all([
+      admin.from('profiles').select('id').eq('is_admin', true),
       project.client_id
-        ? admin.from('profiles').select('email').eq('id', project.client_id).maybeSingle()
+        ? admin
+            .from('clients')
+            .select('email, profile_id')
+            .eq('id', project.client_id)
+            .maybeSingle()
         : Promise.resolve({ data: null }),
     ])
 
-    const agencyName = (agencyResult.data as { name: string } | null)?.name ?? ''
-    const adminIds = ((adminsResult.data as { user_id: string }[] | null) ?? []).map(
-      (a) => a.user_id,
-    )
-    const clientEmail = (clientResult.data as { email: string } | null)?.email ?? null
+    const adminIds = ((adminsResult.data as { id: string }[] | null) ?? []).map((a) => a.id)
+    const clientRow = clientResult.data as { email: string | null; profile_id: string | null } | null
 
     return {
       projectName: project.name,
-      agencyId: project.agency_id,
-      agencyName,
+      agencyName: 'Mostra',
       shareToken: project.share_token,
-      clientId: project.client_id,
-      clientEmail,
+      crmClientId: project.client_id,
+      clientUserId: clientRow?.profile_id ?? null,
+      clientEmail: clientRow?.email ?? null,
       projectManagerId: project.project_manager_id,
       adminIds,
     }

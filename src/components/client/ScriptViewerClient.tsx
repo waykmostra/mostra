@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import {
+  AlertCircle,
   ChevronRight,
   Hash,
+  LogIn,
   MessageSquare,
   CheckCircle,
   RotateCcw,
@@ -39,6 +42,7 @@ interface ScriptViewerClientProps {
   blocks: ScriptBlock[]
   initialComments: BlockComment[]
   clientId: string | null
+  isAuthenticated: boolean
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -164,12 +168,14 @@ function BlockCommentSection({
   block,
   allComments,
   clientId,
+  canComment,
   onAdd,
   onResolve,
 }: {
   block: ScriptBlock
   allComments: BlockComment[]
   clientId: string | null
+  canComment: boolean
   onAdd: (blockId: string, content: string) => Promise<void>
   onResolve: (commentId: string) => void
 }) {
@@ -217,7 +223,13 @@ function BlockCommentSection({
       )}
 
       {/* Add comment toggle / form */}
-      {!open ? (
+      {!canComment ? (
+        blockComments.length > 0 ? (
+          <p className="text-[11px] text-[#444444]">
+            {blockComments.length} commentaire{blockComments.length > 1 ? 's' : ''}
+          </p>
+        ) : null
+      ) : !open ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -280,6 +292,7 @@ export default function ScriptViewerClient({
   blocks,
   initialComments,
   clientId,
+  isAuthenticated,
 }: ScriptViewerClientProps) {
   // Local state — no realtime (anon client can't subscribe to Supabase postgres_changes).
   // We use optimistic updates for own actions + polling every 10s for admin comments.
@@ -366,8 +379,25 @@ export default function ScriptViewerClient({
   return (
     <div className="space-y-4">
 
+      {/* ── Auth gate (anonymous viewer with action available) ── */}
+      {!isApproved && status === 'in_review' && !isAuthenticated && (
+        <div className="bg-[#F59E0B]/5 border border-[#F59E0B]/20 rounded-xl p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-white">Connectez-vous pour valider</p>
+              <p className="text-xs text-[#666666] mt-0.5">Vous devez être connecté pour valider, commenter ou modifier cette phase.</p>
+            </div>
+          </div>
+          <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 transition-colors">
+            <LogIn className="h-4 w-4" />
+            Se connecter
+          </Link>
+        </div>
+      )}
+
       {/* ── Approval panel ── */}
-      {!isApproved && status === 'in_review' && (
+      {!isApproved && status === 'in_review' && isAuthenticated && (
         <div className="bg-[#111111] border border-[#F59E0B]/25 rounded-2xl p-5 space-y-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center flex-shrink-0">
@@ -536,6 +566,7 @@ export default function ScriptViewerClient({
                 block={block}
                 allComments={comments}
                 clientId={clientId}
+                canComment={isAuthenticated}
                 onAdd={handleAddComment}
                 onResolve={handleResolve}
               />

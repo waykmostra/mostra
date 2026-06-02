@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getCurrentProfile } from '@/lib/auth'
 import FormSubPhaseClient from '@/components/client/FormSubPhaseClient'
 import ScriptViewerClient from '@/components/client/ScriptViewerClient'
 import MoodboardViewerClient from '@/components/client/MoodboardViewerClient'
@@ -25,6 +26,10 @@ const AUDIO_SLUGS = ['vo', 'musique', 'voix-off']
 export default async function ClientSubPhasePage({ params }: ClientSubPhasePageProps) {
   const admin = createAdminClient()
 
+  // 0. Check authentication (anon allowed in read-only, but mutations require login)
+  const currentProfile = await getCurrentProfile()
+  const isAuthenticated = !!currentProfile
+
   // 1. Resolve token → project
   const { data: rawProject } = await admin
     .from('projects')
@@ -34,6 +39,17 @@ export default async function ClientSubPhasePage({ params }: ClientSubPhasePageP
 
   const project = rawProject as Pick<Project, 'id' | 'name' | 'client_id'> | null
   if (!project) notFound()
+
+  // Résoudre le profile_id du client CRM (NULL si pas de compte connectable)
+  let clientProfileId: string | null = null
+  if (project.client_id) {
+    const { data: rawClient } = await admin
+      .from('clients')
+      .select('profile_id')
+      .eq('id', project.client_id)
+      .maybeSingle()
+    clientProfileId = (rawClient as { profile_id: string | null } | null)?.profile_id ?? null
+  }
 
   // 2. Phase (must belong to project)
   const { data: rawPhase } = await admin
@@ -101,6 +117,7 @@ export default async function ClientSubPhasePage({ params }: ClientSubPhasePageP
           subPhaseId={subPhase.id}
           status={clientStatus}
           blocks={blocks}
+          isAuthenticated={isAuthenticated}
         />
       </PageShell>
     )
@@ -181,9 +198,10 @@ export default async function ClientSubPhasePage({ params }: ClientSubPhasePageP
           subPhaseId={subPhase.id}
           phaseId={phase.id}
           status={moodboardStatus}
-          clientId={project.client_id ?? null}
+          clientId={clientProfileId}
           initialBlocks={moodboardBlocks}
           initialComments={initialComments}
+          isAuthenticated={isAuthenticated}
         />
       </PageShell>
     )
@@ -255,9 +273,10 @@ export default async function ClientSubPhasePage({ params }: ClientSubPhasePageP
           subPhaseId={subPhase.id}
           phaseId={phase.id}
           status={storyboardStatus}
-          clientId={project.client_id ?? null}
+          clientId={clientProfileId}
           initialShots={storyboardShots}
           initialComments={initialSbComments}
+          isAuthenticated={isAuthenticated}
         />
       </PageShell>
     )
@@ -329,9 +348,10 @@ export default async function ClientSubPhasePage({ params }: ClientSubPhasePageP
           subPhaseId={subPhase.id}
           phaseId={phase.id}
           status={designStatus}
-          clientId={project.client_id ?? null}
+          clientId={clientProfileId}
           initialFiles={designFiles}
           initialComments={initialDesignComments}
+          isAuthenticated={isAuthenticated}
         />
       </PageShell>
     )
@@ -404,10 +424,11 @@ export default async function ClientSubPhasePage({ params }: ClientSubPhasePageP
           subPhaseId={subPhase.id}
           phaseId={phase.id}
           status={audioStatus}
-          clientId={project.client_id ?? null}
+          clientId={clientProfileId}
           kind={audioKind}
           initialTracks={audioTracks}
           initialComments={initialAudioComments}
+          isAuthenticated={isAuthenticated}
         />
       </PageShell>
     )
@@ -480,7 +501,8 @@ export default async function ClientSubPhasePage({ params }: ClientSubPhasePageP
         status={scriptStatus}
         blocks={scriptBlocks}
         initialComments={initialComments}
-        clientId={project.client_id ?? null}
+        clientId={clientProfileId}
+        isAuthenticated={isAuthenticated}
       />
     </PageShell>
   )

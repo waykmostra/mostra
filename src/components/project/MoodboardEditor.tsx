@@ -451,7 +451,7 @@ export default function MoodboardEditor({
   // Realtime comments (works for authenticated admin sessions)
   const comments = useRealtimeBlockComments(projectId, subPhaseId, initialComments)
 
-  const isAdmin = userRole === 'super_admin' || userRole === 'agency_admin'
+  const isAdmin = userRole === 'admin'
   const canEdit =
     subPhaseStatus === 'pending' || subPhaseStatus === 'in_progress'
 

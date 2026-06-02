@@ -1,16 +1,19 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentMember, getProjectDetail, getAgencyMembersWithProfiles } from '@/lib/supabase/queries'
+import { getCurrentProfile } from '@/lib/auth'
+import { getProjectDetail, getAllClients, getAllAdmins } from '@/lib/supabase/queries'
 import StatusBadge from '@/components/shared/StatusBadge'
 import PhaseCard from '@/components/project/PhaseCard'
+import ProjectOverviewCard from '@/components/project/ProjectOverviewCard'
 import ProjectInfo from '@/components/project/ProjectInfo'
 import ProjectTimeline from '@/components/project/ProjectTimeline'
 import ActivityLog from '@/components/project/ActivityLog'
 import CommentSection from '@/components/project/CommentSection'
 import DangerZone from '@/components/project/DangerZone'
+import ShareTokenManager from '@/components/project/ShareTokenManager'
 
 interface ProjectPageProps {
   params: { id: string }
@@ -27,56 +30,38 @@ export async function generateMetadata({ params }: ProjectPageProps): Promise<Me
 }
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
+  const profile = await getCurrentProfile()
+  if (!profile) redirect('/login')
+  if (!profile.is_admin) redirect('/client/dashboard')
+
   const supabase = createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) notFound()
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) notFound()
-
   const data = await getProjectDetail(supabase, params.id)
   if (!data) notFound()
 
-  // Sécurité : le projet doit appartenir à l'agence de l'utilisateur
-  if (data.project.agency_id !== membership.agency?.id) notFound()
-
-  const userRole = membership.member.role
-  const isAdmin = userRole === 'super_admin' || userRole === 'agency_admin'
-
-  // Créatif : seulement ses projets assignés
-  if (userRole === 'creative' && data.project.project_manager_id !== user.id) {
-    notFound()
-  }
+  const userRole = 'admin' as const
 
   const { project, client, projectManager, phases, subPhasesByPhase, filesByPhase, comments, activity } = data
 
-  // Membres clients + admins/créatifs de l'agence pour les sélecteurs d'assignation
-  const [clientMembers, pmMembers] = isAdmin
-    ? await Promise.all([
-        getAgencyMembersWithProfiles(supabase, membership.agency?.id ?? '', ['client']),
-        getAgencyMembersWithProfiles(supabase, membership.agency?.id ?? '', [
-          'super_admin',
-          'agency_admin',
-          'creative',
-        ]),
-      ])
-    : [[], []]
+  const [clientOptions, adminOptions] = await Promise.all([
+    getAllClients(supabase),
+    getAllAdmins(supabase),
+  ])
 
-  const availableClients = clientMembers.map((m) => ({
-    userId: m.userId,
-    fullName: m.profile.full_name,
-    email: m.profile.email,
+  const availableClients = clientOptions.map((c) => ({
+    id: c.id,
+    contactName: c.contactName,
+    companyName: c.companyName,
+    email: c.email,
   }))
 
-  const availablePMs = pmMembers.map((m) => ({
-    userId: m.userId,
-    fullName: m.profile.full_name,
-    email: m.profile.email,
-    role: m.role,
+  const availablePMs = adminOptions.map((a) => ({
+    userId: a.id,
+    fullName: a.fullName,
+    email: a.email,
+    role: 'admin' as const,
   }))
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] px-4 sm:px-6 py-6 sm:py-8">
@@ -108,6 +93,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             </div>
           )}
         </div>
+
+        {/* Carte 360° — vue d'ensemble business (au-dessus de la pipeline) */}
+        <ProjectOverviewCard
+          project={project}
+          client={client}
+          projectManager={projectManager}
+          phases={phases}
+        />
 
         {/* Layout 2 colonnes */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
@@ -149,7 +142,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               comments={comments}
               projectId={project.id}
               phases={phases.map((p) => ({ id: p.id, name: p.name }))}
-              userId={user.id}
+              userId={profile.id}
               userRole={userRole}
             />
           </div>
@@ -160,18 +153,21 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               project={project}
               client={client}
               projectManager={projectManager}
-              isAdmin={isAdmin}
+              isAdmin={true}
               availableClients={availableClients}
               availablePMs={availablePMs}
             />
+            <ShareTokenManager
+              projectId={project.id}
+              shareToken={project.share_token}
+              appUrl={appUrl}
+            />
             <ActivityLog activity={activity} projectId={project.id} />
-            {(userRole === 'super_admin' || userRole === 'agency_admin') && (
-              <DangerZone
-                projectId={project.id}
-                projectName={project.name}
-                isArchived={project.status === 'archived'}
-              />
-            )}
+            <DangerZone
+              projectId={project.id}
+              projectName={project.name}
+              isArchived={project.status === 'archived'}
+            />
           </div>
         </div>
       </div>

@@ -3,18 +3,24 @@
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
+import { requireProjectAccess } from '@/lib/auth'
 import { createNotifications, getProjectRecipients } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
 import type { PhaseFile, Project, ProjectPhase } from '@/lib/types'
 
-// Admin client uniquement — ces actions sont publiques (pas de session user)
-// La sécurité repose sur la vérification du share_token.
+// ============================================================================
+// Actions côté client : exigent un user authentifié + qui est client_id du projet
+// (utilisation du helper requireProjectAccess).
+//
+// Pour les fetch publics (lecture sans login via le share_token), on garde
+// resolveByToken qui passe par createAdminClient — c'est le mode lecture seule.
+// ============================================================================
 
 export type ClientActionResult = { success: true } | { success: false; error: string }
 
-// ── Helper : résoudre token → projet ─────────────────────────────
+// ── Helper : résoudre un share_token → projet (lecture publique seulement) ──
 
-async function resolveToken(token: string): Promise<Project | null> {
+async function resolveByToken(token: string): Promise<Project | null> {
   const admin = createAdminClient()
   const { data } = await db(admin)
     .from('projects')
@@ -24,7 +30,7 @@ async function resolveToken(token: string): Promise<Project | null> {
   return data as Project | null
 }
 
-// ── Helper : recalculer progression projet ────────────────────────
+// ── recalcProgress ───────────────────────────────────────────────
 
 async function recalcProgress(
   admin: ReturnType<typeof createAdminClient>,
@@ -39,7 +45,6 @@ async function recalcProgress(
   if (phases.length === 0) return
 
   const doneCount = phases.filter((p) => p.status === 'completed' || p.status === 'approved').length
-
   const progress = Math.round((doneCount / phases.length) * 100)
   const allDone = phases.every((p) => p.status === 'completed' || p.status === 'approved')
 
@@ -49,14 +54,12 @@ async function recalcProgress(
   await db(admin).from('projects').update(projectUpdate).eq('id', projectId)
 }
 
-// ── approveAsClient ───────────────────────────────────────────────
-// Le client approuve une phase "in_review" → statut "approved"
+// ── approveAsClient (auth requise) ───────────────────────────────
 
-export async function approveAsClient(token: string, phaseId: string): Promise<ClientActionResult> {
-  const project = await resolveToken(token)
-  if (!project) return { success: false, error: 'Lien invalide' }
-
-  const admin = createAdminClient()
+export async function approveAsClient(projectId: string, phaseId: string): Promise<ClientActionResult> {
+  const auth = await requireProjectAccess(projectId)
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin, user } = auth
 
   const { data: rawPhase } = await db(admin)
     .from('project_phases')
@@ -66,7 +69,7 @@ export async function approveAsClient(token: string, phaseId: string): Promise<C
 
   const phase = rawPhase as ProjectPhase | null
   if (!phase) return { success: false, error: 'Phase introuvable' }
-  if (phase.project_id !== project.id) return { success: false, error: 'Accès refusé' }
+  if (phase.project_id !== projectId) return { success: false, error: 'Accès refusé' }
   if (phase.status !== 'in_review')
     return { success: false, error: "Cette phase n'est pas en attente de validation" }
 
@@ -79,36 +82,44 @@ export async function approveAsClient(token: string, phaseId: string): Promise<C
 
   if (error) return { success: false, error: error.message }
 
-  await recalcProgress(admin, project.id)
+  await recalcProgress(admin, projectId)
 
   await db(admin)
     .from('activity_logs')
     .insert({
-      project_id: project.id,
-      user_id: project.client_id ?? null,
+      project_id: projectId,
+      user_id: user.id,
       action: 'phase_approved',
-      details: { phase_name: phase.name, via: 'client_token' },
+      details: { phase_name: phase.name, via: 'client_auth' },
     })
 
-  revalidatePath(`/client/${token}`)
-  revalidatePath(`/client/${token}/phases/${phaseId}`)
-  revalidatePath(`/projects/${project.id}`)
-  revalidatePath(`/dashboard`)
+  // Token (pour revalidate du path public)
+  const { data: rawProj } = await admin
+    .from('projects')
+    .select('share_token')
+    .eq('id', projectId)
+    .maybeSingle()
+  const token = (rawProj as { share_token: string | null } | null)?.share_token
+
+  if (token) {
+    revalidatePath(`/client/${token}`)
+    revalidatePath(`/client/${token}/phases/${phaseId}`)
+  }
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath(`/client/dashboard`)
   return { success: true }
 }
 
-// ── requestRevisionAsClient ───────────────────────────────────────
-// Le client demande des modifications → retour en "in_progress" + commentaire
+// ── requestRevisionAsClient (auth requise) ───────────────────────
 
 export async function requestRevisionAsClient(
-  token: string,
+  projectId: string,
   phaseId: string,
   message: string,
 ): Promise<ClientActionResult> {
-  const project = await resolveToken(token)
-  if (!project) return { success: false, error: 'Lien invalide' }
-
-  const admin = createAdminClient()
+  const auth = await requireProjectAccess(projectId)
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin, user } = auth
 
   const { data: rawPhase } = await db(admin)
     .from('project_phases')
@@ -118,11 +129,10 @@ export async function requestRevisionAsClient(
 
   const phase = rawPhase as ProjectPhase | null
   if (!phase) return { success: false, error: 'Phase introuvable' }
-  if (phase.project_id !== project.id) return { success: false, error: 'Accès refusé' }
+  if (phase.project_id !== projectId) return { success: false, error: 'Accès refusé' }
   if (phase.status !== 'in_review')
     return { success: false, error: "Cette phase n'est pas en attente de validation" }
 
-  // Phase repart en production
   const { error: phaseError } = await db(admin)
     .from('project_phases')
     .update({ status: 'in_progress' })
@@ -130,46 +140,34 @@ export async function requestRevisionAsClient(
 
   if (phaseError) return { success: false, error: phaseError.message }
 
-  // Commentaire avec le message du client
-  // user_id est requis (NOT NULL) — on ne peut créer le commentaire que si
-  // le projet a un client assigné. Si client_id est null, on log sans commenter.
   const trimmed = message.trim()
   if (trimmed) {
-    if (project.client_id) {
-      const { error: commentError } = await db(admin).from('comments').insert({
-        project_id: project.id,
-        phase_id: phaseId,
-        user_id: project.client_id,
-        content: trimmed,
-        is_resolved: false,
-      })
-      if (commentError) {
-        console.error('[requestRevisionAsClient] comment insert failed:', commentError.message)
-      }
-    } else {
-      console.warn(
-        '[requestRevisionAsClient] project.client_id is null — comment skipped, revision message lost',
-      )
-    }
+    await db(admin).from('comments').insert({
+      project_id: projectId,
+      phase_id: phaseId,
+      user_id: user.id,
+      content: trimmed,
+      is_resolved: false,
+    })
   }
 
   await db(admin)
     .from('activity_logs')
     .insert({
-      project_id: project.id,
-      user_id: project.client_id ?? null,
+      project_id: projectId,
+      user_id: user.id,
       action: 'phase_review',
       details: {
         phase_name: phase.name,
         revision_requested: true,
         message: trimmed,
-        via: 'client_token',
+        via: 'client_auth',
       },
     })
 
-  // ── Notify admins / PM (fire-and-forget) ─────────────────────────
+  // Notifier admins + PM
   void (async () => {
-    const r = await getProjectRecipients(project.id)
+    const r = await getProjectRecipients(projectId)
     if (!r.projectName) return
 
     const recipientIds = [
@@ -177,15 +175,14 @@ export async function requestRevisionAsClient(
     ]
     if (recipientIds.length === 0) return
 
-    const link = `/projects/${project.id}/phases/${phaseId}`
+    const link = `/projects/${projectId}/phases/${phaseId}`
     const notifTitle = `🔄 Révision demandée — ${phase.name}`
     const notifMsg = trimmed || 'Le client a demandé des modifications.'
 
     await createNotifications(
       recipientIds.map((uid) => ({
         userId: uid,
-        agencyId: r.agencyId,
-        projectId: project.id,
+        projectId,
         type: 'revision_requested' as const,
         title: notifTitle,
         message: notifMsg,
@@ -206,7 +203,7 @@ export async function requestRevisionAsClient(
           template: 'revision_requested',
           data: {
             projectName: r.projectName,
-            agencyName: r.agencyName,
+            agencyName: 'Mostra',
             phaseName: phase.name,
             clientName: 'Le client',
           },
@@ -216,22 +213,37 @@ export async function requestRevisionAsClient(
     }
   })()
 
-  revalidatePath(`/client/${token}`)
-  revalidatePath(`/client/${token}/phases/${phaseId}`)
-  revalidatePath(`/projects/${project.id}`)
-  revalidatePath(`/dashboard`)
+  const { data: rawProj } = await admin
+    .from('projects')
+    .select('share_token')
+    .eq('id', projectId)
+    .maybeSingle()
+  const token = (rawProj as { share_token: string | null } | null)?.share_token
+
+  if (token) {
+    revalidatePath(`/client/${token}`)
+    revalidatePath(`/client/${token}/phases/${phaseId}`)
+  }
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath(`/client/dashboard`)
   return { success: true }
 }
 
-// ── getClientSignedUrl ────────────────────────────────────────────
-// Génère une URL signée sans session — vérifie le token d'abord
+// ── getClientSignedUrl (lecture publique via token) ──────────────
+// Mode lecture seule : sans login, on peut consulter les fichiers
+// si on a le share_token. C'est le seul accès anonyme autorisé.
 
 export async function getClientSignedUrl(
   token: string,
   filePath: string,
 ): Promise<{ url: string } | { error: string }> {
-  const project = await resolveToken(token)
+  const project = await resolveByToken(token)
   if (!project) return { error: 'Lien invalide' }
+
+  // Vérifier que le file appartient au projet (filePath commence par projectId)
+  if (!filePath.startsWith(`${project.id}/`)) {
+    return { error: 'Accès refusé' }
+  }
 
   const admin = createAdminClient()
   const { data, error } = await admin.storage.from('project-files').createSignedUrl(filePath, 3600)
@@ -240,8 +252,7 @@ export async function getClientSignedUrl(
   return { url: data.signedUrl }
 }
 
-// ── getClientPhaseViewData ────────────────────────────────────────
-// Version publique de getPhaseViewData — s'authentifie via token
+// ── getClientPhaseViewData (lecture publique via token) ──────────
 
 export interface ClientPhaseViewData {
   projectId: string
@@ -261,7 +272,7 @@ export async function getClientPhaseViewData(
   phaseId: string,
   requestedVersion?: number,
 ): Promise<ClientPhaseViewData | { error: string }> {
-  const project = await resolveToken(token)
+  const project = await resolveByToken(token)
   if (!project) return { error: 'Lien invalide' }
 
   const admin = createAdminClient()

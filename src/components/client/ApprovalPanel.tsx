@@ -1,26 +1,31 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CheckCircle2, RotateCcw, Loader2, AlertCircle } from 'lucide-react'
+import Link from 'next/link'
+import { CheckCircle2, RotateCcw, Loader2, AlertCircle, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils/dates'
 import { approveAsClient, requestRevisionAsClient } from '@/app/client/actions'
 import type { PhaseStatus } from '@/lib/types'
 
 interface ApprovalPanelProps {
-  token: string
+  projectId: string
   phaseId: string
   phaseName: string
   status: PhaseStatus
   completedAt: string | null
+  isAuthenticated: boolean
+  loginHref?: string
 }
 
 export default function ApprovalPanel({
-  token,
+  projectId,
   phaseId,
   phaseName,
   status,
   completedAt,
+  isAuthenticated,
+  loginHref = '/login',
 }: ApprovalPanelProps) {
   // ── Phase approuvée / terminée : badge simple ─────────────────
   if (status === 'approved' || status === 'completed') {
@@ -40,17 +45,46 @@ export default function ApprovalPanel({
   // ── Phase en attente de validation ────────────────────────────
   if (status !== 'in_review') return null
 
-  return <ApprovalForm token={token} phaseId={phaseId} phaseName={phaseName} />
+  // ── Non connecté : CTA de connexion ───────────────────────────
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-[#F59E0B]/5 border border-[#F59E0B]/20 rounded-xl p-5 space-y-3">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-white">
+              Cette phase est en attente de votre approbation
+            </p>
+            <p className="text-xs text-[#666666] mt-0.5">
+              Connectez-vous pour approuver ou demander des modifications.
+            </p>
+          </div>
+        </div>
+        <Link
+          href={loginHref}
+          className="
+            inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+            bg-white text-black hover:bg-white/90 transition-colors
+          "
+        >
+          <LogIn className="h-4 w-4" />
+          Se connecter
+        </Link>
+      </div>
+    )
+  }
+
+  return <ApprovalForm projectId={projectId} phaseId={phaseId} phaseName={phaseName} />
 }
 
 // ── Formulaire d'approbation / révision ──────────────────────────
 
 function ApprovalForm({
-  token,
+  projectId,
   phaseId,
   phaseName,
 }: {
-  token: string
+  projectId: string
   phaseId: string
   phaseName: string
 }) {
@@ -60,7 +94,7 @@ function ApprovalForm({
 
   function handleApprove() {
     startTransition(async () => {
-      const result = await approveAsClient(token, phaseId)
+      const result = await approveAsClient(projectId, phaseId)
       if (result.success) {
         toast.success(`Phase "${phaseName}" approuvée !`)
       } else {
@@ -75,7 +109,7 @@ function ApprovalForm({
       return
     }
     startTransition(async () => {
-      const result = await requestRevisionAsClient(token, phaseId, message)
+      const result = await requestRevisionAsClient(projectId, phaseId, message)
       if (result.success) {
         toast.success('Demande de modifications envoyée.')
         setMode('idle')

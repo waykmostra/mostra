@@ -2,7 +2,6 @@
 
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -20,7 +19,6 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') ?? '/'
-  const justInvited = searchParams.get('invited') === '1'
   const [serverError, setServerError] = useState<string | null>(null)
 
   const {
@@ -59,15 +57,6 @@ function LoginForm() {
     <>
       <h1 className="text-xl font-semibold text-white mb-1">Connexion</h1>
       <p className="text-sm text-[#a0a0a0] mb-6">Accédez à votre espace de production.</p>
-
-      {justInvited && (
-        <div className="mb-5 rounded-lg bg-[#22C55E]/10 border border-[#22C55E]/20 px-4 py-3">
-          <p className="text-sm text-[#22C55E] font-medium">Compte créé avec succès !</p>
-          <p className="text-xs text-[#22C55E]/70 mt-0.5">
-            Connectez-vous avec votre email et mot de passe.
-          </p>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         {/* Email */}
@@ -144,12 +133,6 @@ function LoginForm() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-[#666666]">
-        Pas encore de compte ?{' '}
-        <Link href="/register" className="text-[#a0a0a0] hover:text-white transition-colors">
-          Créer un compte
-        </Link>
-      </p>
     </>
   )
 }

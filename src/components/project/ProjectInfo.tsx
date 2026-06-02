@@ -1,13 +1,15 @@
-import { Mail, Phone, MessageCircle, Calendar } from 'lucide-react'
+import { Mail, Phone, MessageCircle, Calendar, Building2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils/dates'
 import AssignClientButton from './AssignClientButton'
 import AssignPMButton from './AssignPMButton'
-import type { ContactMethod, Profile, Project, UserRole } from '@/lib/types'
+import type { Client, ContactMethod, Profile, Project, UserRole } from '@/lib/types'
 
 interface ClientOption {
-  userId: string
-  fullName: string
-  email: string
+  /** clients.id (CRM) */
+  id: string
+  contactName: string
+  companyName: string | null
+  email: string | null
 }
 
 interface PMOption {
@@ -39,7 +41,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 interface ProjectInfoProps {
   project: Project
-  client: Profile | null
+  /** Fiche CRM (table clients) ; NULL si projet non rattaché à un client. */
+  client: Client | null
   projectManager: Profile | null
   isAdmin?: boolean
   availableClients?: ClientOption[]
@@ -96,8 +99,18 @@ export default function ProjectInfo({
         <SectionLabel>Client</SectionLabel>
         {client ? (
           <>
-            <p className="text-sm text-white font-medium">{client.full_name}</p>
-            <p className="text-xs text-[#666666] mt-0.5">{client.email}</p>
+            <p className="text-sm text-white font-medium">
+              {client.company_name || client.contact_name}
+            </p>
+            {client.company_name && (
+              <p className="text-xs text-[#a0a0a0] mt-0.5 flex items-center gap-1">
+                <Building2 className="h-3 w-3" />
+                {client.contact_name}
+              </p>
+            )}
+            {client.email && (
+              <p className="text-xs text-[#666666] mt-0.5">{client.email}</p>
+            )}
           </>
         ) : (
           <p className="text-sm text-[#444444] italic">Aucun client assigné</p>

@@ -1,147 +1,45 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
+import { requireAdmin } from '@/lib/auth'
 import { createNotification } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
-import type { PhaseTemplate, SubPhaseDefinition } from '@/lib/types'
+import type { PhaseTemplate, SubPhaseDefinition, PaymentStatus, ProjectUpdate } from '@/lib/types'
 
 export type CreateProjectInput = {
   name: string
   description?: string
-  clientMode: 'none' | 'existing' | 'new'
-  existingClientId?: string
-  newClientName?: string
-  newClientEmail?: string
-  projectManagerId?: string
+  /** ID dans la table CRM `clients` (pas le profile auth). */
+  crmClientId?: string | null
+  projectManagerId?: string | null
 }
 
 export type CreateProjectResult = { data: { id: string; name: string } } | { error: string }
 
 export async function createProject(input: CreateProjectInput): Promise<CreateProjectResult> {
-  const supabase = createClient()
-  const admin = createAdminClient()
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+  const { supabase, admin, user } = auth
 
-  // ── Auth ────────────────────────────────────────────────────────
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié.' }
-
-  // ── Permission : admin seulement ────────────────────────────────
-  const { data: rawMember } = await supabase
-    .from('agency_members')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .order('invited_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!rawMember) return { error: 'Membre introuvable.' }
-  const member = rawMember as { id: string; agency_id: string; role: string }
-
-  if (member.role !== 'super_admin' && member.role !== 'agency_admin') {
-    return { error: 'Seuls les admins peuvent créer des projets.' }
-  }
-
-  const agencyId = member.agency_id
-
-  // ── Unicité du nom dans l'agence ────────────────────────────────
+  // Unicité du nom
   const { data: existing } = await supabase
     .from('projects')
     .select('id')
-    .eq('agency_id', agencyId)
     .ilike('name', input.name.trim())
     .maybeSingle()
 
   if (existing) {
-    return { error: 'Un projet avec ce nom existe déjà dans votre agence.' }
+    return { error: 'Un projet avec ce nom existe déjà.' }
   }
 
-  // ── Résolution du client ─────────────────────────────────────────
-  let clientId: string | null = null
-
-  if (input.clientMode === 'existing' && input.existingClientId) {
-    clientId = input.existingClientId
-  } else if (input.clientMode === 'new' && input.newClientEmail && input.newClientName) {
-    const email = input.newClientEmail.trim().toLowerCase()
-    const name = input.newClientName.trim()
-
-    // Cherche si l'email existe déjà dans auth
-    const {
-      data: { users: allUsers },
-    } = await admin.auth.admin.listUsers({ perPage: 1000 })
-    const existingAuthUser = allUsers.find((u) => u.email === email)
-
-    if (existingAuthUser) {
-      clientId = existingAuthUser.id
-
-      // S'assurer qu'il a un profil
-      await db(admin)
-        .from('profiles')
-        .upsert(
-          { id: clientId, email, full_name: name },
-          { onConflict: 'id', ignoreDuplicates: true },
-        )
-
-      // L'ajouter à l'agence s'il n'y est pas encore
-      const { data: existingMembership } = await admin
-        .from('agency_members')
-        .select('id')
-        .eq('user_id', clientId)
-        .eq('agency_id', agencyId)
-        .maybeSingle()
-
-      if (!existingMembership) {
-        await db(admin).from('agency_members').insert({
-          agency_id: agencyId,
-          user_id: clientId,
-          role: 'client',
-          accepted_at: new Date().toISOString(),
-        })
-      }
-    } else {
-      // Crée un nouveau user (sans mot de passe → invite flow ou magic link ultérieur)
-      const { data: newUser, error: authError } = await admin.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        user_metadata: { full_name: name },
-      })
-
-      if (authError || !newUser.user) {
-        return {
-          error: `Impossible de créer le client : ${authError?.message ?? 'erreur inconnue'}`,
-        }
-      }
-
-      clientId = newUser.user.id
-
-      // Upsert profil (le trigger handle_new_user peut avoir ou non tiré)
-      await db(admin)
-        .from('profiles')
-        .upsert({ id: clientId, email, full_name: name }, { onConflict: 'id' })
-
-      // Ajout en membre de l'agence
-      await db(admin).from('agency_members').insert({
-        agency_id: agencyId,
-        user_id: clientId,
-        role: 'client',
-        accepted_at: new Date().toISOString(),
-      })
-    }
-  }
-
-  // ── Création du projet ───────────────────────────────────────────
+  // Création du projet
   const { data: project, error: projError } = await db(supabase)
     .from('projects')
     .insert({
-      agency_id: agencyId,
       name: input.name.trim(),
       description: input.description?.trim() || null,
-      client_id: clientId,
+      client_id: input.crmClientId || null,
       project_manager_id: input.projectManagerId || null,
       status: 'active',
       progress: 0,
@@ -155,18 +53,16 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
 
   const proj = project as { id: string; name: string }
 
-  // ── Création des phases depuis les templates ─────────────────────
+  // Création des phases depuis les templates (globaux)
   const { data: templates } = await supabase
     .from('phase_templates')
     .select('*')
-    .eq('agency_id', agencyId)
     .eq('is_default', true)
     .order('sort_order', { ascending: true })
 
   if (templates && templates.length > 0) {
     const typedTemplates = templates as PhaseTemplate[]
 
-    // Créer les phases
     const phaseRows = typedTemplates.map((tpl) => ({
       project_id: proj.id,
       phase_template_id: tpl.id,
@@ -181,7 +77,7 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
       .insert(phaseRows)
       .select('id, phase_template_id')
 
-    // Créer les sous-phases depuis les templates (si le template en définit)
+    // Sous-phases depuis les templates
     if (createdPhases && createdPhases.length > 0) {
       const templateById = new Map(typedTemplates.map((t) => [t.id, t]))
       const subPhaseInserts: Array<{
@@ -197,9 +93,7 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
         const tpl = templateById.get(phase.phase_template_id)
         if (!tpl) continue
 
-        const rawSps = typeof tpl.sub_phases === 'string'
-          ? JSON.parse(tpl.sub_phases)
-          : tpl.sub_phases
+        const rawSps = typeof tpl.sub_phases === 'string' ? JSON.parse(tpl.sub_phases) : tpl.sub_phases
         const sps: SubPhaseDefinition[] = Array.isArray(rawSps) ? rawSps : []
 
         sps.forEach((sp, idx) => {
@@ -219,7 +113,7 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
     }
   }
 
-  // ── Log d'activité ───────────────────────────────────────────────
+  // Log
   await db(supabase)
     .from('activity_logs')
     .insert({
@@ -229,47 +123,40 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
       details: { project_name: proj.name },
     })
 
-  // ── Notify client of project creation ────────────────────────────
-  if (clientId) {
+  // Notifier le client (résoudre clients.profile_id pour avoir l'auth user id)
+  if (input.crmClientId) {
+    const crmClientId = input.crmClientId
     void (async () => {
-      // Fetch share_token for client link
-      const { data: rawProj } = await createAdminClient()
-        .from('projects')
-        .select('share_token')
-        .eq('id', proj.id)
-        .maybeSingle()
+      const [{ data: rawProj }, { data: rawClient }] = await Promise.all([
+        admin.from('projects').select('share_token').eq('id', proj.id).maybeSingle(),
+        admin
+          .from('clients')
+          .select('profile_id, email')
+          .eq('id', crmClientId)
+          .maybeSingle(),
+      ])
+
       const shareToken = (rawProj as { share_token: string | null } | null)?.share_token
+      const clientRow = rawClient as { profile_id: string | null; email: string | null } | null
+      const clientUserId = clientRow?.profile_id ?? null
+      const clientEmail = clientRow?.email ?? null
 
-      // Fetch agency name
-      const { data: rawAgency } = await supabase
-        .from('agencies')
-        .select('name')
-        .eq('id', agencyId)
-        .maybeSingle()
-      const agencyName = (rawAgency as { name: string } | null)?.name ?? 'votre agence'
+      if (clientUserId) {
+        await createNotification({
+          userId: clientUserId,
+          projectId: proj.id,
+          type: 'project_created',
+          title: `🚀 Votre projet « ${proj.name} » a démarré`,
+          message: 'Mostra vient de créer votre projet.',
+          link: shareToken ? `/client/${shareToken}` : null,
+        })
+      }
 
-      await createNotification({
-        userId: clientId,
-        agencyId,
-        projectId: proj.id,
-        type: 'project_created',
-        title: `🚀 Votre projet « ${proj.name} » a démarré`,
-        message: `${agencyName} vient de créer votre projet.`,
-        link: shareToken ? `/client/${shareToken}` : null,
-      })
-
-      // Email client
-      const { data: rawProfile } = await createAdminClient()
-        .from('profiles')
-        .select('email')
-        .eq('id', clientId)
-        .maybeSingle()
-      const clientEmail = (rawProfile as { email: string } | null)?.email
       if (clientEmail) {
         void sendEmail({
           to: clientEmail,
           template: 'project_created',
-          data: { projectName: proj.name, agencyName },
+          data: { projectName: proj.name, agencyName: 'Mostra' },
           link: shareToken ? `/client/${shareToken}` : undefined,
         })
       }
@@ -284,67 +171,37 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
 export type ProjectActionResult = { success: true } | { success: false; error: string }
 
 export async function deleteProject(projectId: string): Promise<ProjectActionResult> {
-  const supabase = createClient()
-  const adminClient = createAdminClient()
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, admin } = auth
 
-  // Auth
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié.' }
-
-  // Membre + rôle
-  const { data: rawMember } = await supabase
-    .from('agency_members')
-    .select('agency_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .order('invited_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!rawMember) return { success: false, error: 'Membre introuvable.' }
-  const member = rawMember as { agency_id: string; role: string }
-
-  if (member.role !== 'super_admin' && member.role !== 'agency_admin') {
-    return { success: false, error: 'Permissions insuffisantes.' }
-  }
-
-  // Vérifier que le projet appartient à l'agence du user
+  // Vérifier que le projet existe
   const { data: project } = await db(supabase)
     .from('projects')
-    .select('id, name, agency_id')
+    .select('id, name')
     .eq('id', projectId)
     .maybeSingle()
 
   if (!project) return { success: false, error: 'Projet introuvable.' }
-  if (project.agency_id !== member.agency_id) {
-    return { success: false, error: 'Accès refusé.' }
-  }
 
-  // Supprimer les fichiers Storage du projet (éviter les orphelins)
-  // Path : project-files/{projectId}/...
-  const { data: storageFiles } = await adminClient.storage
+  // Cleanup Storage
+  const { data: storageFiles } = await admin.storage
     .from('project-files')
     .list(projectId, { limit: 1000 })
 
   if (storageFiles && storageFiles.length > 0) {
-    // list() retourne les dossiers de premier niveau (slugs de phase).
-    // On doit les parcourir récursivement pour tout supprimer.
     const allPaths: string[] = []
 
     for (const folder of storageFiles) {
       if (folder.id === null) {
-        // C'est un dossier — lister son contenu
-        const { data: subFiles } = await adminClient.storage
+        const { data: subFiles } = await admin.storage
           .from('project-files')
           .list(`${projectId}/${folder.name}`, { limit: 1000 })
 
         if (subFiles) {
           for (const sub of subFiles) {
             if (sub.id === null) {
-              // Sous-dossier versioning (v1, v2...)
-              const { data: vFiles } = await adminClient.storage
+              const { data: vFiles } = await admin.storage
                 .from('project-files')
                 .list(`${projectId}/${folder.name}/${sub.name}`, { limit: 1000 })
               if (vFiles) {
@@ -363,26 +220,15 @@ export async function deleteProject(projectId: string): Promise<ProjectActionRes
     }
 
     if (allPaths.length > 0) {
-      const { error: storageErr } = await adminClient.storage.from('project-files').remove(allPaths)
-
-      if (storageErr) {
-        console.error('[deleteProject] storage cleanup error:', storageErr)
-        // Non bloquant — on continue la suppression du projet
-      }
+      const { error: storageErr } = await admin.storage.from('project-files').remove(allPaths)
+      if (storageErr) console.error('[deleteProject] storage cleanup error:', storageErr)
     }
   }
 
-  // Hard delete du projet (cascade FK : phases, files, comments, activity_logs)
-  const { error: deleteErr } = await db(supabase)
-    .from('projects')
-    .delete()
-    .eq('id', projectId)
-    .eq('agency_id', member.agency_id)
+  // Hard delete (cascade FK)
+  const { error: deleteErr } = await db(supabase).from('projects').delete().eq('id', projectId)
 
-  if (deleteErr) {
-    console.error('[deleteProject] delete error:', deleteErr)
-    return { success: false, error: deleteErr.message }
-  }
+  if (deleteErr) return { success: false, error: deleteErr.message }
 
   revalidatePath('/dashboard')
   revalidatePath('/projects')
@@ -392,34 +238,14 @@ export async function deleteProject(projectId: string): Promise<ProjectActionRes
 // ── archiveProject ───────────────────────────────────────────────
 
 export async function archiveProject(projectId: string): Promise<ProjectActionResult> {
-  const supabase = createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié.' }
-
-  const { data: rawMember } = await supabase
-    .from('agency_members')
-    .select('agency_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .order('invited_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!rawMember) return { success: false, error: 'Membre introuvable.' }
-  const member = rawMember as { agency_id: string; role: string }
-
-  if (member.role !== 'super_admin' && member.role !== 'agency_admin') {
-    return { success: false, error: 'Permissions insuffisantes.' }
-  }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
 
   const { error } = await db(supabase)
     .from('projects')
     .update({ status: 'archived' })
     .eq('id', projectId)
-    .eq('agency_id', member.agency_id)
 
   if (error) return { success: false, error: error.message }
 
@@ -429,56 +255,31 @@ export async function archiveProject(projectId: string): Promise<ProjectActionRe
 }
 
 // ── assignClient ─────────────────────────────────────────────────
-// Assigne (ou retire) le client d'un projet après création.
+// Assigne un client CRM (table `clients`) à un projet.
 
 export async function assignClient(
   projectId: string,
-  clientUserId: string | null,
+  crmClientId: string | null,
 ): Promise<ProjectActionResult> {
-  const supabase = createClient()
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié.' }
-
-  const { data: rawMember } = await supabase
-    .from('agency_members')
-    .select('agency_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .order('invited_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!rawMember) return { success: false, error: 'Membre introuvable.' }
-  const member = rawMember as { agency_id: string; role: string }
-
-  if (member.role !== 'super_admin' && member.role !== 'agency_admin') {
-    return { success: false, error: 'Permissions insuffisantes.' }
-  }
-
-  // Vérifier que le client assigné appartient bien à l'agence (si non-null)
-  if (clientUserId) {
-    const { data: clientMember } = await supabase
-      .from('agency_members')
+  // Vérifier que le client CRM existe
+  if (crmClientId) {
+    const { data: rawClient } = await supabase
+      .from('clients')
       .select('id')
-      .eq('user_id', clientUserId)
-      .eq('agency_id', member.agency_id)
-      .eq('role', 'client')
-      .eq('is_active', true)
+      .eq('id', crmClientId)
       .maybeSingle()
 
-    if (!clientMember) {
-      return { success: false, error: 'Client introuvable dans cette agence.' }
-    }
+    if (!rawClient) return { success: false, error: 'Client introuvable.' }
   }
 
   const { error } = await db(supabase)
     .from('projects')
-    .update({ client_id: clientUserId })
+    .update({ client_id: crmClientId })
     .eq('id', projectId)
-    .eq('agency_id', member.agency_id)
 
   if (error) return { success: false, error: error.message }
 
@@ -488,67 +289,35 @@ export async function assignClient(
 }
 
 // ── assignProjectManager ─────────────────────────────────────────
-// Assigne (ou retire) le PM d'un projet. Le PM doit être un membre
-// actif de l'agence avec le rôle 'agency_admin', 'super_admin' ou 'creative'.
 
 export async function assignProjectManager(
   projectId: string,
   pmUserId: string | null,
 ): Promise<ProjectActionResult> {
-  const supabase = createClient()
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié.' }
-
-  const { data: rawMember } = await supabase
-    .from('agency_members')
-    .select('agency_id, role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .order('invited_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!rawMember) return { success: false, error: 'Membre introuvable.' }
-  const member = rawMember as { agency_id: string; role: string }
-
-  if (member.role !== 'super_admin' && member.role !== 'agency_admin') {
-    return { success: false, error: 'Permissions insuffisantes.' }
-  }
-
-  // Récupère le projet pour la notification + cohérence agence
   const { data: rawProject } = await supabase
     .from('projects')
-    .select('id, name, agency_id, project_manager_id')
+    .select('id, name, project_manager_id')
     .eq('id', projectId)
     .maybeSingle()
 
-  const project = rawProject as
-    | { id: string; name: string; agency_id: string; project_manager_id: string | null }
-    | null
+  const project = rawProject as { id: string; name: string; project_manager_id: string | null } | null
   if (!project) return { success: false, error: 'Projet introuvable.' }
-  if (project.agency_id !== member.agency_id) {
-    return { success: false, error: 'Accès refusé.' }
-  }
 
-  // Vérifie l'éligibilité du nouveau PM
+  // Vérifier que le PM est admin
   if (pmUserId) {
-    const { data: pmMember } = await supabase
-      .from('agency_members')
-      .select('role')
-      .eq('user_id', pmUserId)
-      .eq('agency_id', member.agency_id)
-      .eq('is_active', true)
+    const { data: pmProfile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', pmUserId)
       .maybeSingle()
 
-    const pm = pmMember as { role: string } | null
-    if (!pm) {
-      return { success: false, error: 'Utilisateur introuvable dans cette agence.' }
-    }
-    if (pm.role !== 'agency_admin' && pm.role !== 'super_admin' && pm.role !== 'creative') {
-      return { success: false, error: 'Ce membre ne peut pas être PM.' }
+    if (!pmProfile) return { success: false, error: 'Utilisateur introuvable.' }
+    if (!(pmProfile as { is_admin: boolean }).is_admin) {
+      return { success: false, error: 'Seul un admin peut être PM.' }
     }
   }
 
@@ -556,11 +325,9 @@ export async function assignProjectManager(
     .from('projects')
     .update({ project_manager_id: pmUserId })
     .eq('id', projectId)
-    .eq('agency_id', member.agency_id)
 
   if (error) return { success: false, error: error.message }
 
-  // Activity log
   await db(supabase)
     .from('activity_logs')
     .insert({
@@ -570,20 +337,108 @@ export async function assignProjectManager(
       details: { project_manager_id: pmUserId },
     })
 
-  // Notification au nouveau PM (si nouveau et différent de l'auteur)
-  if (pmUserId && pmUserId !== project.project_manager_id && pmUserId !== user.id) {
-    void createNotification({
-      userId: pmUserId,
-      agencyId: member.agency_id,
-      projectId: project.id,
-      type: 'member_joined',
-      title: `Vous êtes PM du projet « ${project.name} »`,
-      message: 'Vous avez été assigné comme Project Manager.',
-      link: `/projects/${project.id}`,
-    })
-  }
-
   revalidatePath('/dashboard')
   revalidatePath(`/projects/${projectId}`)
   return { success: true }
+}
+
+// ── updateProjectMeta ────────────────────────────────────────────
+// Met à jour les métadonnées business/finance de la carte 360° (P3).
+// Édition inline : deadline, valeur, statut paiement, devis, facture.
+
+const PAYMENT_STATUSES: PaymentStatus[] = ['pending', 'invoiced', 'paid', 'overdue', 'partial']
+
+export type UpdateProjectMetaInput = {
+  deadline?: string | null
+  value_eur?: number | null
+  payment_status?: PaymentStatus
+  quote_url?: string | null
+  invoice_url?: string | null
+  /** Date d'encaissement explicite (sinon auto-gérée via payment_status). */
+  paid_at?: string | null
+}
+
+export async function updateProjectMeta(
+  projectId: string,
+  input: UpdateProjectMetaInput,
+): Promise<ProjectActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
+
+  const patch: ProjectUpdate = {}
+
+  if ('deadline' in input) {
+    patch.deadline = input.deadline || null
+  }
+
+  if ('value_eur' in input) {
+    const v = input.value_eur
+    if (v !== null && v !== undefined && (Number.isNaN(v) || v < 0)) {
+      return { success: false, error: 'La valeur doit être un nombre positif.' }
+    }
+    patch.value_eur = v ?? null
+  }
+
+  if ('payment_status' in input && input.payment_status) {
+    if (!PAYMENT_STATUSES.includes(input.payment_status)) {
+      return { success: false, error: 'Statut de paiement invalide.' }
+    }
+    patch.payment_status = input.payment_status
+    // Cashflow (P4) : "payé" date l'encaissement à maintenant ; tout autre
+    // statut l'efface. Un override explicite (ci-dessous) reste prioritaire.
+    patch.paid_at = input.payment_status === 'paid' ? new Date().toISOString() : null
+  }
+
+  if ('paid_at' in input) {
+    patch.paid_at = input.paid_at || null
+  }
+
+  if ('quote_url' in input) {
+    patch.quote_url = input.quote_url?.trim() || null
+  }
+
+  if ('invoice_url' in input) {
+    patch.invoice_url = input.invoice_url?.trim() || null
+  }
+
+  if (Object.keys(patch).length === 0) return { success: true }
+
+  const { error } = await db(supabase).from('projects').update(patch).eq('id', projectId)
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/dashboard')
+  revalidatePath('/finance')
+  return { success: true }
+}
+
+// ── regenerateShareToken ─────────────────────────────────────────
+// Génère un nouveau share_token pour invalider l'ancien lien public.
+
+export async function regenerateShareToken(
+  projectId: string,
+): Promise<{ success: true; token: string } | { success: false; error: string }> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
+
+  // Génère un nouveau token via crypto.randomUUID() — pas exposé en SQL côté
+  // RLS donc on peut le générer côté Node.
+  const newToken = crypto.randomUUID().replace(/-/g, '') +
+                   crypto.randomUUID().replace(/-/g, '').slice(0, 16)
+
+  const { data: updated, error } = await db(supabase)
+    .from('projects')
+    .update({ share_token: newToken })
+    .eq('id', projectId)
+    .select('share_token')
+    .single()
+
+  if (error || !updated) {
+    return { success: false, error: error?.message ?? 'Erreur génération token' }
+  }
+
+  revalidatePath(`/projects/${projectId}`)
+  return { success: true, token: (updated as { share_token: string }).share_token }
 }

@@ -27,9 +27,8 @@ export default function SubPhaseActions({
 }: SubPhaseActionsProps) {
   const [loading, setLoading] = useState<LoadingAction>(null)
 
-  const isAdmin = userRole === 'super_admin' || userRole === 'agency_admin'
-  const canAct =
-    userRole === 'super_admin' || userRole === 'agency_admin' || userRole === 'creative'
+  const isAdmin = userRole === 'admin'
+  const canAct = userRole === 'admin'
 
   async function handle(action: NonNullable<LoadingAction>) {
     setLoading(action)

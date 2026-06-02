@@ -1,10 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { requireUser, requireProjectAccess } from '@/lib/auth'
 import { createNotifications, getProjectRecipients } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
 
@@ -20,15 +18,9 @@ export async function addComment(input: {
   content: string
   parentId?: string
 }): Promise<CommentActionResult> {
-  const supabase = createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié' }
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return { success: false, error: 'Membre introuvable' }
+  const auth = await requireProjectAccess(input.projectId)
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, profile, user } = auth
 
   const { error } = await db(supabase)
     .from('comments')
@@ -54,30 +46,19 @@ export async function addComment(input: {
       details: { preview: input.content.slice(0, 80) },
     })
 
-  // ── Notifications ────────────────────────────────────────────────
-  // Fire-and-forget: do not await so we don't block the response
+  // Notifications (fire-and-forget)
   void (async () => {
     const r = await getProjectRecipients(input.projectId)
     if (!r.projectName) return
 
-    const commentorRole = membership.member.role
-    const isClientComment = commentorRole === 'client'
-
-    // Get commenter's name
-    const admin = createAdminClient()
-    const { data: rawProfile } = await admin
-      .from('profiles')
-      .select('full_name')
-      .eq('id', user.id)
-      .maybeSingle()
-    const authorName = (rawProfile as { full_name: string } | null)?.full_name ?? 'Quelqu\'un'
+    const isClientComment = !profile.is_admin
     const preview = input.content.slice(0, 120)
     const link = `/projects/${input.projectId}`
     const title = `💬 Nouveau commentaire sur « ${r.projectName} »`
-    const message = `${authorName} : "${preview}"`
+    const message = `${profile.full_name} : "${preview}"`
 
     if (isClientComment) {
-      // Client commented → notify all admins + PM
+      // Client a commenté → notifier admins + PM
       const recipientIds = [...new Set([
         ...r.adminIds,
         ...(r.projectManagerId ? [r.projectManagerId] : []),
@@ -86,7 +67,6 @@ export async function addComment(input: {
       await createNotifications(
         recipientIds.map((userId) => ({
           userId,
-          agencyId: r.agencyId,
           projectId: input.projectId,
           type: 'comment_added' as const,
           title,
@@ -95,11 +75,10 @@ export async function addComment(input: {
         })),
       )
     } else {
-      // Agency member commented → notify client
-      if (r.clientId && r.clientId !== user.id) {
+      // Admin a commenté → notifier le client
+      if (r.clientUserId && r.clientUserId !== user.id) {
         await createNotifications([{
-          userId: r.clientId,
-          agencyId: r.agencyId,
+          userId: r.clientUserId,
           projectId: input.projectId,
           type: 'comment_added' as const,
           title,
@@ -107,15 +86,14 @@ export async function addComment(input: {
           link: r.shareToken ? `/client/${r.shareToken}` : null,
         }])
 
-        // Email client
         if (r.clientEmail) {
           void sendEmail({
             to: r.clientEmail,
             template: 'comment_added',
             data: {
               projectName: r.projectName,
-              agencyName: r.agencyName,
-              authorName,
+              agencyName: 'Mostra',
+              authorName: profile.full_name,
               preview,
             },
             link: r.shareToken ? `/client/${r.shareToken}` : undefined,
@@ -130,28 +108,11 @@ export async function addComment(input: {
 }
 
 // ── toggleResolveComment ───────────────────────────────────────────
-// Admins can resolve any comment on their agency's projects.
-// Creatives can resolve their own comments only.
-// Uses admin client for the UPDATE to bypass RLS when the resolver is not the author.
 
 export async function toggleResolveComment(commentId: string): Promise<CommentActionResult> {
-  const supabase = createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié' }
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return { success: false, error: 'Membre introuvable' }
-
-  const { role } = membership.member
-  const isAdminRole = role === 'super_admin' || role === 'agency_admin'
-  const canResolve = isAdminRole || role === 'creative'
-  if (!canResolve) return { success: false, error: 'Permissions insuffisantes' }
-
-  // Use admin client to read + write so RLS never blocks an admin resolving a client comment
-  const admin = createAdminClient()
+  const auth = await requireUser()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin, profile, user } = auth
 
   const { data: rawComment } = await admin
     .from('comments')
@@ -167,9 +128,15 @@ export async function toggleResolveComment(commentId: string): Promise<CommentAc
   } | null
   if (!comment) return { success: false, error: 'Commentaire introuvable' }
 
-  // Non-admins can only resolve their own comments
-  if (!isAdminRole && comment.user_id !== user.id) {
+  // Non-admins ne peuvent résoudre que leurs propres commentaires
+  if (!profile.is_admin && comment.user_id !== user.id) {
     return { success: false, error: 'Vous ne pouvez résoudre que vos propres commentaires' }
+  }
+
+  // Si client : vérifier qu'il a accès au projet
+  if (!profile.is_admin) {
+    const access = await requireProjectAccess(comment.project_id)
+    if ('error' in access) return { success: false, error: access.error }
   }
 
   const { error } = await db(admin)
@@ -186,21 +153,9 @@ export async function toggleResolveComment(commentId: string): Promise<CommentAc
 // ── deleteComment ──────────────────────────────────────────────────
 
 export async function deleteComment(commentId: string): Promise<CommentActionResult> {
-  const supabase = createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié' }
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return { success: false, error: 'Membre introuvable' }
-
-  const { role } = membership.member
-  const isAdminRole = role === 'super_admin' || role === 'agency_admin'
-
-  // Admin client bypasses RLS so admin can delete any comment
-  const admin = createAdminClient()
+  const auth = await requireUser()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin, profile, user } = auth
 
   const { data: rawComment } = await admin
     .from('comments')
@@ -212,8 +167,7 @@ export async function deleteComment(commentId: string): Promise<CommentActionRes
   if (!comment) return { success: false, error: 'Commentaire introuvable' }
 
   const isAuthor = comment.user_id === user.id
-
-  if (!isAuthor && !isAdminRole) {
+  if (!isAuthor && !profile.is_admin) {
     return { success: false, error: 'Vous ne pouvez pas supprimer ce commentaire' }
   }
 

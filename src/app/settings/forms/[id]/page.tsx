@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { getCurrentProfile } from '@/lib/auth'
 import FormBuilder from '@/components/settings/FormBuilder'
 import DeleteTemplateButton from '@/components/settings/DeleteTemplateButton'
 import type { FormTemplate } from '@/lib/types'
@@ -24,24 +24,15 @@ export async function generateMetadata({ params }: EditFormTemplatePageProps) {
 }
 
 export default async function EditFormTemplatePage({ params }: EditFormTemplatePageProps) {
+  const profile = await getCurrentProfile()
+  if (!profile) redirect('/login')
+  if (!profile.is_admin) redirect('/client/dashboard')
+
   const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const memberData = await getCurrentMember(supabase, user.id)
-  if (!memberData) redirect('/login')
-
-  const { member } = memberData
-  const isAdmin = member.role === 'super_admin' || member.role === 'agency_admin'
-  if (!isAdmin) redirect('/dashboard')
-
   const { data: rawTpl } = await db(supabase)
     .from('form_templates')
     .select('*')
     .eq('id', params.id)
-    .eq('agency_id', member.agency_id)
     .maybeSingle()
 
   if (!rawTpl) notFound()

@@ -16,22 +16,23 @@ export default async function ClientDashboardPage() {
 
   const admin = createAdminClient()
 
-  // Projets + profil en parallèle
-  const [projectsResult, profileResult] = await Promise.all([
-    admin
-      .from('projects')
-      .select('*, project_phases(*)')
-      .eq('client_id', user.id)
-      .order('updated_at', { ascending: false }),
-    admin
-      .from('profiles')
-      .select('full_name, email')
-      .eq('id', user.id)
-      .maybeSingle(),
+  // 1. Résoudre le clients row du user via profile_id, en parallèle avec le profile.
+  const [crmClientResult, profileResult] = await Promise.all([
+    admin.from('clients').select('id').eq('profile_id', user.id).maybeSingle(),
+    admin.from('profiles').select('full_name, email').eq('id', user.id).maybeSingle(),
   ])
 
-  const rawProjects = (projectsResult.data as unknown as ProjectRow[] | null) ?? []
+  const crmClientId = (crmClientResult.data as { id: string } | null)?.id ?? null
   const profileData = profileResult.data as { full_name: string; email: string } | null
+
+  // 2. Récupérer les projets uniquement si on a une fiche CRM liée
+  const rawProjects: ProjectRow[] = crmClientId
+    ? (((await admin
+        .from('projects')
+        .select('*, project_phases(*)')
+        .eq('client_id', crmClientId)
+        .order('updated_at', { ascending: false })).data as unknown as ProjectRow[] | null) ?? [])
+    : []
 
   // Construire la liste de projets avec la phase courante
   const projects = rawProjects.map((project) => {

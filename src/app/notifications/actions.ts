@@ -8,7 +8,6 @@ export type NotificationActionResult = { success: true } | { success: false; err
 export interface AppNotification {
   id: string
   user_id: string
-  agency_id: string | null
   project_id: string | null
   type: string
   title: string

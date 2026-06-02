@@ -1,35 +1,14 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { db } from '@/lib/supabase/helpers'
 import { Toaster } from 'sonner'
 import Sidebar from '@/components/dashboard/Sidebar'
 import AdminHeader from '@/components/dashboard/AdminHeader'
 import Link from 'next/link'
 import Logo from '@/components/shared/Logo'
+import { getCurrentProfile } from '@/lib/auth'
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect('/login')
-
-  // Determine role — mirrors useAuth: active agency_members row → admin/creative.
-  // We avoid get_user_role() RPC because it can return null for super_admins
-  // who may not have an agency_members record, which would wrongly render the client shell.
-  const { data: memberRow } = await db(supabase)
-    .from('agency_members')
-    .select('role')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .order('invited_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const memberRole = (memberRow?.role ?? null) as string | null
-  const isAdminOrCreative =
-    memberRole === 'super_admin' || memberRole === 'agency_admin' || memberRole === 'creative'
+  const profile = await getCurrentProfile()
+  if (!profile) redirect('/login')
 
   const toaster = (
     <Toaster
@@ -45,7 +24,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
     />
   )
 
-  if (isAdminOrCreative) {
+  if (profile.is_admin) {
     return (
       <div className="min-h-screen bg-[#0a0a0a]">
         <Sidebar />
@@ -58,7 +37,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
     )
   }
 
-  // Client / public role — minimal header (mirrors client layout)
+  // Client — header minimal (mirror du client layout)
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <header className="border-b border-[#1a1a1a] bg-[#0a0a0a]/80 backdrop-blur sticky top-0 z-30">

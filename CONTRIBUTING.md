@@ -1,56 +1,57 @@
 # Contribuer à MOSTRA
 
-## Prérequis
+App privée — voir [README.md](./README.md) pour le contexte et [CLAUDE.md](./CLAUDE.md) pour les conventions détaillées.
 
-Lire le README pour l'installation locale avant de commencer.
-
-## Workflow
+## Workflow git
 
 1. Créer une branche depuis `master` : `feat/`, `fix/`, ou `chore/` selon le type
-2. Faire des commits atomiques avec un message clair
-3. Ouvrir une Pull Request vers `master`
+2. Commits atomiques avec un message clair
+3. Ouvrir une PR vers `master`
 
-## Conventions de code
+## Avant un commit
 
-### Formatting
+```bash
+npm run lint        # zéro warning ESLint
+npx tsc --noEmit    # zéro erreur TS
+npm run build       # le build doit passer
+```
 
-Prettier est configuré (`.prettierrc`). Lancer avant de commit :
-
+Optionnel mais conseillé :
 ```bash
 npx prettier --write "src/**/*.{ts,tsx}"
 ```
 
-### Lint
-
-```bash
-npm run lint
-```
-
-Zéro warning ESLint toléré en PR.
+## Conventions de code
 
 ### TypeScript
-
-- Pas de `as any` sauf via le helper `db()` dans `src/lib/supabase/helpers.ts` (raison documentée dans le fichier)
-- Typer les props de tous les composants
+- Strict mode actif
+- Pas de `any` sauf via le helper `db()` dans `src/lib/supabase/helpers.ts`
+- Typer toutes les props de composants
 - Pas de `@ts-ignore`
 
 ### Composants
-
-- Server Components par défaut ; `'use client'` uniquement si nécessaire (event handlers, hooks, browser APIs)
-- Les Server Actions sont dans des fichiers `actions.ts` colocalisés avec la route
-- Les composants partagés vont dans `src/components/shared/`
+- Server Components par défaut ; `'use client'` uniquement si nécessaire
+- Server Actions colocalisées avec la route (`actions.ts`, `*-actions.ts`)
+- Composants partagés dans `src/components/shared/`
 
 ### Supabase
+- `createClient()` (server) dans les Server Components et Actions
+- `createClient()` (browser) dans les hooks `'use client'`
+- `createAdminClient()` UNIQUEMENT après une vérif d'auth via `requireAdmin()` / `requireUser()` / `requireProjectAccess()`
+- Toujours envelopper dans `db()` pour les INSERT/UPDATE complexes
 
-- Utiliser `createClient()` (server) dans les Server Components et Actions
-- Utiliser `createBrowserClient()` dans les hooks `'use client'`
-- Utiliser `createAdminClient()` uniquement pour les opérations super admin (bypass RLS)
-- Envelopper le client dans `db()` pour les requêtes INSERT/UPDATE ou les SELECT imbriqués complexes
+### Auth (rappel critique)
+- Toute Server Action commence par un helper de `@/lib/auth`
+- Jamais d'auth manuelle (`supabase.auth.getUser()` + check ad hoc)
+- Lire `CLAUDE.md` section "Patterns à respecter" avant de créer une nouvelle action
 
-## Build
+### Migrations
+- Toute modif de schéma DB → nouvelle migration numérotée
+- Ne jamais modifier une migration déjà appliquée
+- Tester en local avant prod
 
-Le build doit passer sans erreur avant toute PR :
+## Build & déploiement
 
-```bash
-npm run build
-```
+- `master` push → Vercel auto-deploy
+- Variables d'env Vercel : voir README
+- Toujours vérifier que `NEXT_PUBLIC_APP_URL` pointe vers le bon domaine (prod vs local)

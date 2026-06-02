@@ -1,40 +1,21 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { requireAdmin, requireProjectAccess } from '@/lib/auth'
 import type { PhaseFile } from '@/lib/types'
 
 // ─── uploadFile ──────────────────────────────────────────────────
-// Reçoit le fichier via FormData, upload dans Storage avec le client
-// admin (bypass RLS), puis insère l'enregistrement en base.
-// La vérification des permissions se fait entièrement en code.
 
 export type UploadFileResult =
   | { success: true; file: PhaseFile }
   | { success: false; error: string }
 
 export async function uploadFile(formData: FormData): Promise<UploadFileResult> {
-  const supabase = createClient()
-  const admin = createAdminClient()
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin, user } = auth
 
-  // ── Auth ──────────────────────────────────────────────────────────
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié' }
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return { success: false, error: 'Membre introuvable' }
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin' && role !== 'creative') {
-    return { success: false, error: 'Permissions insuffisantes' }
-  }
-
-  // ── Extraction des champs ─────────────────────────────────────────
   const file = formData.get('file') as File | null
   const phaseId = formData.get('phaseId') as string | null
   const projectId = formData.get('projectId') as string | null
@@ -44,7 +25,7 @@ export async function uploadFile(formData: FormData): Promise<UploadFileResult> 
     return { success: false, error: 'Données manquantes' }
   }
 
-  // ── Calcul de la version ──────────────────────────────────────────
+  // Version
   const { data: lastVersion } = await admin
     .from('phase_files')
     .select('version')
@@ -55,7 +36,7 @@ export async function uploadFile(formData: FormData): Promise<UploadFileResult> 
 
   const version = ((lastVersion as { version: number } | null)?.version ?? 0) + 1
 
-  // ── Upload Storage via admin (bypass RLS Storage) ─────────────────
+  // Storage
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
   const storagePath = `${projectId}/${phaseSlug}/v${version}/${safeName}`
 
@@ -65,10 +46,8 @@ export async function uploadFile(formData: FormData): Promise<UploadFileResult> 
 
   if (storageError) return { success: false, error: `[Storage] ${storageError.message}` }
 
-  // ── Désactive is_current sur les versions précédentes ────────────
   await db(admin).from('phase_files').update({ is_current: false }).eq('phase_id', phaseId)
 
-  // ── Insère l'enregistrement ───────────────────────────────────────
   const { data: fileRecord, error: dbError } = await db(admin)
     .from('phase_files')
     .insert({
@@ -86,8 +65,7 @@ export async function uploadFile(formData: FormData): Promise<UploadFileResult> 
 
   if (dbError) return { success: false, error: `[DB] ${dbError.message}` }
 
-  // ── Log d'activité ────────────────────────────────────────────────
-  const { data: phaseRow } = await supabase
+  const { data: phaseRow } = await admin
     .from('project_phases')
     .select('name')
     .eq('id', phaseId)
@@ -108,23 +86,15 @@ export async function uploadFile(formData: FormData): Promise<UploadFileResult> 
   return { success: true, file: fileRecord as PhaseFile }
 }
 
-// ─── getSignedUrl ─────────────────────────────────────────────────
-// Génère une URL signée valable 1 heure pour visualiser/télécharger
-// un fichier dans le bucket "project-files" (jamais public).
-
 // ─── getPhaseViewData ─────────────────────────────────────────────
-// Fetch toutes les données nécessaires pour la page de visualisation.
 
 export interface PhaseViewData {
   projectId: string
   projectName: string
   phaseName: string
   files: PhaseFile[]
-  /** URL signée (1 h) pour la version demandée, ou null si aucun fichier */
   signedUrl: string | null
-  /** Version actuellement affichée */
   activeVersion: number | null
-  /** Profils des uploadeurs (keyed by user_id) */
   uploaders: Record<string, string>
 }
 
@@ -132,16 +102,11 @@ export async function getPhaseViewData(
   phaseId: string,
   requestedVersion?: number,
 ): Promise<PhaseViewData | { error: string }> {
-  const supabase = createClient()
-  const admin = createAdminClient()
+  const auth = await requireAdmin()
+  if ('error' in auth) return { error: auth.error }
+  const { admin } = auth
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié' }
-
-  // Phase + projet
-  const { data: rawPhase } = await supabase
+  const { data: rawPhase } = await admin
     .from('project_phases')
     .select('id, name, project_id')
     .eq('id', phaseId)
@@ -150,7 +115,7 @@ export async function getPhaseViewData(
   const phase = rawPhase as { id: string; name: string; project_id: string } | null
   if (!phase) return { error: 'Phase introuvable' }
 
-  const { data: rawProject } = await supabase
+  const { data: rawProject } = await admin
     .from('projects')
     .select('id, name')
     .eq('id', phase.project_id)
@@ -159,7 +124,6 @@ export async function getPhaseViewData(
   const project = rawProject as { id: string; name: string } | null
   if (!project) return { error: 'Projet introuvable' }
 
-  // Fichiers de la phase (desc par version)
   const { data: rawFiles } = await admin
     .from('phase_files')
     .select('*')
@@ -180,7 +144,6 @@ export async function getPhaseViewData(
     }
   }
 
-  // Version à afficher : demandée ou la plus récente (is_current)
   const target =
     requestedVersion !== undefined
       ? files.find((f) => f.version === requestedVersion)
@@ -194,11 +157,10 @@ export async function getPhaseViewData(
     signedUrl = signed?.signedUrl ?? null
   }
 
-  // Profils des uploadeurs
   const uploaderIds = [...new Set(files.map((f) => f.uploaded_by))]
   const uploaders: Record<string, string> = {}
   if (uploaderIds.length > 0) {
-    const { data: profiles } = await supabase
+    const { data: profiles } = await admin
       .from('profiles')
       .select('id, full_name')
       .in('id', uploaderIds)
@@ -218,16 +180,18 @@ export async function getPhaseViewData(
   }
 }
 
-export async function getSignedUrl(filePath: string): Promise<{ url: string } | { error: string }> {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié' }
+// ─── getSignedUrl ─────────────────────────────────────────────────
+// Génère une URL signée. Vérifie l'accès via le project_id extrait du path.
 
-  // Utilise le client admin pour éviter les blocages RLS Storage
-  // sur createSignedUrl (même problème que pour l'upload)
-  const admin = createAdminClient()
+export async function getSignedUrl(filePath: string): Promise<{ url: string } | { error: string }> {
+  // Extraire le project_id (premier segment du path)
+  const projectId = filePath.split('/')[0]
+  if (!projectId) return { error: 'Chemin invalide' }
+
+  const auth = await requireProjectAccess(projectId)
+  if ('error' in auth) return { error: auth.error }
+  const { admin } = auth
+
   const { data, error } = await admin.storage.from('project-files').createSignedUrl(filePath, 3600)
 
   if (error || !data?.signedUrl) return { error: error?.message ?? 'Erreur inconnue' }

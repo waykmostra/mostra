@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getCurrentProfile } from '@/lib/auth'
 import { getClientPhaseViewData, getClientSignedUrl } from '@/app/client/actions'
 import { fetchVideoData } from '@/app/client/video-actions'
 import FileViewer from '@/components/project/FileViewer'
@@ -22,13 +23,13 @@ export default async function ClientPhasePage({ params, searchParams }: ClientPh
   // Resolve token → project
   const { data: rawProject } = await admin
     .from('projects')
-    .select('id, name, client_id, agency_id, share_token')
+    .select('id, name, client_id, share_token')
     .eq('share_token', params.token)
     .maybeSingle()
 
   const project = rawProject as Pick<
     Project,
-    'id' | 'name' | 'client_id' | 'agency_id' | 'share_token'
+    'id' | 'name' | 'client_id' | 'share_token'
   > | null
   if (!project) redirect(`/client/${params.token}`)
 
@@ -55,19 +56,20 @@ export default async function ClientPhasePage({ params, searchParams }: ClientPh
 
   if (!isAccessible) redirect(`/client/${params.token}`)
 
-  // Resolve client user ID
-  let clientId = project.client_id ?? ''
-  if (!clientId) {
-    const { data: rawMember } = await admin
-      .from('agency_members')
-      .select('user_id')
-      .eq('agency_id', project.agency_id)
-      .eq('role', 'client')
-      .eq('is_active', true)
-      .limit(1)
+  // Résoudre le profile_id du client CRM (NULL si pas de compte connectable)
+  let clientId = ''
+  if (project.client_id) {
+    const { data: rawClient } = await admin
+      .from('clients')
+      .select('profile_id')
+      .eq('id', project.client_id)
       .maybeSingle()
-    clientId = (rawMember as { user_id: string } | null)?.user_id ?? ''
+    clientId = (rawClient as { profile_id: string | null } | null)?.profile_id ?? ''
   }
+
+  // Check auth (parallel with other data)
+  const currentProfile = await getCurrentProfile()
+  const isAuthenticated = !!currentProfile
 
   // ── Animation → Video Review ─────────────────────────────────────
   if (isAnimation) {
@@ -93,9 +95,11 @@ export default async function ClientPhasePage({ params, searchParams }: ClientPh
 
         <VideoViewerClient
           token={params.token}
+          projectId={project.id}
           phaseId={params.phaseId}
           phaseStatus={phase.status}
           clientId={clientId}
+          isAuthenticated={isAuthenticated}
           initialVideo={currentVideo}
           initialVersions={allVersions}
           initialComments={comments}
@@ -145,11 +149,13 @@ export default async function ClientPhasePage({ params, searchParams }: ClientPh
 
       {/* Approval panel */}
       <ApprovalPanel
-        token={params.token}
+        projectId={project.id}
         phaseId={params.phaseId}
         phaseName={data.phaseName}
         status={data.phaseStatus}
         completedAt={data.completedAt}
+        isAuthenticated={isAuthenticated}
+        loginHref="/login"
       />
 
       {/* File viewer */}

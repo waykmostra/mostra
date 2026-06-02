@@ -1,9 +1,8 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { getCurrentProfile } from '@/lib/auth'
 import { getPhaseViewData } from '@/app/projects/file-actions'
 import { getVideoData } from '@/app/projects/video-actions'
 import FileViewer from '@/components/project/FileViewer'
@@ -18,17 +17,11 @@ interface PageProps {
 const ANIMATION_SLUGS = ['animation', 'animation-rendu', 'rendu']
 
 export default async function PhaseViewPage({ params, searchParams }: PageProps) {
-  const supabase = createClient()
+  const profile = await getCurrentProfile()
+  if (!profile) redirect('/login')
+  if (!profile.is_admin) redirect('/client/dashboard')
+
   const admin = createAdminClient()
-
-  // Auth
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) notFound()
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) notFound()
 
   // Fetch phase to determine type
   const { data: rawPhase } = await admin
@@ -43,16 +36,15 @@ export default async function PhaseViewPage({ params, searchParams }: PageProps)
   > | null
   if (!phase) notFound()
 
-  // Verify project ownership
-  const { data: rawProject } = await supabase
+  // Verify project exists
+  const { data: rawProject } = await admin
     .from('projects')
-    .select('id, name, agency_id')
+    .select('id, name')
     .eq('id', phase.project_id)
     .maybeSingle()
 
-  const project = rawProject as { id: string; name: string; agency_id: string } | null
+  const project = rawProject as { id: string; name: string } | null
   if (!project) notFound()
-  if (project.agency_id !== membership.agency?.id) notFound()
 
   const isAnimation = ANIMATION_SLUGS.includes(phase.slug)
 
@@ -83,7 +75,7 @@ export default async function PhaseViewPage({ params, searchParams }: PageProps)
             phaseId={params.phaseId}
             projectId={project.id}
             phaseStatus={phase.status}
-            userRole={membership.member.role}
+            userRole="admin"
             initialVideo={currentVideo}
             initialVersions={allVersions}
             initialComments={comments}

@@ -1,25 +1,15 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { getCurrentProfile } from '@/lib/auth'
 import FormBuilder from '@/components/settings/FormBuilder'
 
 export const metadata = { title: 'Nouveau template — MOSTRA' }
 
 export default async function NewFormTemplatePage() {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const memberData = await getCurrentMember(supabase, user.id)
-  if (!memberData) redirect('/login')
-
-  const { member } = memberData
-  const isAdmin = member.role === 'super_admin' || member.role === 'agency_admin'
-  if (!isAdmin) redirect('/dashboard')
+  const profile = await getCurrentProfile()
+  if (!profile) redirect('/login')
+  if (!profile.is_admin) redirect('/client/dashboard')
 
   return (
     <div className="max-w-5xl space-y-6">

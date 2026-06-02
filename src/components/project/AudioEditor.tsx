@@ -663,7 +663,7 @@ export default function AudioEditor({
 
   const comments = useRealtimeBlockComments(projectId, subPhaseId, initialComments)
 
-  const isAdmin = userRole === 'super_admin' || userRole === 'agency_admin'
+  const isAdmin = userRole === 'admin'
   const canEdit = subPhaseStatus === 'pending' || subPhaseStatus === 'in_progress'
 
   const kindLabel = kind === 'vo' ? 'Voix Off' : 'Musique'

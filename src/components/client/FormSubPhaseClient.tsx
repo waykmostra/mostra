@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useRef, useCallback } from 'react'
+import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Check, CheckCircle, Loader2, Lock } from 'lucide-react'
+import { AlertCircle, Check, CheckCircle, Loader2, Lock, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
 import { saveDraftAnswer, submitFormAnswers } from '@/app/projects/form-actions'
 import type { FormQuestionContent } from '@/lib/types'
@@ -23,6 +24,7 @@ interface FormSubPhaseClientProps {
   subPhaseId: string
   status: 'in_progress' | 'in_review' | 'completed' | 'approved'
   blocks: FormBlock[]
+  isAuthenticated: boolean
 }
 
 // ── Dynamic Zod schema from questions ────────────────────────────
@@ -263,8 +265,9 @@ export default function FormSubPhaseClient({
   subPhaseId,
   status,
   blocks,
+  isAuthenticated,
 }: FormSubPhaseClientProps) {
-  const isReadOnly = status !== 'in_progress'
+  const isReadOnly = status !== 'in_progress' || !isAuthenticated
   const schema = buildSchema(blocks)
   type FormValues = z.infer<typeof schema>
 
@@ -326,8 +329,25 @@ export default function FormSubPhaseClient({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* Auth gate — only when form is editable (status = in_progress) but user is anonymous */}
+      {status === 'in_progress' && !isAuthenticated && (
+        <div className="bg-[#F59E0B]/5 border border-[#F59E0B]/20 rounded-xl p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-white">Connectez-vous pour remplir le formulaire</p>
+              <p className="text-xs text-[#666666] mt-0.5">Vous devez être connecté pour valider, commenter ou modifier cette phase.</p>
+            </div>
+          </div>
+          <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 transition-colors">
+            <LogIn className="h-4 w-4" />
+            Se connecter
+          </Link>
+        </div>
+      )}
+
       {/* Read-only notice */}
-      {isReadOnly && (
+      {isReadOnly && status !== 'in_progress' && (
         <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#111111] border border-[#2a2a2a]">
           {status === 'in_review' ? (
             <>
@@ -402,7 +422,7 @@ export default function FormSubPhaseClient({
         </div>
       )}
 
-      {isReadOnly && (
+      {isReadOnly && status !== 'in_progress' && (
         <div className="flex items-center gap-2 text-xs text-[#333333]">
           <Lock className="h-3.5 w-3.5" />
           Formulaire verrouillé — soumis le {new Date().toLocaleDateString('fr-FR')}

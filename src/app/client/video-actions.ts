@@ -3,6 +3,7 @@
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
+import { requireProjectAccess } from '@/lib/auth'
 import { createNotifications, getProjectRecipients } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
 import type { Project, ProjectPhase, Profile } from '@/lib/types'
@@ -27,37 +28,19 @@ async function generateSignedUrl(
   return data?.signedUrl ?? ''
 }
 
-// ── Auth helpers ──────────────────────────────────────────────────
+// ── Helper : résoudre un share_token (lecture publique) ──────────
 
-async function verifyToken(
-  token: string,
-): Promise<Pick<Project, 'id' | 'client_id' | 'agency_id' | 'share_token'> | null> {
+async function verifyToken(token: string): Promise<Pick<Project, 'id'> | null> {
   const admin = createAdminClient()
   const { data } = await admin
     .from('projects')
-    .select('id, client_id, agency_id, share_token')
+    .select('id')
     .eq('share_token', token)
     .maybeSingle()
-  return data as Pick<Project, 'id' | 'client_id' | 'agency_id' | 'share_token'> | null
+  return data as { id: string } | null
 }
 
-async function resolveClientUserId(
-  admin: ReturnType<typeof createAdminClient>,
-  project: Pick<Project, 'id' | 'client_id' | 'agency_id'>,
-): Promise<string | null> {
-  if (project.client_id) return project.client_id
-  const { data } = await admin
-    .from('agency_members')
-    .select('user_id')
-    .eq('agency_id', project.agency_id)
-    .eq('role', 'client')
-    .eq('is_active', true)
-    .limit(1)
-    .maybeSingle()
-  return (data as { user_id: string } | null)?.user_id ?? null
-}
-
-// ── fetchVideoData ────────────────────────────────────────────────
+// ── fetchVideoData (lecture publique via token) ──────────────────
 
 export async function fetchVideoData(
   token: string,
@@ -72,7 +55,6 @@ export async function fetchVideoData(
   const project = await verifyToken(token)
   if (!project) return { currentVideo: null, allVersions: [], comments: [] }
 
-  // Verify phase belongs to project
   const { data: rawPhase } = await admin
     .from('project_phases')
     .select('id, project_id')
@@ -99,7 +81,6 @@ export async function fetchVideoData(
       .order('timecode_seconds', { ascending: true }),
   ])
 
-  // Sign all file URLs
   const files = await Promise.all(
     ((rawFiles ?? []) as unknown as (Omit<VideoFile, 'file_url'> & { file_url: string })[]).map(async (f) => {
       const storagePath = extractStoragePath(f.file_url)
@@ -112,7 +93,6 @@ export async function fetchVideoData(
   const currentVideo = files.find((f) => f.is_current) ?? files[0] ?? null
   const allVersions = files as VideoFile[]
 
-  // Fetch comment authors
   const commentList = (rawComments ?? []) as {
     id: string
     user_id: string
@@ -143,34 +123,30 @@ export async function fetchVideoData(
   return { currentVideo, allVersions, comments }
 }
 
-// ── addClientVideoComment ─────────────────────────────────────────
+// ── addClientVideoComment (auth requise) ─────────────────────────
 
 export async function addClientVideoComment(
-  token: string,
+  projectId: string,
   phaseId: string,
   content: string,
   timecodeSeconds: number | null,
 ): Promise<VideoClientResult> {
-  const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
+  const auth = await requireProjectAccess(projectId)
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin, user } = auth
+
   if (!content.trim()) return { success: false, error: 'Contenu vide' }
 
-  const userId = await resolveClientUserId(admin, project)
-  if (!userId) return { success: false, error: 'Client introuvable' }
-
-  // Verify phase belongs to project
   const { data: rawPhase } = await admin
     .from('project_phases')
-    .select('id, project_id, status')
+    .select('id, project_id')
     .eq('id', phaseId)
     .maybeSingle()
-  const phase = rawPhase as { id: string; project_id: string; status: string } | null
-  if (!phase || phase.project_id !== project.id) {
+  const phase = rawPhase as { id: string; project_id: string } | null
+  if (!phase || phase.project_id !== projectId) {
     return { success: false, error: 'Phase introuvable' }
   }
 
-  // Get current video version
   const { data: rawCurrentFile } = await admin
     .from('phase_files')
     .select('version')
@@ -180,11 +156,11 @@ export async function addClientVideoComment(
   const videoVersion = (rawCurrentFile as { version: number } | null)?.version ?? null
 
   const { error } = await db(admin).from('comments').insert({
-    project_id: project.id,
+    project_id: projectId,
     phase_id: phaseId,
     sub_phase_id: null,
     block_id: null,
-    user_id: userId,
+    user_id: user.id,
     content: content.trim(),
     timecode_seconds: timecodeSeconds,
     video_version: videoVersion,
@@ -192,21 +168,29 @@ export async function addClientVideoComment(
   })
 
   if (error) return { success: false, error: error.message }
-  revalidatePath(`/client/${token}`)
+
+  // Revalidate paths
+  const { data: rawProj } = await admin
+    .from('projects')
+    .select('share_token')
+    .eq('id', projectId)
+    .maybeSingle()
+  const token = (rawProj as { share_token: string | null } | null)?.share_token
+  if (token) revalidatePath(`/client/${token}/phases/${phaseId}`)
+  revalidatePath(`/projects/${projectId}`)
+
   return { success: true }
 }
 
-// ── resolveClientVideoComment ─────────────────────────────────────
+// ── resolveClientVideoComment (auth requise) ─────────────────────
 
 export async function resolveClientVideoComment(
-  token: string,
+  projectId: string,
   commentId: string,
 ): Promise<VideoClientResult> {
-  const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
-
-  const userId = await resolveClientUserId(admin, project)
+  const auth = await requireProjectAccess(projectId)
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin, user, profile } = auth
 
   const { data: rawComment } = await admin
     .from('comments')
@@ -219,12 +203,12 @@ export async function resolveClientVideoComment(
     user_id: string
     is_resolved: boolean
   } | null
-  if (!comment || comment.project_id !== project.id) {
+  if (!comment || comment.project_id !== projectId) {
     return { success: false, error: 'Commentaire introuvable' }
   }
 
-  // Clients can only toggle their own comments
-  if (userId && comment.user_id !== userId) {
+  // Non-admins ne résolvent que leurs propres commentaires
+  if (!profile.is_admin && comment.user_id !== user.id) {
     return { success: false, error: 'Vous ne pouvez résoudre que vos propres commentaires' }
   }
 
@@ -237,15 +221,15 @@ export async function resolveClientVideoComment(
   return { success: true }
 }
 
-// ── approveAnimationPhase ─────────────────────────────────────────
+// ── approveAnimationPhase (auth requise) ─────────────────────────
 
 export async function approveAnimationPhase(
-  token: string,
+  projectId: string,
   phaseId: string,
 ): Promise<VideoClientResult> {
-  const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
+  const auth = await requireProjectAccess(projectId)
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin, user } = auth
 
   const { data: rawPhase } = await admin
     .from('project_phases')
@@ -253,7 +237,7 @@ export async function approveAnimationPhase(
     .eq('id', phaseId)
     .maybeSingle()
   const phase = rawPhase as ProjectPhase | null
-  if (!phase || phase.project_id !== project.id) {
+  if (!phase || phase.project_id !== projectId) {
     return { success: false, error: 'Phase introuvable' }
   }
   if (phase.status !== 'in_review') {
@@ -266,11 +250,11 @@ export async function approveAnimationPhase(
     .eq('id', phaseId)
   if (error) return { success: false, error: error.message }
 
-  // Recalc project progress
+  // Recalc progress
   const { data: rawAllPhases } = await admin
     .from('project_phases')
     .select('id, status')
-    .eq('project_id', project.id)
+    .eq('project_id', projectId)
   const allPhases = (rawAllPhases as Pick<ProjectPhase, 'id' | 'status'>[] | null) ?? []
   const updated = allPhases.map((p) =>
     p.id === phaseId ? { ...p, status: 'approved' as const } : p,
@@ -283,35 +267,39 @@ export async function approveAnimationPhase(
   await db(admin)
     .from('projects')
     .update({ progress, ...(allDone ? { status: 'completed' } : {}) })
-    .eq('id', project.id)
+    .eq('id', projectId)
 
-  const userId = await resolveClientUserId(admin, project)
   await db(admin).from('activity_logs').insert({
-    project_id: project.id,
-    user_id: userId ?? null,
+    project_id: projectId,
+    user_id: user.id,
     action: 'phase_approved',
-    details: { phase_name: phase.name, via: 'client_token' },
+    details: { phase_name: phase.name, via: 'client_auth' },
   })
 
-  revalidatePath(`/client/${token}`)
-  revalidatePath(`/client/${token}/phases/${phaseId}`)
-  revalidatePath(`/projects/${project.id}`)
+  const { data: rawProj } = await admin
+    .from('projects')
+    .select('share_token')
+    .eq('id', projectId)
+    .maybeSingle()
+  const token = (rawProj as { share_token: string | null } | null)?.share_token
+  if (token) {
+    revalidatePath(`/client/${token}`)
+    revalidatePath(`/client/${token}/phases/${phaseId}`)
+  }
+  revalidatePath(`/projects/${projectId}`)
   return { success: true }
 }
 
-// ── requestAnimationRevisions ─────────────────────────────────────
+// ── requestAnimationRevisions (auth requise) ─────────────────────
 
 export async function requestAnimationRevisions(
-  token: string,
+  projectId: string,
   phaseId: string,
   message: string,
 ): Promise<VideoClientResult> {
-  const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
-
-  const userId = await resolveClientUserId(admin, project)
-  if (!userId) return { success: false, error: 'Client introuvable' }
+  const auth = await requireProjectAccess(projectId)
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin, user } = auth
 
   const { data: rawPhase } = await admin
     .from('project_phases')
@@ -319,7 +307,7 @@ export async function requestAnimationRevisions(
     .eq('id', phaseId)
     .maybeSingle()
   const phase = rawPhase as ProjectPhase | null
-  if (!phase || phase.project_id !== project.id) {
+  if (!phase || phase.project_id !== projectId) {
     return { success: false, error: 'Phase introuvable' }
   }
   if (phase.status !== 'in_review') {
@@ -335,26 +323,25 @@ export async function requestAnimationRevisions(
   const trimmed = message.trim()
   if (trimmed) {
     await db(admin).from('comments').insert({
-      project_id: project.id,
+      project_id: projectId,
       phase_id: phaseId,
       sub_phase_id: null,
       block_id: null,
-      user_id: userId,
+      user_id: user.id,
       content: `[Demande de modification] ${trimmed}`,
       is_resolved: false,
     })
   }
 
   await db(admin).from('activity_logs').insert({
-    project_id: project.id,
-    user_id: userId,
+    project_id: projectId,
+    user_id: user.id,
     action: 'status_changed',
     details: { phase_name: phase.name, message: 'Demande de modifications client (vidéo)' },
   })
 
-  // ── Notify admins / PM (fire-and-forget) ─────────────────────────
   void (async () => {
-    const r = await getProjectRecipients(project.id)
+    const r = await getProjectRecipients(projectId)
     if (!r.projectName) return
 
     const recipientIds = [
@@ -362,15 +349,14 @@ export async function requestAnimationRevisions(
     ]
     if (recipientIds.length === 0) return
 
-    const link = `/projects/${project.id}/phases/${phaseId}`
+    const link = `/projects/${projectId}/phases/${phaseId}`
     const notifTitle = `🔄 Révision demandée — ${phase.name}`
     const notifMsg = message.trim() || 'Le client a demandé des modifications.'
 
     await createNotifications(
       recipientIds.map((uid) => ({
         userId: uid,
-        agencyId: r.agencyId,
-        projectId: project.id,
+        projectId,
         type: 'revision_requested' as const,
         title: notifTitle,
         message: notifMsg,
@@ -391,7 +377,7 @@ export async function requestAnimationRevisions(
           template: 'revision_requested',
           data: {
             projectName: r.projectName,
-            agencyName: r.agencyName,
+            agencyName: 'Mostra',
             phaseName: phase.name,
             clientName: 'Le client',
           },
@@ -401,8 +387,16 @@ export async function requestAnimationRevisions(
     }
   })()
 
-  revalidatePath(`/client/${token}`)
-  revalidatePath(`/client/${token}/phases/${phaseId}`)
-  revalidatePath(`/projects/${project.id}`)
+  const { data: rawProj } = await admin
+    .from('projects')
+    .select('share_token')
+    .eq('id', projectId)
+    .maybeSingle()
+  const token = (rawProj as { share_token: string | null } | null)?.share_token
+  if (token) {
+    revalidatePath(`/client/${token}`)
+    revalidatePath(`/client/${token}/phases/${phaseId}`)
+  }
+  revalidatePath(`/projects/${projectId}`)
   return { success: true }
 }

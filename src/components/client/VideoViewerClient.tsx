@@ -6,6 +6,7 @@ import {
   useEffect,
   useTransition,
 } from 'react'
+import Link from 'next/link'
 import {
   Play,
   Pause,
@@ -22,6 +23,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronDown,
+  LogIn,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { PhaseStatus } from '@/lib/types'
@@ -155,16 +157,25 @@ function VideoTimeline({
   )
 }
 
-// ── ApprovalPanel ─────────────────────────────────────────────────
+// ── ApprovalPanel (video) ─────────────────────────────────────────
 
-interface ApprovalPanelProps {
-  token: string
+interface VideoApprovalPanelProps {
+  projectId: string
   phaseId: string
   status: PhaseStatus
+  isAuthenticated: boolean
+  loginHref?: string
   onStatusChange: (s: PhaseStatus) => void
 }
 
-function ApprovalPanel({ token, phaseId, status, onStatusChange }: ApprovalPanelProps) {
+function VideoApprovalPanel({
+  projectId,
+  phaseId,
+  status,
+  isAuthenticated,
+  loginHref = '/login',
+  onStatusChange,
+}: VideoApprovalPanelProps) {
   const [mode, setMode] = useState<'idle' | 'revision'>('idle')
   const [message, setMessage] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -180,9 +191,38 @@ function ApprovalPanel({ token, phaseId, status, onStatusChange }: ApprovalPanel
 
   if (status !== 'in_review') return null
 
+  // Non connecté : CTA connexion
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-[#F59E0B]/5 border border-[#F59E0B]/20 rounded-xl p-5 space-y-3">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-white">
+              Cette vidéo est en attente de votre approbation
+            </p>
+            <p className="text-xs text-[#666666] mt-0.5">
+              Connectez-vous pour approuver ou laisser des commentaires.
+            </p>
+          </div>
+        </div>
+        <Link
+          href={loginHref}
+          className="
+            inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+            bg-white text-black hover:bg-white/90 transition-colors
+          "
+        >
+          <LogIn className="h-4 w-4" />
+          Se connecter
+        </Link>
+      </div>
+    )
+  }
+
   function handleApprove() {
     startTransition(async () => {
-      const result = await approveAnimationPhase(token, phaseId)
+      const result = await approveAnimationPhase(projectId, phaseId)
       if (result.success) {
         toast.success('Phase approuvée !')
         onStatusChange('approved')
@@ -198,7 +238,7 @@ function ApprovalPanel({ token, phaseId, status, onStatusChange }: ApprovalPanel
       return
     }
     startTransition(async () => {
-      const result = await requestAnimationRevisions(token, phaseId, message)
+      const result = await requestAnimationRevisions(projectId, phaseId, message)
       if (result.success) {
         toast.success('Demande de modifications envoyée.')
         setMode('idle')
@@ -314,7 +354,7 @@ function ApprovalPanel({ token, phaseId, status, onStatusChange }: ApprovalPanel
 // ── CommentForm ───────────────────────────────────────────────────
 
 interface ClientCommentFormProps {
-  token: string
+  projectId: string
   phaseId: string
   videoVersion: number | null
   getCurrentTime: () => number
@@ -324,7 +364,7 @@ interface ClientCommentFormProps {
 }
 
 function ClientCommentForm({
-  token,
+  projectId,
   phaseId,
   videoVersion,
   getCurrentTime,
@@ -346,7 +386,7 @@ function ClientCommentForm({
     e.preventDefault()
     if (!content.trim()) return
     startTransition(async () => {
-      const result = await addClientVideoComment(token, phaseId, content.trim(), capturedTime)
+      const result = await addClientVideoComment(projectId, phaseId, content.trim(), capturedTime)
       if (result.success) {
         toast.success('Commentaire ajouté')
         onAdded({
@@ -429,19 +469,19 @@ function ClientCommentForm({
 interface ClientCommentCardProps {
   comment: VideoComment
   clientId: string
-  token: string
+  projectId: string
   onSeek: (t: number) => void
   onResolved: (id: string) => void
 }
 
-function ClientCommentCard({ comment, clientId, token, onSeek, onResolved }: ClientCommentCardProps) {
+function ClientCommentCard({ comment, clientId, projectId, onSeek, onResolved }: ClientCommentCardProps) {
   const [isPending, startTransition] = useTransition()
   const isOwn = comment.user_id === clientId
 
   function handleResolve() {
     if (!isOwn) return
     startTransition(async () => {
-      const result = await resolveClientVideoComment(token, comment.id)
+      const result = await resolveClientVideoComment(projectId, comment.id)
       if (result.success) {
         onResolved(comment.id)
       } else {
@@ -511,9 +551,11 @@ function ClientCommentCard({ comment, clientId, token, onSeek, onResolved }: Cli
 
 export interface VideoViewerClientProps {
   token: string
+  projectId: string
   phaseId: string
   phaseStatus: PhaseStatus
   clientId: string
+  isAuthenticated: boolean
   initialVideo: VideoFile | null
   initialVersions: VideoFile[]
   initialComments: VideoComment[]
@@ -521,9 +563,11 @@ export interface VideoViewerClientProps {
 
 export default function VideoViewerClient({
   token,
+  projectId,
   phaseId,
   phaseStatus,
   clientId,
+  isAuthenticated,
   initialVideo,
   initialVersions,
   initialComments,
@@ -683,7 +727,14 @@ export default function VideoViewerClient({
   return (
     <div className="space-y-5">
       {/* Approval panel */}
-      <ApprovalPanel token={token} phaseId={phaseId} status={status} onStatusChange={setStatus} />
+      <VideoApprovalPanel
+        projectId={projectId}
+        phaseId={phaseId}
+        status={status}
+        isAuthenticated={isAuthenticated}
+        loginHref="/login"
+        onStatusChange={setStatus}
+      />
 
       {/* Player + comments */}
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
@@ -795,14 +846,14 @@ export default function VideoViewerClient({
 
         {/* Comments sidebar */}
         <div className="flex flex-col gap-4 lg:w-80 xl:w-96 flex-shrink-0">
-          {/* Comment form (only in review) */}
-          {status === 'in_review' && currentVideo && (
+          {/* Comment form (only authenticated + in review) */}
+          {status === 'in_review' && currentVideo && isAuthenticated && (
             <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
               <h3 className="text-xs font-semibold text-[#666666] uppercase tracking-wider">
                 Laisser un commentaire
               </h3>
               <ClientCommentForm
-                token={token}
+                projectId={projectId}
                 phaseId={phaseId}
                 videoVersion={selectedVersion}
                 getCurrentTime={getCurrentTime}
@@ -836,7 +887,7 @@ export default function VideoViewerClient({
                     <ClientCommentCard
                       comment={c}
                       clientId={clientId}
-                      token={token}
+                      projectId={projectId}
                       onSeek={(t) => { seekTo(t); videoRef.current?.play().catch(() => {}) }}
                       onResolved={handleCommentResolved}
                     />

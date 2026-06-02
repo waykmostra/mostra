@@ -3,6 +3,7 @@
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
+import { requireProjectAccess } from '@/lib/auth'
 import { createNotifications, getProjectRecipients } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
 import type { Project, ProjectPhase, SubPhase, DesignFileContent, Profile } from '@/lib/types'
@@ -25,10 +26,10 @@ async function verifyToken(token: string) {
   const admin = createAdminClient()
   const { data: rawProject } = await admin
     .from('projects')
-    .select('id, client_id, agency_id, share_token')
+    .select('id, client_id, share_token')
     .eq('share_token', token)
     .maybeSingle()
-  return rawProject as Pick<Project, 'id' | 'client_id' | 'agency_id' | 'share_token'> | null
+  return rawProject as Pick<Project, 'id' | 'client_id' | 'share_token'> | null
 }
 
 async function verifySubPhaseOwnership(
@@ -58,22 +59,17 @@ async function verifySubPhaseOwnership(
   return { subPhase, phase }
 }
 
-async function resolveClientUserId(
+async function getClientIdFromProject(
   admin: ReturnType<typeof createAdminClient>,
-  project: Pick<Project, 'id' | 'client_id' | 'agency_id'>,
+  project: Pick<Project, 'client_id'>,
 ): Promise<string | null> {
-  if (project.client_id) return project.client_id
-
-  const { data: rawMember } = await admin
-    .from('agency_members')
-    .select('user_id')
-    .eq('agency_id', project.agency_id)
-    .eq('role', 'client')
-    .eq('is_active', true)
-    .limit(1)
+  if (!project.client_id) return null
+  const { data: rawClient } = await admin
+    .from('clients')
+    .select('profile_id')
+    .eq('id', project.client_id)
     .maybeSingle()
-
-  return (rawMember as { user_id: string } | null)?.user_id ?? null
+  return (rawClient as { profile_id: string | null } | null)?.profile_id ?? null
 }
 
 // ── fetchDesignData ───────────────────────────────────────────────
@@ -156,7 +152,7 @@ export async function addDesignComment(
   if (!project) return { success: false, error: 'Token invalide' }
   if (!content.trim()) return { success: false, error: 'Contenu vide' }
 
-  const userId = await resolveClientUserId(admin, project)
+  const userId = await getClientIdFromProject(admin, project)
   if (!userId) return { success: false, error: 'Client introuvable' }
 
   const { data: rawBlock } = await admin
@@ -209,7 +205,7 @@ export async function resolveDesignComment(
   if (!comment || comment.project_id !== project.id)
     return { success: false, error: 'Commentaire introuvable' }
 
-  const clientUserId = await resolveClientUserId(admin, project)
+  const clientUserId = await getClientIdFromProject(admin, project)
   if (clientUserId && comment.user_id !== clientUserId)
     return { success: false, error: 'Vous ne pouvez résoudre que vos propres commentaires' }
 
@@ -265,7 +261,7 @@ export async function approveDesignSubPhase(
       .eq('id', phase.id)
   }
 
-  const userId = await resolveClientUserId(admin, project)
+  const userId = await getClientIdFromProject(admin, project)
   if (userId) {
     await db(admin).from('activity_logs').insert({
       project_id: project.id,
@@ -291,7 +287,7 @@ export async function requestDesignRevisions(
   const project = await verifyToken(token)
   if (!project) return { success: false, error: 'Token invalide' }
 
-  const userId = await resolveClientUserId(admin, project)
+  const userId = await getClientIdFromProject(admin, project)
   if (!userId) return { success: false, error: 'Client introuvable' }
 
   const ownership = await verifySubPhaseOwnership(admin, subPhaseId, project.id)
@@ -344,7 +340,6 @@ export async function requestDesignRevisions(
     await createNotifications(
       recipientIds.map((uid) => ({
         userId: uid,
-        agencyId: r.agencyId,
         projectId: project.id,
         type: 'revision_requested' as const,
         title: notifTitle,
@@ -366,7 +361,7 @@ export async function requestDesignRevisions(
           template: 'revision_requested',
           data: {
             projectName: r.projectName,
-            agencyName: r.agencyName,
+            agencyName: 'Mostra',
             phaseName: 'Design',
             clientName: 'Le client',
           },

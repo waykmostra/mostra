@@ -581,7 +581,7 @@ export default function StoryboardEditor({
 
   const comments = useRealtimeBlockComments(projectId, subPhaseId, initialComments)
 
-  const isAdmin = userRole === 'super_admin' || userRole === 'agency_admin'
+  const isAdmin = userRole === 'admin'
   const canEdit = subPhaseStatus === 'pending' || subPhaseStatus === 'in_progress'
 
   const sensors = useSensors(

@@ -1,29 +1,14 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { requireAdmin } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 import { createNotification, createNotifications, getProjectRecipients } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
 import type { SubPhase, ProjectPhase } from '@/lib/types'
 
 export type SubPhaseActionResult = { success: true } | { success: false; error: string }
-
-// ── Helper auth ───────────────────────────────────────────────────
-
-async function getAuthContext() {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return null
-
-  return { supabase, user, membership }
-}
 
 // ── Résoudre la sous-phase + sa phase parente ─────────────────────
 
@@ -52,14 +37,9 @@ async function resolveSubPhase(supabase: ReturnType<typeof createClient>, subPha
 // ── startSubPhase ─────────────────────────────────────────────────
 
 export async function startSubPhase(subPhaseId: string): Promise<SubPhaseActionResult> {
-  const ctx = await getAuthContext()
-  if (!ctx) return { success: false, error: 'Non authentifié' }
-  const { supabase, user, membership } = ctx
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin' && role !== 'creative') {
-    return { success: false, error: 'Permissions insuffisantes' }
-  }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
 
   const resolved = await resolveSubPhase(supabase, subPhaseId)
   if (!resolved) return { success: false, error: 'Sous-phase introuvable' }
@@ -69,7 +49,7 @@ export async function startSubPhase(subPhaseId: string): Promise<SubPhaseActionR
     return { success: false, error: 'La sous-phase doit être en attente pour être démarrée' }
   }
 
-  // Vérifie que la sous-phase précédente (si elle existe) est completed/approved
+  // Sous-phase précédente terminée ?
   const { data: rawSiblings } = await supabase
     .from('sub_phases')
     .select('id, sort_order, status')
@@ -89,7 +69,6 @@ export async function startSubPhase(subPhaseId: string): Promise<SubPhaseActionR
     }
   }
 
-  // Démarre la sous-phase
   const { error: spErr } = await db(supabase)
     .from('sub_phases')
     .update({ status: 'in_progress', started_at: new Date().toISOString() })
@@ -97,7 +76,7 @@ export async function startSubPhase(subPhaseId: string): Promise<SubPhaseActionR
 
   if (spErr) return { success: false, error: spErr.message }
 
-  // Auto-démarre la phase parente si elle est encore pending
+  // Auto-démarre la phase parente si pending
   if (phase.status === 'pending') {
     await db(supabase)
       .from('project_phases')
@@ -119,16 +98,10 @@ export async function startSubPhase(subPhaseId: string): Promise<SubPhaseActionR
 
 // ── sendSubPhaseToReview ──────────────────────────────────────────
 
-
 export async function sendSubPhaseToReview(subPhaseId: string): Promise<SubPhaseActionResult> {
-  const ctx = await getAuthContext()
-  if (!ctx) return { success: false, error: 'Non authentifié' }
-  const { supabase, user, membership } = ctx
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin' && role !== 'creative') {
-    return { success: false, error: 'Permissions insuffisantes' }
-  }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
 
   const resolved = await resolveSubPhase(supabase, subPhaseId)
   if (!resolved) return { success: false, error: 'Sous-phase introuvable' }
@@ -152,10 +125,10 @@ export async function sendSubPhaseToReview(subPhaseId: string): Promise<SubPhase
     details: { phase_name: `${phase.name} › ${sp.name}` },
   })
 
-  // ── Notify client that phase is ready for review ─────────────────
+  // Notifier le client
   void (async () => {
     const r = await getProjectRecipients(phase.project_id)
-    if (!r.clientId) return
+    if (!r.clientUserId) return
 
     const subPhaseLink = r.shareToken
       ? `/client/${r.shareToken}/phases/${phase.id}/sub/${subPhaseId}`
@@ -163,8 +136,7 @@ export async function sendSubPhaseToReview(subPhaseId: string): Promise<SubPhase
     const adminLink = `/projects/${phase.project_id}/phases/${phase.id}/sub/${subPhaseId}`
 
     await createNotification({
-      userId: r.clientId,
-      agencyId: r.agencyId,
+      userId: r.clientUserId,
       projectId: phase.project_id,
       type: 'phase_ready',
       title: `✅ ${sp.name} est prête pour votre validation`,
@@ -172,11 +144,9 @@ export async function sendSubPhaseToReview(subPhaseId: string): Promise<SubPhase
       link: subPhaseLink,
     })
 
-    // Notify admins too
     await createNotifications(
       r.adminIds.filter((id) => id !== user.id).map((userId) => ({
         userId,
-        agencyId: r.agencyId,
         projectId: phase.project_id,
         type: 'phase_ready' as const,
         title: `Phase « ${sp.name} » envoyée en review`,
@@ -185,14 +155,13 @@ export async function sendSubPhaseToReview(subPhaseId: string): Promise<SubPhase
       })),
     )
 
-    // Email client
     if (r.clientEmail) {
       void sendEmail({
         to: r.clientEmail,
         template: 'phase_ready',
         data: {
           projectName: r.projectName,
-          agencyName: r.agencyName,
+          agencyName: 'Mostra',
           phaseName: `${phase.name} › ${sp.name}`,
         },
         link: subPhaseLink ?? undefined,
@@ -208,24 +177,18 @@ export async function sendSubPhaseToReview(subPhaseId: string): Promise<SubPhase
 // ── approveSubPhase ───────────────────────────────────────────────
 
 export async function approveSubPhase(subPhaseId: string): Promise<SubPhaseActionResult> {
-  const ctx = await getAuthContext()
-  if (!ctx) return { success: false, error: 'Non authentifié' }
-  const { supabase, user, membership } = ctx
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin') {
-    return { success: false, error: 'Seul un admin peut approuver une sous-phase' }
-  }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
 
   const resolved = await resolveSubPhase(supabase, subPhaseId)
   if (!resolved) return { success: false, error: 'Sous-phase introuvable' }
   const { sp, phase } = resolved
 
   if (sp.status !== 'in_review') {
-    return { success: false, error: "La sous-phase doit être en review pour être approuvée" }
+    return { success: false, error: 'La sous-phase doit être en review pour être approuvée' }
   }
 
-  // Approuve la sous-phase
   const { error } = await db(supabase)
     .from('sub_phases')
     .update({ status: 'completed', completed_at: new Date().toISOString() })
@@ -233,7 +196,7 @@ export async function approveSubPhase(subPhaseId: string): Promise<SubPhaseActio
 
   if (error) return { success: false, error: error.message }
 
-  // Vérifie si toutes les sous-phases de la phase parente sont terminées
+  // Vérifier si toutes les sous-phases de la phase sont done
   const { data: rawAllSps } = await supabase
     .from('sub_phases')
     .select('id, status')
@@ -246,13 +209,12 @@ export async function approveSubPhase(subPhaseId: string): Promise<SubPhaseActio
   const allDone = updatedSps.every((s) => s.status === 'completed' || s.status === 'approved')
 
   if (allDone) {
-    // Complete la phase parente
     await db(supabase)
       .from('project_phases')
       .update({ status: 'completed', completed_at: new Date().toISOString() })
       .eq('id', phase.id)
 
-    // Recalcule la progression du projet
+    // Recalc project progress
     const { data: rawAllPhases } = await supabase
       .from('project_phases')
       .select('id, status')
@@ -265,8 +227,7 @@ export async function approveSubPhase(subPhaseId: string): Promise<SubPhaseActio
     const doneCount = updatedPhases.filter(
       (p) => p.status === 'completed' || p.status === 'approved',
     ).length
-    const progress =
-      allPhases.length > 0 ? Math.round((doneCount / allPhases.length) * 100) : 0
+    const progress = allPhases.length > 0 ? Math.round((doneCount / allPhases.length) * 100) : 0
     const projectAllDone = updatedPhases.every(
       (p) => p.status === 'completed' || p.status === 'approved',
     )
@@ -284,14 +245,12 @@ export async function approveSubPhase(subPhaseId: string): Promise<SubPhaseActio
     details: { phase_name: `${phase.name} › ${sp.name}` },
   })
 
-  // ── Notify client of approval ─────────────────────────────────────
   void (async () => {
     const r = await getProjectRecipients(phase.project_id)
-    if (!r.clientId) return
+    if (!r.clientUserId) return
 
     await createNotification({
-      userId: r.clientId,
-      agencyId: r.agencyId,
+      userId: r.clientUserId,
       projectId: phase.project_id,
       type: 'phase_approved',
       title: `🎉 ${sp.name} a été approuvée`,
@@ -305,7 +264,7 @@ export async function approveSubPhase(subPhaseId: string): Promise<SubPhaseActio
         template: 'phase_approved',
         data: {
           projectName: r.projectName,
-          agencyName: r.agencyName,
+          agencyName: 'Mostra',
           phaseName: `${phase.name} › ${sp.name}`,
           clientName: 'vous',
         },
@@ -320,18 +279,11 @@ export async function approveSubPhase(subPhaseId: string): Promise<SubPhaseActio
 }
 
 // ── unapproveSubPhase ─────────────────────────────────────────────
-// Remet la sous-phase de "completed"/"approved" → "in_review".
-// Si la phase parente était "completed", elle repasse en "in_progress".
 
 export async function unapproveSubPhase(subPhaseId: string): Promise<SubPhaseActionResult> {
-  const ctx = await getAuthContext()
-  if (!ctx) return { success: false, error: 'Non authentifié' }
-  const { supabase, user, membership } = ctx
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin') {
-    return { success: false, error: 'Seul un admin peut désapprouver une sous-phase' }
-  }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
 
   const resolved = await resolveSubPhase(supabase, subPhaseId)
   if (!resolved) return { success: false, error: 'Sous-phase introuvable' }
@@ -341,7 +293,6 @@ export async function unapproveSubPhase(subPhaseId: string): Promise<SubPhaseAct
     return { success: false, error: 'La sous-phase doit être en review ou approuvée pour être désapprouvée' }
   }
 
-  // Repasse en in_progress
   const { error } = await db(supabase)
     .from('sub_phases')
     .update({ status: 'in_progress', completed_at: null })
@@ -349,14 +300,12 @@ export async function unapproveSubPhase(subPhaseId: string): Promise<SubPhaseAct
 
   if (error) return { success: false, error: error.message }
 
-  // Si la phase parente était completed, la repasser en in_progress
   if (phase.status === 'completed' || phase.status === 'approved') {
     await db(supabase)
       .from('project_phases')
       .update({ status: 'in_progress', completed_at: null })
       .eq('id', phase.id)
 
-    // Recalcule progression du projet
     const { data: rawAllPhases } = await supabase
       .from('project_phases')
       .select('id, status')
@@ -369,8 +318,7 @@ export async function unapproveSubPhase(subPhaseId: string): Promise<SubPhaseAct
     const doneCount = updatedPhases.filter(
       (p) => p.status === 'completed' || p.status === 'approved',
     ).length
-    const progress =
-      allPhases.length > 0 ? Math.round((doneCount / allPhases.length) * 100) : 0
+    const progress = allPhases.length > 0 ? Math.round((doneCount / allPhases.length) * 100) : 0
 
     await db(supabase)
       .from('projects')

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { requireAdmin } from '@/lib/auth'
 import type { ScriptSectionContent, SubPhase, ProjectPhase } from '@/lib/types'
 
 export type ScriptActionResult = { success: true } | { success: false; error: string }
@@ -17,19 +17,9 @@ export interface ScriptBlock {
 // ── Auth helper ───────────────────────────────────────────────────
 
 async function getCreativeContext() {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return null
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin' && role !== 'creative') return null
-
-  return { supabase, membership }
+  const auth = await requireAdmin()
+  if ('error' in auth) return null
+  return { supabase: auth.supabase, user: auth.user }
 }
 
 // ── Nav helper ────────────────────────────────────────────────────

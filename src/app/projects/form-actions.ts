@@ -4,25 +4,18 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { requireAdmin } from '@/lib/auth'
 import { createNotifications, getProjectRecipients } from '@/lib/notifications'
-import type { FormTemplate, FormQuestionContent, SubPhase, ProjectPhase } from '@/lib/types'
+import type { FormQuestionContent, SubPhase, ProjectPhase } from '@/lib/types'
 
 export type FormActionResult = { success: true } | { success: false; error: string }
 
 // ── Admin auth ────────────────────────────────────────────────────
 
 async function getAdminContext() {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return null
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return null
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin') return null
-  return { supabase, membership }
+  const auth = await requireAdmin()
+  if ('error' in auth) return null
+  return { supabase: auth.supabase, user: auth.user }
 }
 
 // ── Token auth ────────────────────────────────────────────────────
@@ -70,14 +63,13 @@ export async function applyFormTemplate(
 ): Promise<FormActionResult> {
   const ctx = await getAdminContext()
   if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
-  const { supabase, membership } = ctx
+  const { supabase } = ctx
 
-  // Fetch template (scoped to agency)
+  // Fetch template (global)
   const { data: rawTpl } = await supabase
     .from('form_templates')
     .select('questions')
     .eq('id', templateId)
-    .eq('agency_id', membership.member.agency_id)
     .maybeSingle()
 
   if (!rawTpl) return { success: false, error: 'Template introuvable' }
@@ -249,7 +241,6 @@ export async function submitFormAnswers(
     await createNotifications(
       r.adminIds.map((userId) => ({
         userId,
-        agencyId: r.agencyId,
         projectId: project.id,
         type: 'form_submitted' as const,
         title: `📋 Formulaire soumis — ${r.projectName}`,

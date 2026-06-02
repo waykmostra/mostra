@@ -1,9 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
-import { getCurrentMember } from '@/lib/supabase/queries'
+import { requireAdmin } from '@/lib/auth'
 import type { ProjectPhase } from '@/lib/types'
 
 export type PhaseActionResult = { success: true } | { success: false; error: string }
@@ -11,19 +10,9 @@ export type PhaseActionResult = { success: true } | { success: false; error: str
 // ─── startPhase ───────────────────────────────────────────────────
 
 export async function startPhase(phaseId: string): Promise<PhaseActionResult> {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié' }
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return { success: false, error: 'Membre introuvable' }
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin' && role !== 'creative') {
-    return { success: false, error: 'Permissions insuffisantes' }
-  }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
 
   const { data: rawPhase } = await supabase
     .from('project_phases')
@@ -35,15 +24,14 @@ export async function startPhase(phaseId: string): Promise<PhaseActionResult> {
   if (!phase) return { success: false, error: 'Phase introuvable' }
   if (phase.status !== 'pending') return { success: false, error: 'La phase doit être en attente' }
 
-  // Vérifie que la phase précédente est terminée
+  // Phase précédente terminée ?
   const { data: rawSiblings } = await supabase
     .from('project_phases')
     .select('id, sort_order, status')
     .eq('project_id', phase.project_id)
     .order('sort_order', { ascending: true })
 
-  const siblings =
-    (rawSiblings as Pick<ProjectPhase, 'id' | 'sort_order' | 'status'>[] | null) ?? []
+  const siblings = (rawSiblings as Pick<ProjectPhase, 'id' | 'sort_order' | 'status'>[] | null) ?? []
   const idx = siblings.findIndex((p) => p.id === phaseId)
 
   if (idx > 0) {
@@ -79,19 +67,9 @@ export async function startPhase(phaseId: string): Promise<PhaseActionResult> {
 // ─── sendToReview ─────────────────────────────────────────────────
 
 export async function sendToReview(phaseId: string): Promise<PhaseActionResult> {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié' }
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return { success: false, error: 'Membre introuvable' }
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin' && role !== 'creative') {
-    return { success: false, error: 'Permissions insuffisantes' }
-  }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
 
   const { data: rawPhase } = await supabase
     .from('project_phases')
@@ -104,7 +82,7 @@ export async function sendToReview(phaseId: string): Promise<PhaseActionResult> 
   if (phase.status !== 'in_progress')
     return { success: false, error: 'La phase doit être en cours' }
 
-  // Vérifie qu'au moins 1 fichier est uploadé
+  // Au moins 1 fichier ?
   const { count } = await supabase
     .from('phase_files')
     .select('*', { count: 'exact', head: true })
@@ -137,19 +115,9 @@ export async function sendToReview(phaseId: string): Promise<PhaseActionResult> 
 // ─── completePhase ────────────────────────────────────────────────
 
 export async function completePhase(phaseId: string): Promise<PhaseActionResult> {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié' }
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return { success: false, error: 'Membre introuvable' }
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin') {
-    return { success: false, error: 'Seul un admin peut approuver une phase' }
-  }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
 
   const { data: rawPhase } = await supabase
     .from('project_phases')
@@ -167,7 +135,7 @@ export async function completePhase(phaseId: string): Promise<PhaseActionResult>
 
   if (error) return { success: false, error: error.message }
 
-  // Recalcule la progression du projet
+  // Recalcule progression
   const { data: rawAllPhases } = await supabase
     .from('project_phases')
     .select('id, status')
@@ -183,7 +151,6 @@ export async function completePhase(phaseId: string): Promise<PhaseActionResult>
   ).length
 
   const progress = allPhases.length > 0 ? Math.round((doneCount / allPhases.length) * 100) : 0
-
   const allDone = updated.every((p) => p.status === 'completed' || p.status === 'approved')
 
   const projectUpdate: Record<string, unknown> = { progress }
@@ -205,23 +172,11 @@ export async function completePhase(phaseId: string): Promise<PhaseActionResult>
 }
 
 // ─── unapprovePhase ───────────────────────────────────────────────
-// Remet la phase de "completed"/"approved" → "in_review".
-// Recalcule la progression du projet.
 
 export async function unapprovePhase(phaseId: string): Promise<PhaseActionResult> {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Non authentifié' }
-
-  const membership = await getCurrentMember(supabase, user.id)
-  if (!membership) return { success: false, error: 'Membre introuvable' }
-
-  const { role } = membership.member
-  if (role !== 'super_admin' && role !== 'agency_admin') {
-    return { success: false, error: 'Seul un admin peut désapprouver une phase' }
-  }
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
 
   const { data: rawPhase } = await supabase
     .from('project_phases')
@@ -242,7 +197,6 @@ export async function unapprovePhase(phaseId: string): Promise<PhaseActionResult
 
   if (error) return { success: false, error: error.message }
 
-  // Recalcule progression du projet
   const { data: rawAllPhases } = await supabase
     .from('project_phases')
     .select('id, status')
