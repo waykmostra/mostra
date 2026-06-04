@@ -11,7 +11,7 @@ import {
   ArrowRight,
   Columns3,
   TrendingUp,
-  Lightbulb,
+  StickyNote,
   BookOpen,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
@@ -191,7 +191,7 @@ export default async function FounderDashboard() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <QuickTile href="/founder/pipeline" icon={Columns3} label="Pipeline" />
           <QuickTile href="/founder/kpis" icon={TrendingUp} label="KPIs hebdo" />
-          <QuickTile href="/founder/idees" icon={Lightbulb} label="Idées" />
+          <QuickTile href="/founder/notes" icon={StickyNote} label="Notes" />
           <QuickTile href="/founder/wiki" icon={BookOpen} label="Wiki" />
         </div>
       </div>

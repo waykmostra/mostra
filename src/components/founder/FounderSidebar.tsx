@@ -11,7 +11,8 @@ import {
   Trophy,
   TrendingUp,
   Eye,
-  Lightbulb,
+  StickyNote,
+  Database,
   BookOpen,
   ArrowLeft,
   LogOut,
@@ -38,7 +39,8 @@ const FOUNDER_NAV: FounderNavItem[] = [
   { href: '/founder/objectifs', label: 'Objectifs', icon: Trophy },
   { href: '/founder/kpis', label: 'KPIs hebdo', icon: TrendingUp },
   { href: '/founder/veille', label: 'Veille', icon: Eye },
-  { href: '/founder/idees', label: 'Idées', icon: Lightbulb },
+  { href: '/founder/notes', label: 'Notes', icon: StickyNote },
+  { href: '/founder/data', label: 'Data', icon: Database },
   { href: '/founder/wiki', label: 'Wiki', icon: BookOpen },
 ]
 

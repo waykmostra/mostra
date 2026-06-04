@@ -723,6 +723,61 @@ export interface ContentIdea {
   updated_at: string
 }
 
+// ── Notes (migration 023) ─────────────────────────────────────────
+
+export interface NoteGroup {
+  id: string
+  name: string
+  color: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface Note {
+  id: string
+  group_id: string
+  content: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+// ── Data : bases de statistiques personnalisables (migration 024) ──
+
+export type DataColumnType = 'number' | 'category' | 'text'
+
+/** Valeur d'une cellule, indexée par column.id dans data_entries.values. */
+export type DataValue = string | number | null
+
+export interface DataSet {
+  id: string
+  name: string
+  color: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface DataColumn {
+  id: string
+  set_id: string
+  name: string
+  type: DataColumnType
+  /** Choix possibles pour une colonne de type 'category'. */
+  options: string[] | null
+  sort_order: number
+  created_at: string
+}
+
+export interface DataEntry {
+  id: string
+  set_id: string
+  values: Record<string, DataValue>
+  created_at: string
+  updated_at: string
+}
+
 /** Tâche quotidienne + état "fait aujourd'hui" (vue Daily Workflow). */
 export interface DailyWorkflowItem extends DailyWorkflowTask {
   done_today: boolean
@@ -849,6 +904,31 @@ export interface Database {
         Row:    ContentIdea
         Insert: Partial<ContentIdea>
         Update: Partial<ContentIdea>
+      }
+      note_groups: {
+        Row:    NoteGroup
+        Insert: Partial<NoteGroup>
+        Update: Partial<NoteGroup>
+      }
+      notes: {
+        Row:    Note
+        Insert: Partial<Note>
+        Update: Partial<Note>
+      }
+      data_sets: {
+        Row:    DataSet
+        Insert: Partial<DataSet>
+        Update: Partial<DataSet>
+      }
+      data_columns: {
+        Row:    DataColumn
+        Insert: Partial<DataColumn>
+        Update: Partial<DataColumn>
+      }
+      data_entries: {
+        Row:    DataEntry
+        Insert: Partial<DataEntry>
+        Update: Partial<DataEntry>
       }
     }
     Functions: {

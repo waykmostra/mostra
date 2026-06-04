@@ -49,6 +49,15 @@ export type {
   WeeklyKpi,
   Competitor,
   ContentIdea,
+  // Notes (migration 023)
+  NoteGroup,
+  Note,
+  // Data : bases personnalisables (migration 024)
+  DataColumnType,
+  DataValue,
+  DataSet,
+  DataColumn,
+  DataEntry,
   // Block content types
   QuestionType,
   FormQuestion,
