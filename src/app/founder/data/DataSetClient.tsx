@@ -7,7 +7,7 @@ import { ArrowLeft, Plus, Trash2, Loader2, Check, Pencil, X } from 'lucide-react
 import { toast } from 'sonner'
 import AutoGrowTextarea from '@/components/shared/AutoGrowTextarea'
 import type { DataColumn, DataColumnType, DataNumberFormat, DataEntry, DataSet, DataValue } from '@/lib/types'
-import { COLUMN_TYPE_META, NUMBER_FORMAT_META, SET_COLORS, categoryColor, formatNumberValue, numberUnit } from './dataMeta'
+import { COLUMN_TYPE_META, NUMBER_FORMAT_META, SET_COLORS, categoryColor, displayCell, numberUnit } from './dataMeta'
 import DataCharts from './DataCharts'
 import {
   renameSet,
@@ -461,6 +461,20 @@ function FieldInput({ col, value, onChange }: { col: DataColumn; value: DataValu
   )
 
   if (col.type === 'number') {
+    if (col.number_format === 'fraction') {
+      return (
+        <div>
+          {label}
+          <input
+            type="text"
+            value={(value as string) ?? ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="ex. 1/5"
+            className={field}
+          />
+        </div>
+      )
+    }
     return (
       <div>
         {label}
@@ -608,9 +622,7 @@ function renderCell(col: DataColumn, value: DataValue) {
   if (value == null || value === '') return <span className="text-[#3a3a3a]">—</span>
 
   if (col.type === 'number') {
-    const num = typeof value === 'number' ? value : Number(value)
-    const display = Number.isFinite(num) ? formatNumberValue(col, num) : String(value)
-    return <span className="tabular-nums text-[#dddddd] whitespace-nowrap">{display}</span>
+    return <span className="tabular-nums text-[#dddddd] whitespace-nowrap">{displayCell(col, value)}</span>
   }
 
   if (col.type === 'category') {

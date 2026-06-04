@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { BarChart3 } from 'lucide-react'
 import type { DataColumn, DataEntry } from '@/lib/types'
-import { categoryColor, toNumber, fmtNumber, formatNumberValue, numberUnit, CATEGORY_PALETTE } from './dataMeta'
+import { categoryColor, columnNumber, fmtNumber, formatNumberValue, numberUnit, CATEGORY_PALETTE } from './dataMeta'
 import type { ChartDatum } from './DataChartsInner'
 
 // recharts lourd + client-only : sorti du bundle initial.
@@ -51,12 +51,13 @@ export default function DataCharts({
     () =>
       numberCols.map((col) => {
         const nums = entries
-          .map((e) => toNumber(e.values[col.id]))
+          .map((e) => columnNumber(col, e.values[col.id]))
           .filter((n): n is number => n != null)
         const sum = nums.reduce((a, b) => a + b, 0)
         const avg = nums.length ? sum / nums.length : 0
-        // Pour une note (/N) ou un %, la moyenne est la mesure parlante ; sinon le total.
-        const avgFocused = col.number_format === 'rating' || col.number_format === 'percent'
+        // Pour une note (/N), un % ou une fraction, la moyenne est la mesure parlante.
+        const avgFocused =
+          col.number_format === 'rating' || col.number_format === 'percent' || col.number_format === 'fraction'
         return {
           col,
           label: avgFocused ? `Moy. ${col.name}` : `Σ ${col.name}`,
@@ -106,7 +107,7 @@ export default function DataCharts({
     if (!valueCol) return []
     const out: ChartDatum[] = []
     entries.forEach((e, i) => {
-      const v = toNumber(e.values[valueCol.id])
+      const v = columnNumber(valueCol, e.values[valueCol.id])
       if (v == null) return
       let name = labelCol ? String(e.values[labelCol.id] ?? '').trim() : ''
       if (!name) name = `#${i + 1}`
@@ -138,7 +139,8 @@ export default function DataCharts({
       if (measure.kind === 'count') {
         groups.set(key, [...(groups.get(key) ?? []), 1])
       } else {
-        const n = toNumber(e.values[measure.colId])
+        const mcol = numberCols.find((c) => c.id === measure.colId)
+        const n = mcol ? columnNumber(mcol, e.values[measure.colId]) : null
         if (n == null) continue
         groups.set(key, [...(groups.get(key) ?? []), n])
       }

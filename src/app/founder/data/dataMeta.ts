@@ -11,6 +11,7 @@ export const COLUMN_TYPE_META: Record<DataColumnType, { label: string; color: st
 export const NUMBER_FORMAT_META: Record<DataNumberFormat, { label: string }> = {
   raw: { label: 'Brut' },
   rating: { label: 'Note (sur N)' },
+  fraction: { label: 'Fraction « a/b » (max par entrée)' },
   percent: { label: 'Pourcentage (%)' },
   currency: { label: 'Montant (€)' },
 }
@@ -44,12 +45,16 @@ export function fmtNumber(n: number): string {
   return Number.isInteger(n) ? n.toLocaleString('fr-FR') : n.toLocaleString('fr-FR', { maximumFractionDigits: 2 })
 }
 
-/** Formate une valeur numérique selon le format de la colonne (note /N, %, €, brut). */
+/**
+ * Formate un NOMBRE déjà agrégé (KPI, moyenne…) selon le format de la colonne.
+ * Pour 'fraction', la valeur agrégée est un pourcentage.
+ */
 export function formatNumberValue(col: Pick<DataColumn, 'number_format' | 'number_max'>, n: number): string {
   switch (col.number_format) {
     case 'rating':
       return `${fmtNumber(n)}/${col.number_max ?? '?'}`
     case 'percent':
+    case 'fraction':
       return `${fmtNumber(n)} %`
     case 'currency':
       return `${fmtNumber(n)} €`
@@ -64,10 +69,40 @@ export function numberUnit(col: Pick<DataColumn, 'number_format' | 'number_max'>
     case 'rating':
       return `/${col.number_max ?? '?'}`
     case 'percent':
+    case 'fraction':
       return '%'
     case 'currency':
       return '€'
     default:
       return ''
   }
+}
+
+/** Parse une fraction littérale « a/b » → pourcentage (a/b·100), ou null. */
+export function parseFractionPercent(raw: DataValue): number | null {
+  if (raw == null) return null
+  const m = String(raw).trim().match(/^(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)$/)
+  if (!m) return null
+  const num = parseFloat(m[1].replace(',', '.'))
+  const den = parseFloat(m[2].replace(',', '.'))
+  if (!den || !Number.isFinite(num) || !Number.isFinite(den)) return null
+  return (num / den) * 100
+}
+
+/** Nombre comparable d'une valeur, en tenant compte du format (fraction → %). */
+export function columnNumber(col: Pick<DataColumn, 'number_format'>, value: DataValue): number | null {
+  if (col.number_format === 'fraction') return parseFractionPercent(value)
+  return toNumber(value)
+}
+
+/** Texte affiché dans une cellule Nombre (fraction = « 1/5 · 20% »). */
+export function displayCell(col: Pick<DataColumn, 'number_format' | 'number_max'>, value: DataValue): string {
+  if (col.number_format === 'fraction') {
+    const raw = String(value ?? '').trim()
+    if (!raw) return ''
+    const pct = parseFractionPercent(value)
+    return pct != null ? `${raw} · ${fmtNumber(Math.round(pct))}%` : raw
+  }
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? formatNumberValue(col, n) : String(value ?? '')
 }

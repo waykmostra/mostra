@@ -748,7 +748,7 @@ export interface Note {
 export type DataColumnType = 'number' | 'category' | 'text'
 
 /** Format d'affichage d'une colonne Nombre. */
-export type DataNumberFormat = 'raw' | 'rating' | 'percent' | 'currency'
+export type DataNumberFormat = 'raw' | 'rating' | 'percent' | 'currency' | 'fraction'
 
 /** Valeur d'une cellule, indexée par column.id dans data_entries.values. */
 export type DataValue = string | number | null
