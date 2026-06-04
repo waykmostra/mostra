@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/supabase/helpers'
 import { requireAdmin } from '@/lib/auth'
-import type { DataColumnType, DataValue } from '@/lib/types'
+import type { DataColumnType, DataNumberFormat, DataValue } from '@/lib/types'
 
 // ============================================================================
 // Section Data (migration 024) : bases personnalisables (sets / colonnes /
@@ -98,6 +98,8 @@ export async function addColumn(
   name: string,
   type: DataColumnType,
   options?: string[],
+  numberFormat?: DataNumberFormat,
+  numberMax?: number,
 ): Promise<DataResult> {
   const auth = await requireAdmin()
   if ('error' in auth) return { success: false, error: auth.error }
@@ -112,6 +114,12 @@ export async function addColumn(
     return { success: false, error: 'Ajoute au moins un choix pour une colonne catégorie.' }
   }
 
+  const fmt = type === 'number' ? (numberFormat ?? 'raw') : null
+  const max = fmt === 'rating' ? (numberMax ?? null) : null
+  if (fmt === 'rating' && (!max || max <= 0)) {
+    return { success: false, error: 'Indique le maximum de la note (ex. 5).' }
+  }
+
   // sort_order = nb de colonnes existantes.
   const { count } = await db(admin)
     .from('data_columns')
@@ -120,7 +128,15 @@ export async function addColumn(
 
   const { error } = await db(admin)
     .from('data_columns')
-    .insert({ set_id: setId, name: clean, type, options: opts, sort_order: count ?? 0 })
+    .insert({
+      set_id: setId,
+      name: clean,
+      type,
+      options: opts,
+      number_format: fmt,
+      number_max: max,
+      sort_order: count ?? 0,
+    })
 
   if (error) return { success: false, error: error.message }
 
@@ -131,7 +147,7 @@ export async function addColumn(
 export async function updateColumn(
   id: string,
   setId: string,
-  patch: { name?: string; options?: string[] },
+  patch: { name?: string; options?: string[]; numberFormat?: DataNumberFormat; numberMax?: number | null },
 ): Promise<DataResult> {
   const auth = await requireAdmin()
   if ('error' in auth) return { success: false, error: auth.error }
@@ -145,6 +161,16 @@ export async function updateColumn(
   }
   if (patch.options !== undefined) {
     update.options = cleanOptions(patch.options)
+  }
+  if (patch.numberFormat !== undefined) {
+    update.number_format = patch.numberFormat
+    if (patch.numberFormat === 'rating') {
+      const max = patch.numberMax ?? null
+      if (!max || max <= 0) return { success: false, error: 'Indique le maximum de la note (ex. 5).' }
+      update.number_max = max
+    } else {
+      update.number_max = null
+    }
   }
   if (Object.keys(update).length === 0) return { success: true }
 

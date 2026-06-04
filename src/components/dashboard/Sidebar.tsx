@@ -9,7 +9,6 @@ import Logo from '@/components/shared/Logo'
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
-  { href: '/founder', label: 'Founder', icon: Rocket, adminOnly: true },
   { href: '/clients', label: 'Clients', icon: Users, adminOnly: false },
   { href: '/finance', label: 'Finance', icon: Wallet, adminOnly: true },
   { href: '/settings', label: 'Settings', icon: Settings, adminOnly: true },
@@ -92,8 +91,25 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Bottom */}
+        {/* Bottom — espace Founder (admin) séparé, puis logout */}
         <div className="px-3 py-4 border-t border-[#2a2a2a] space-y-1">
+          {isAdmin && (
+            <Link
+              href="/founder"
+              onClick={close}
+              className={`
+                flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors
+                ${
+                  pathname.startsWith('/founder')
+                    ? 'bg-[#00D76B]/10 text-[#00D76B] font-medium'
+                    : 'text-[#a0a0a0] hover:text-white hover:bg-[#1a1a1a]'
+                }
+              `}
+            >
+              <Rocket className={`h-4 w-4 flex-shrink-0 ${pathname.startsWith('/founder') ? 'text-[#00D76B]' : ''}`} />
+              Espace Founder
+            </Link>
+          )}
           <button
             onClick={signOut}
             aria-label="Se déconnecter"

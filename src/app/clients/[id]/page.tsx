@@ -178,7 +178,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             </p>
           </div>
         </div>
-        <DeleteClientButton clientId={params.id} clientName={displayName} />
+        <DeleteClientButton clientId={params.id} clientName={displayName} redirectTo="/clients" />
       </div>
     </div>
   )

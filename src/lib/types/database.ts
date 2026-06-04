@@ -747,6 +747,9 @@ export interface Note {
 
 export type DataColumnType = 'number' | 'category' | 'text'
 
+/** Format d'affichage d'une colonne Nombre. */
+export type DataNumberFormat = 'raw' | 'rating' | 'percent' | 'currency'
+
 /** Valeur d'une cellule, indexée par column.id dans data_entries.values. */
 export type DataValue = string | number | null
 
@@ -766,6 +769,10 @@ export interface DataColumn {
   type: DataColumnType
   /** Choix possibles pour une colonne de type 'category'. */
   options: string[] | null
+  /** Format d'une colonne 'number' : brut / note (sur N) / % / €. */
+  number_format: DataNumberFormat | null
+  /** Le N d'une note (ex. 5 pour « /5 »), si number_format = 'rating'. */
+  number_max: number | null
   sort_order: number
   created_at: string
 }

@@ -6,14 +6,15 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Plus, Trash2, Loader2, Check, Pencil, X } from 'lucide-react'
 import { toast } from 'sonner'
 import AutoGrowTextarea from '@/components/shared/AutoGrowTextarea'
-import type { DataColumn, DataColumnType, DataEntry, DataSet, DataValue } from '@/lib/types'
-import { COLUMN_TYPE_META, SET_COLORS, categoryColor } from './dataMeta'
+import type { DataColumn, DataColumnType, DataNumberFormat, DataEntry, DataSet, DataValue } from '@/lib/types'
+import { COLUMN_TYPE_META, NUMBER_FORMAT_META, SET_COLORS, categoryColor, formatNumberValue, numberUnit } from './dataMeta'
 import DataCharts from './DataCharts'
 import {
   renameSet,
   recolorSet,
   deleteSet,
   addColumn,
+  updateColumn,
   deleteColumn,
   addEntry,
   updateEntry,
@@ -185,16 +186,17 @@ function SetHeader({ set, onChanged }: { set: DataSet; onChanged: () => void }) 
 // ── Barre des colonnes ────────────────────────────────────────────────────────
 
 function ColumnsBar({ columns, setId, onChanged }: { columns: DataColumn[]; setId: string; onChanged: () => void }) {
-  const [adding, setAdding] = useState(false)
+  // null = fermé · 'new' = ajout · DataColumn = édition d'une colonne existante
+  const [editing, setEditing] = useState<DataColumn | 'new' | null>(null)
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         {columns.map((col) => (
-          <ColumnChip key={col.id} col={col} setId={setId} onChanged={onChanged} />
+          <ColumnChip key={col.id} col={col} setId={setId} onEdit={() => setEditing(col)} onChanged={onChanged} />
         ))}
         <button
-          onClick={() => setAdding((v) => !v)}
+          onClick={() => setEditing((e) => (e === 'new' ? null : 'new'))}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-dashed border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#3a3a3a] transition-colors"
         >
           <Plus className="h-3 w-3" />
@@ -202,15 +204,34 @@ function ColumnsBar({ columns, setId, onChanged }: { columns: DataColumn[]; setI
         </button>
       </div>
 
-      {adding && <AddColumnForm setId={setId} onClose={() => setAdding(false)} onChanged={onChanged} />}
+      {editing !== null && (
+        <ColumnForm
+          key={editing === 'new' ? 'new' : editing.id}
+          setId={setId}
+          column={editing === 'new' ? undefined : editing}
+          onClose={() => setEditing(null)}
+          onChanged={onChanged}
+        />
+      )}
     </div>
   )
 }
 
-function ColumnChip({ col, setId, onChanged }: { col: DataColumn; setId: string; onChanged: () => void }) {
+function ColumnChip({
+  col,
+  setId,
+  onEdit,
+  onChanged,
+}: {
+  col: DataColumn
+  setId: string
+  onEdit: () => void
+  onChanged: () => void
+}) {
   const [isPending, startTransition] = useTransition()
   const [confirm, setConfirm] = useState(false)
   const meta = COLUMN_TYPE_META[col.type]
+  const unit = col.type === 'number' ? numberUnit(col) : ''
 
   function remove() {
     startTransition(async () => {
@@ -224,40 +245,69 @@ function ColumnChip({ col, setId, onChanged }: { col: DataColumn; setId: string;
   return (
     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs bg-[#141414] border border-[#262626]">
       <span className="font-medium text-white">{col.name}</span>
-      <span className="text-[9px] font-medium px-1 py-0.5 rounded" style={{ color: meta.color, backgroundColor: `${meta.color}1a` }}>{meta.label}</span>
+      <span className="text-[9px] font-medium px-1 py-0.5 rounded" style={{ color: meta.color, backgroundColor: `${meta.color}1a` }}>
+        {meta.label}{unit ? ` ${unit}` : ''}
+      </span>
       {confirm ? (
         <>
           <button onClick={remove} disabled={isPending} className="text-[#EF4444] hover:opacity-80 text-[10px] font-medium">{isPending ? '…' : 'Oui'}</button>
           <button onClick={() => setConfirm(false)} className="text-[#888888] hover:text-white text-[10px]">Non</button>
         </>
       ) : (
-        <button onClick={() => setConfirm(true)} aria-label="Supprimer la colonne" className="text-[#555555] hover:text-[#EF4444] transition-colors">
-          <X className="h-3 w-3" />
-        </button>
+        <>
+          <button onClick={onEdit} aria-label="Éditer la colonne" className="text-[#555555] hover:text-white transition-colors">
+            <Pencil className="h-3 w-3" />
+          </button>
+          <button onClick={() => setConfirm(true)} aria-label="Supprimer la colonne" className="text-[#555555] hover:text-[#EF4444] transition-colors">
+            <X className="h-3 w-3" />
+          </button>
+        </>
       )}
     </span>
   )
 }
 
-function AddColumnForm({ setId, onClose, onChanged }: { setId: string; onClose: () => void; onChanged: () => void }) {
+function ColumnForm({
+  setId,
+  column,
+  onClose,
+  onChanged,
+}: {
+  setId: string
+  column?: DataColumn
+  onClose: () => void
+  onChanged: () => void
+}) {
+  const isEdit = !!column
   const [isPending, startTransition] = useTransition()
-  const [name, setName] = useState('')
-  const [type, setType] = useState<DataColumnType>('number')
-  const [optionsText, setOptionsText] = useState('')
+  const [name, setName] = useState(column?.name ?? '')
+  const [type, setType] = useState<DataColumnType>(column?.type ?? 'number')
+  const [optionsText, setOptionsText] = useState((column?.options ?? []).join(', '))
+  const [numberFormat, setNumberFormat] = useState<DataNumberFormat>(column?.number_format ?? 'raw')
+  const [numberMax, setNumberMax] = useState(column?.number_max != null ? String(column.number_max) : '5')
 
   function submit() {
     const clean = name.trim()
     if (!clean) return toast.error('Le nom de la colonne est requis.')
-    const options = type === 'category'
-      ? optionsText.split(',').map((o) => o.trim()).filter(Boolean)
-      : undefined
+
+    const options =
+      type === 'category' ? optionsText.split(',').map((o) => o.trim()).filter(Boolean) : undefined
     if (type === 'category' && (!options || options.length === 0)) {
       return toast.error('Ajoute au moins un choix (séparés par des virgules).')
     }
+
+    const fmt = type === 'number' ? numberFormat : undefined
+    const max = fmt === 'rating' ? Number(numberMax) : undefined
+    if (fmt === 'rating' && (!max || max <= 0)) {
+      return toast.error('Indique le maximum de la note (ex. 5).')
+    }
+
     startTransition(async () => {
-      const res = await addColumn(setId, clean, type, options)
+      const res = isEdit
+        ? await updateColumn(column!.id, setId, { name: clean, options, numberFormat: fmt, numberMax: max })
+        : await addColumn(setId, clean, type, options, fmt, max)
       if (!res.success) { toast.error(res.error); return }
-      toast.success('Colonne ajoutée ✓')
+      toast.success(isEdit ? 'Colonne modifiée ✓' : 'Colonne ajoutée ✓')
       onClose()
       onChanged()
     })
@@ -278,14 +328,53 @@ function AddColumnForm({ setId, onClose, onChanged }: { setId: string; onClose: 
           />
         </div>
         <div>
-          <label className="block text-[10px] uppercase tracking-widest text-[#555555] mb-1">Type</label>
-          <select value={type} onChange={(e) => setType(e.target.value as DataColumnType)} className={`${field} cursor-pointer`}>
+          <label className="block text-[10px] uppercase tracking-widest text-[#555555] mb-1">
+            Type {isEdit && <span className="text-[#444444] normal-case tracking-normal">(non modifiable)</span>}
+          </label>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as DataColumnType)}
+            disabled={isEdit}
+            className={`${field} cursor-pointer ${isEdit ? 'opacity-60 cursor-not-allowed' : ''}`}
+          >
             {COLUMN_TYPES.map((t) => (
               <option key={t} value={t}>{COLUMN_TYPE_META[t].label}</option>
             ))}
           </select>
         </div>
       </div>
+
+      {type === 'number' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-[#555555] mb-1">Format</label>
+            <select
+              value={numberFormat}
+              onChange={(e) => setNumberFormat(e.target.value as DataNumberFormat)}
+              className={`${field} cursor-pointer`}
+            >
+              {(Object.keys(NUMBER_FORMAT_META) as DataNumberFormat[]).map((f) => (
+                <option key={f} value={f}>{NUMBER_FORMAT_META[f].label}</option>
+              ))}
+            </select>
+          </div>
+          {numberFormat === 'rating' && (
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest text-[#555555] mb-1">Sur combien ? (max)</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={numberMax}
+                onChange={(e) => setNumberMax(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit() } }}
+                placeholder="5"
+                className={field}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {type === 'category' && (
         <div>
@@ -303,8 +392,8 @@ function AddColumnForm({ setId, onClose, onChanged }: { setId: string; onClose: 
       <div className="flex items-center justify-end gap-2">
         <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs text-[#888888] hover:text-white transition-colors">Annuler</button>
         <button onClick={submit} disabled={isPending} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[#00D76B] text-black hover:bg-[#00c560] transition-colors disabled:opacity-50">
-          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          Ajouter la colonne
+          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {isEdit ? 'Enregistrer' : 'Ajouter la colonne'}
         </button>
       </div>
     </div>
@@ -519,7 +608,8 @@ function renderCell(col: DataColumn, value: DataValue) {
   if (value == null || value === '') return <span className="text-[#3a3a3a]">—</span>
 
   if (col.type === 'number') {
-    const display = typeof value === 'number' ? value.toLocaleString('fr-FR') : String(value)
+    const num = typeof value === 'number' ? value : Number(value)
+    const display = Number.isFinite(num) ? formatNumberValue(col, num) : String(value)
     return <span className="tabular-nums text-[#dddddd] whitespace-nowrap">{display}</span>
   }
 

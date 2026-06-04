@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { deleteClient } from './actions'
@@ -8,9 +9,14 @@ import { deleteClient } from './actions'
 interface Props {
   clientId: string
   clientName: string
+  /** Si défini, redirige vers cette URL après suppression (ex. depuis la fiche). */
+  redirectTo?: string
+  /** Callback après suppression (ex. retrait optimiste d'une liste). */
+  onDeleted?: () => void
 }
 
-export default function DeleteClientButton({ clientId, clientName }: Props) {
+export default function DeleteClientButton({ clientId, clientName, redirectTo, onDeleted }: Props) {
+  const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -24,6 +30,8 @@ export default function DeleteClientButton({ clientId, clientName }: Props) {
       const result = await deleteClient(clientId)
       if (result.success) {
         toast.success(`${clientName} supprimé`)
+        onDeleted?.()
+        if (redirectTo) router.push(redirectTo)
       } else {
         toast.error(result.error)
         setConfirming(false)

@@ -25,6 +25,7 @@ import {
   ArrowRight,
   Check,
   FolderOpen,
+  Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils/dates'
@@ -41,7 +42,7 @@ import {
   setProspectFollowUp,
   convertProspectToClient,
 } from '@/app/founder/prospection/actions'
-import { addInteraction } from '@/app/clients/actions'
+import { addInteraction, deleteClient } from '@/app/clients/actions'
 
 // ── Contexte global du panneau latéral ──────────────────────────────────────
 
@@ -94,6 +95,7 @@ function ProspectDrawer({ openId, onClose }: { openId: string | null; onClose: (
   const [isPending, startTransition] = useTransition()
   const [note, setNote] = useState('')
   const [date, setDate] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const refetch = useCallback(async (id: string) => {
     const data = await getProspectDetail(id)
@@ -102,6 +104,7 @@ function ProspectDrawer({ openId, onClose }: { openId: string | null; onClose: (
   }, [])
 
   useEffect(() => {
+    setConfirmDelete(false)
     if (!openId) {
       setDetail(null)
       setNote('')
@@ -168,6 +171,17 @@ function ProspectDrawer({ openId, onClose }: { openId: string | null; onClose: (
       if (!res.success) { toast.error(res.error); return }
       toast.success('Prospect converti en client ✓')
       await refetch(client.id)
+      router.refresh()
+    })
+  }
+
+  function remove() {
+    if (!client) return
+    startTransition(async () => {
+      const res = await deleteClient(client.id)
+      if (!res.success) { toast.error(res.error); return }
+      toast.success(`${displayName} supprimé`)
+      onClose()
       router.refresh()
     })
   }
@@ -405,9 +419,9 @@ function ProspectDrawer({ openId, onClose }: { openId: string | null; onClose: (
           </div>
         )}
 
-        {/* Footer — lien fiche complète */}
+        {/* Footer — lien fiche complète + suppression */}
         {!loading && client && (
-          <div className="px-5 py-3 border-t border-[#1e1e1e] flex-shrink-0">
+          <div className="px-5 py-3 border-t border-[#1e1e1e] flex-shrink-0 flex items-center justify-between gap-3">
             <Link
               href={`/clients/${client.id}`}
               onClick={onClose}
@@ -416,6 +430,30 @@ function ProspectDrawer({ openId, onClose }: { openId: string | null; onClose: (
               Ouvrir la fiche complète
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
+
+            {confirmDelete ? (
+              <span className="inline-flex items-center gap-1.5">
+                <button
+                  onClick={remove}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 transition-colors disabled:opacity-50"
+                >
+                  {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                  Supprimer
+                </button>
+                <button onClick={() => setConfirmDelete(false)} className="px-2 py-1 rounded text-[11px] text-[#888888] hover:text-white transition-colors">
+                  Annuler
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="inline-flex items-center gap-1 text-xs text-[#555555] hover:text-[#EF4444] transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Supprimer
+              </button>
+            )}
           </div>
         )}
       </aside>

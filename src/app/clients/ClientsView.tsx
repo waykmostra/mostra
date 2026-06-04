@@ -19,11 +19,15 @@ import {
   Mail,
   FolderOpen,
   ChevronRight,
+  ChevronDown,
   Filter,
   Bell,
   GripVertical,
   X,
 } from 'lucide-react'
+
+// Nb de cartes visibles quand une colonne est repliée.
+const COLLAPSED_COUNT = 5
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils/dates'
 import { updateClientStatus } from './actions'
@@ -411,7 +415,11 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
                       Voir
                       <ChevronRight className="h-3 w-3" />
                     </Link>
-                    <DeleteClientButton clientId={client.id} clientName={displayName} />
+                    <DeleteClientButton
+                      clientId={client.id}
+                      clientName={displayName}
+                      onDeleted={() => setClients((prev) => prev.filter((c) => c.id !== client.id))}
+                    />
                   </div>
                 </div>
               )
@@ -439,6 +447,11 @@ function KanbanColumn({
   clients: ClientWithStats[]
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: status })
+  const [expanded, setExpanded] = useState(false)
+
+  const hasOverflow = clients.length > COLLAPSED_COUNT
+  const visible = expanded ? clients : clients.slice(0, COLLAPSED_COUNT)
+  const hiddenCount = clients.length - visible.length
 
   return (
     <div
@@ -448,22 +461,30 @@ function KanbanColumn({
         ${isOver ? 'border-white/30 bg-white/[0.02]' : 'border-[#1f1f1f] bg-[#0e0e0e]'}
       `}
     >
-      {/* Header */}
-      <div className="px-3 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+      {/* Header — cliquable pour replier / déplier */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="px-3 py-3 border-b border-[#1a1a1a] flex items-center justify-between hover:bg-white/[0.02] transition-colors text-left"
+      >
         <div className="flex items-center gap-2">
-          <span
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: color }}
-          />
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
           <span className="text-xs font-semibold text-white">{label}</span>
         </div>
-        <span
-          className="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded"
-          style={{ color, backgroundColor: bg }}
-        >
-          {clients.length}
-        </span>
-      </div>
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded"
+            style={{ color, backgroundColor: bg }}
+          >
+            {clients.length}
+          </span>
+          {hasOverflow && (
+            <ChevronDown
+              className={`h-3.5 w-3.5 text-[#666666] transition-transform ${expanded ? '' : '-rotate-90'}`}
+            />
+          )}
+        </div>
+      </button>
 
       {/* Cards */}
       <div className="p-2 flex flex-col gap-2 min-h-[120px]">
@@ -472,7 +493,20 @@ function KanbanColumn({
             Glissez un client ici
           </p>
         ) : (
-          clients.map((c) => <KanbanCard key={c.id} client={c} />)
+          <>
+            {visible.map((c) => (
+              <KanbanCard key={c.id} client={c} />
+            ))}
+            {!expanded && hiddenCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setExpanded(true)}
+                className="text-[11px] text-[#666666] hover:text-white py-1.5 rounded-md hover:bg-[#1a1a1a] transition-colors"
+              >
+                voir les {hiddenCount} autres
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

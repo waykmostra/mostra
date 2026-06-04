@@ -54,6 +54,7 @@ export type {
   Note,
   // Data : bases personnalisables (migration 024)
   DataColumnType,
+  DataNumberFormat,
   DataValue,
   DataSet,
   DataColumn,
