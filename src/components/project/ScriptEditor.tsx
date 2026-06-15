@@ -83,7 +83,7 @@ const DEFAULT_COLOR = '#F97316'
 function makeBlock(): ScriptBlock {
   return {
     _key: uid(),
-    content: { title: '', color: DEFAULT_COLOR, content: '', description: '' },
+    content: { title: '', color: DEFAULT_COLOR, content: '', description: '', vo: '' },
   }
 }
 
@@ -281,7 +281,7 @@ function SortableBlock({
     opacity: isDragging ? 0.4 : 1,
   }
 
-  const { color, title, content, description } = block.content
+  const { color, title, content, description, vo } = block.content
   const wordCount = countWords(content)
   const blockComments = allComments?.filter((c) => c.block_id === block._key) ?? []
   const unresolvedCount = blockComments.filter((c) => !c.is_resolved).length
@@ -386,22 +386,47 @@ function SortableBlock({
           )}
         </div>
 
-        {/* Content */}
-        <div className="px-4 pb-4">
-          {readOnly ? (
-            <p className="text-sm text-[#cccccc] whitespace-pre-wrap leading-relaxed mt-1">
-              {content || <span className="text-[#444444] italic">Aucun contenu</span>}
-            </p>
-          ) : (
-            <textarea
-              rows={4}
-              value={content}
-              onChange={(e) => onUpdate(block._key, { content: e.target.value })}
-              placeholder="Écrivez le texte de cette section du script…"
-              className="w-full bg-transparent text-sm text-white placeholder-[#444444] focus:outline-none resize-none leading-relaxed mt-1"
-              style={{ fieldSizing: 'content', minHeight: '80px' } as React.CSSProperties}
-            />
-          )}
+        {/* Content (texte) + VO (voix off) */}
+        <div className="px-4 pb-4 mt-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Texte du script */}
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-[#555555] mb-1">Texte</label>
+            {readOnly ? (
+              <p className="text-sm text-[#cccccc] whitespace-pre-wrap leading-relaxed">
+                {content || <span className="text-[#444444] italic">Aucun contenu</span>}
+              </p>
+            ) : (
+              <textarea
+                rows={4}
+                value={content}
+                onChange={(e) => onUpdate(block._key, { content: e.target.value })}
+                placeholder="Écrivez le texte de cette section du script…"
+                className="w-full bg-transparent text-sm text-white placeholder-[#444444] focus:outline-none resize-none leading-relaxed"
+                style={{ fieldSizing: 'content', minHeight: '80px' } as React.CSSProperties}
+              />
+            )}
+          </div>
+
+          {/* VO — voix off */}
+          <div className="md:border-l md:pl-3" style={{ borderColor: `${color}20` }}>
+            <label className="block text-[10px] uppercase tracking-widest mb-1" style={{ color }}>
+              VO · voix off
+            </label>
+            {readOnly ? (
+              <p className="text-sm text-[#cccccc] whitespace-pre-wrap leading-relaxed">
+                {vo || <span className="text-[#444444] italic">—</span>}
+              </p>
+            ) : (
+              <textarea
+                rows={4}
+                value={vo ?? ''}
+                onChange={(e) => onUpdate(block._key, { vo: e.target.value })}
+                placeholder="Texte exact de la voix off…"
+                className="w-full bg-transparent text-sm text-white placeholder-[#444444] focus:outline-none resize-none leading-relaxed"
+                style={{ fieldSizing: 'content', minHeight: '80px' } as React.CSSProperties}
+              />
+            )}
+          </div>
         </div>
 
         {/* Admin comment panel (when projectId is provided) */}

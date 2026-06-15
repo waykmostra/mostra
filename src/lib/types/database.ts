@@ -376,6 +376,8 @@ export interface ScriptSectionContent {
   color: string
   content: string
   description?: string
+  /** Texte de la voix off (narration) de la section. */
+  vo?: string
 }
 
 export interface MoodboardImageContent {

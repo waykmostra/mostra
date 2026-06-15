@@ -507,7 +507,7 @@ export default function ScriptViewerClient({
       {/* ── Script blocks ── */}
       <div className="space-y-4">
         {blocks.map((block) => {
-          const { color, title, description, content } = block.content
+          const { color, title, description, content, vo } = block.content
           const blockComments = comments.filter((c) => c.block_id === block.id)
           const unresolvedCount = blockComments.filter((c) => !c.is_resolved).length
 
@@ -552,14 +552,27 @@ export default function ScriptViewerClient({
                 </div>
               )}
 
-              {/* Content */}
-              <div className="px-4 py-4">
-                <p className="text-sm text-[#cccccc] whitespace-pre-wrap leading-relaxed">
-                  {content || (
-                    <span className="text-[#444444] italic">Aucun contenu</span>
-                  )}
-                </p>
-              </div>
+              {/* Content (+ VO si renseignée) */}
+              {vo ? (
+                <div className="px-4 py-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-[#555555] mb-1">Texte</label>
+                    <p className="text-sm text-[#cccccc] whitespace-pre-wrap leading-relaxed">
+                      {content || <span className="text-[#444444] italic">Aucun contenu</span>}
+                    </p>
+                  </div>
+                  <div className="md:border-l md:pl-3" style={{ borderColor: `${color}18` }}>
+                    <label className="block text-[10px] uppercase tracking-widest mb-1" style={{ color }}>VO · voix off</label>
+                    <p className="text-sm text-[#cccccc] whitespace-pre-wrap leading-relaxed">{vo}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="px-4 py-4">
+                  <p className="text-sm text-[#cccccc] whitespace-pre-wrap leading-relaxed">
+                    {content || <span className="text-[#444444] italic">Aucun contenu</span>}
+                  </p>
+                </div>
+              )}
 
               {/* Comments */}
               <BlockCommentSection
