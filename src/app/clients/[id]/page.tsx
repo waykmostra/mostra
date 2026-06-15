@@ -4,6 +4,7 @@ import { ChevronLeft, FolderOpen, ChevronRight, AlertCircle } from 'lucide-react
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth'
 import { getClientDetail } from '@/lib/supabase/queries'
+import { getClientAccess } from '@/lib/supabase/access'
 import { formatDate } from '@/lib/utils/dates'
 import DeleteClientButton from '../DeleteClientButton'
 import ClientHeader from './ClientHeader'
@@ -39,6 +40,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const hasAccount = !!client.profile_id
   const hasEmail = !!client.email
   const activeCount = projects.filter((p) => p.status === 'active').length
+  const access = await getClientAccess(client.profile_id ?? null)
 
   return (
     <div className="space-y-5 max-w-4xl">
@@ -62,6 +64,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
         clientId={client.id}
         hasAccount={hasAccount}
         hasEmail={hasEmail}
+        access={access}
       />
 
       {/* Interactions */}

@@ -1,8 +1,30 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { db } from '@/lib/supabase/helpers'
 import { requireAdmin } from '@/lib/auth'
+
+// ── Helpers lien set-password ────────────────────────────────────────────────
+
+/** Origine absolue du déploiement (robuste si NEXT_PUBLIC_APP_URL absent). */
+function appOrigin(): string {
+  const env = process.env.NEXT_PUBLIC_APP_URL
+  if (env) return env.replace(/\/+$/, '')
+  const h = headers()
+  const host = h.get('host')
+  const proto = h.get('x-forwarded-proto') ?? 'https'
+  return host ? `${proto}://${host}` : ''
+}
+
+function buildSetupUrl(token: string): string {
+  return `${appOrigin()}/setup-password/${token}`
+}
+
+/** Expiration du lien : 30 jours (au lieu du défaut SQL 7j). */
+function setupExpiresAt(): string {
+  return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+}
 import type {
   Client,
   ClientSource,
@@ -273,10 +295,10 @@ export async function createAccountForClient(clientId: string): Promise<CreateAc
     .update({ profile_id: userId, status: nextStatus })
     .eq('id', clientId)
 
-  // Générer le password_setup_token
+  // Générer le password_setup_token (expire dans 30 jours)
   const { data: tokenRow, error: tokenErr } = await db(admin)
     .from('password_setup_tokens')
-    .insert({ user_id: userId })
+    .insert({ user_id: userId, expires_at: setupExpiresAt() })
     .select('token')
     .single()
 
@@ -287,8 +309,7 @@ export async function createAccountForClient(clientId: string): Promise<CreateAc
     }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const setupUrl = `${appUrl}/setup-password/${(tokenRow as { token: string }).token}`
+  const setupUrl = buildSetupUrl((tokenRow as { token: string }).token)
 
   revalidatePath('/clients')
   revalidatePath(`/clients/${clientId}`)
@@ -325,10 +346,10 @@ export async function regenerateSetupLink(
     .eq('user_id', profileId)
     .is('used_at', null)
 
-  // Nouveau token
+  // Nouveau token (expire dans 30 jours)
   const { data: tokenRow, error: tokenErr } = await db(admin)
     .from('password_setup_tokens')
-    .insert({ user_id: profileId })
+    .insert({ user_id: profileId, expires_at: setupExpiresAt() })
     .select('token')
     .single()
 
@@ -336,8 +357,7 @@ export async function regenerateSetupLink(
     return { success: false, error: tokenErr?.message ?? 'Erreur génération token' }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const setupUrl = `${appUrl}/setup-password/${(tokenRow as { token: string }).token}`
+  const setupUrl = buildSetupUrl((tokenRow as { token: string }).token)
 
   revalidatePath(`/clients/${clientId}`)
   return { success: true, setupUrl }
