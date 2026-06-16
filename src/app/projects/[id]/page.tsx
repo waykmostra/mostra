@@ -7,6 +7,7 @@ import { getCurrentProfile } from '@/lib/auth'
 import { getProjectDetail, getAllClients, getAllAdmins } from '@/lib/supabase/queries'
 import StatusBadge from '@/components/shared/StatusBadge'
 import PhaseCard from '@/components/project/PhaseCard'
+import AddPhaseButton from '@/components/project/AddPhaseButton'
 import ProjectOverviewCard from '@/components/project/ProjectOverviewCard'
 import ProjectInfo from '@/components/project/ProjectInfo'
 import ProjectTimeline from '@/components/project/ProjectTimeline'
@@ -109,13 +110,13 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             {/* Pipeline */}
             <section>
               <h2 className="text-sm font-semibold text-white mb-3">Pipeline</h2>
-              {phases.length === 0 ? (
-                <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
-                  <p className="text-xs text-[#444444] italic">Aucune phase configurée.</p>
-                </div>
-              ) : (
-                <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
-                  {phases.map((phase, i) => {
+              <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
+                {phases.length === 0 ? (
+                  <p className="text-xs text-[#444444] italic mb-1">
+                    Aucune phase. Ajoute une première étape ci-dessous.
+                  </p>
+                ) : (
+                  phases.map((phase, i) => {
                     const prev = phases[i - 1]
                     const canStart =
                       i === 0 || prev?.status === 'completed' || prev?.status === 'approved'
@@ -132,9 +133,11 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                         userRole={userRole}
                       />
                     )
-                  })}
-                </div>
-              )}
+                  })
+                )}
+
+                <AddPhaseButton projectId={project.id} />
+              </div>
             </section>
 
             {/* Commentaires */}

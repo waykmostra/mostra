@@ -20,6 +20,10 @@ import {
   ChevronRight,
   Loader2,
   X,
+  Trash2,
+  ClipboardList,
+  Image as ImageIcon,
+  LayoutGrid,
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -27,7 +31,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import FileUpload from '@/components/project/FileUpload'
 import FileVersionHistory from '@/components/project/FileVersionHistory'
 import { formatDate } from '@/lib/utils/dates'
-import { startPhase, sendToReview, completePhase, unapprovePhase } from '@/app/projects/phase-actions'
+import { startPhase, sendToReview, completePhase, unapprovePhase, deleteProjectPhase } from '@/app/projects/phase-actions'
 import {
   startSubPhase,
   sendSubPhaseToReview,
@@ -45,6 +49,11 @@ const PHASE_ICONS: Record<string, LucideIcon> = {
   audio:     Music,
   animation: Film,
   rendu:     MonitorPlay,
+  // Étapes composables (migration 027 / part C)
+  formulaire: ClipboardList,
+  style:      ImageIcon,
+  storyboard: LayoutGrid,
+  video:      Film,
   // Ancien pipeline (rétro-compat)
   script: FileText,
   render: MonitorPlay,
@@ -84,6 +93,8 @@ export default function PhaseCard({
       phase.status === 'in_review' ||
       subPhases.some((sp) => sp.status !== 'pending'),
   )
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const isAdmin = userRole === 'admin'
   const canAct = userRole === 'admin'
@@ -102,6 +113,16 @@ export default function PhaseCard({
     setLoading(null)
     setConfirmUnapprovePhase(false)
     if (!result.success) toast.error(result.error)
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    const result = await deleteProjectPhase(phase.id)
+    setDeleting(false)
+    if (!result.success) {
+      toast.error(result.error)
+      setConfirmDelete(false)
+    }
   }
 
   return (
@@ -171,7 +192,40 @@ export default function PhaseCard({
                 </p>
               )}
             </div>
-            <StatusBadge status={phase.status} className="flex-shrink-0" />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <StatusBadge status={phase.status} />
+              {isAdmin && (
+                confirmDelete ? (
+                  <span className="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="px-2 py-1 rounded text-[10px] font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                    >
+                      {deleting ? '…' : 'Supprimer l’étape'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="px-2 py-1 rounded text-[10px] text-[#888888] hover:text-white transition-colors"
+                    >
+                      Annuler
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    title="Supprimer cette étape"
+                    aria-label="Supprimer cette étape"
+                    className="w-6 h-6 flex items-center justify-center rounded-md text-[#555555] hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )
+              )}
+            </div>
           </div>
 
           {/* ── Sous-phases (si présentes et développées) ── */}
