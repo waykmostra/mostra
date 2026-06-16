@@ -20,6 +20,7 @@ export type {
   ProjectPhase,
   SubPhase,
   PhaseBlock,
+  Script,
   FormTemplate,
   PhaseFile,
   Comment,

@@ -4,9 +4,12 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
 import { requireAdmin } from '@/lib/auth'
-import type { ScriptSectionContent, SubPhase, ProjectPhase } from '@/lib/types'
+import type { ScriptSectionContent, SubPhase, ProjectPhase, Script } from '@/lib/types'
 
 export type ScriptActionResult = { success: true } | { success: false; error: string }
+export type CreateScriptResult =
+  | { success: true; scriptId: string }
+  | { success: false; error: string }
 
 export interface ScriptBlock {
   id: string
@@ -47,22 +50,178 @@ async function getSubPhaseParents(
   return { sp, phase }
 }
 
+async function revalidateSubPhase(
+  supabase: ReturnType<typeof createClient>,
+  subPhaseId: string,
+) {
+  const parents = await getSubPhaseParents(supabase, subPhaseId)
+  if (parents) {
+    revalidatePath(`/projects/${parents.phase.project_id}`)
+    revalidatePath(
+      `/projects/${parents.phase.project_id}/phases/${parents.phase.id}/sub/${subPhaseId}`,
+    )
+  }
+}
+
+async function getScriptSubPhaseId(
+  supabase: ReturnType<typeof createClient>,
+  scriptId: string,
+): Promise<string | null> {
+  const { data } = await supabase.from('scripts').select('sub_phase_id').eq('id', scriptId).maybeSingle()
+  return (data as { sub_phase_id: string } | null)?.sub_phase_id ?? null
+}
+
+// ── Lecture des scripts d'une sous-phase ──────────────────────────
+
+export async function getScripts(subPhaseId: string): Promise<Script[]> {
+  const ctx = await getCreativeContext()
+  if (!ctx) return []
+  const { data } = await ctx.supabase
+    .from('scripts')
+    .select('*')
+    .eq('sub_phase_id', subPhaseId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  return (data as Script[] | null) ?? []
+}
+
+// ── CRUD scripts ──────────────────────────────────────────────────
+
+export async function createScript(
+  subPhaseId: string,
+  title?: string,
+  description?: string,
+): Promise<CreateScriptResult> {
+  const ctx = await getCreativeContext()
+  if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
+  const { supabase } = ctx
+
+  const { count } = await db(supabase)
+    .from('scripts')
+    .select('id', { count: 'exact', head: true })
+    .eq('sub_phase_id', subPhaseId)
+
+  const isFirst = (count ?? 0) === 0
+
+  const { data, error } = await db(supabase)
+    .from('scripts')
+    .insert({
+      sub_phase_id: subPhaseId,
+      title: title?.trim() || 'Nouveau script',
+      description: description?.trim() || null,
+      is_selected: isFirst, // le 1er script est la version client par défaut
+      sort_order: count ?? 0,
+    })
+    .select('id')
+    .single()
+
+  if (error || !data) return { success: false, error: error?.message ?? 'Erreur création script' }
+
+  await revalidateSubPhase(supabase, subPhaseId)
+  return { success: true, scriptId: data.id as string }
+}
+
+export async function updateScript(
+  scriptId: string,
+  patch: { title?: string; description?: string },
+): Promise<ScriptActionResult> {
+  const ctx = await getCreativeContext()
+  if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
+  const { supabase } = ctx
+
+  const update: Record<string, unknown> = {}
+  if (patch.title !== undefined) {
+    const clean = patch.title.trim()
+    if (!clean) return { success: false, error: 'Le titre est requis.' }
+    update.title = clean
+  }
+  if (patch.description !== undefined) update.description = patch.description.trim() || null
+  if (Object.keys(update).length === 0) return { success: true }
+
+  const { error } = await db(supabase).from('scripts').update(update).eq('id', scriptId)
+  if (error) return { success: false, error: error.message }
+
+  const subPhaseId = await getScriptSubPhaseId(supabase, scriptId)
+  if (subPhaseId) await revalidateSubPhase(supabase, subPhaseId)
+  return { success: true }
+}
+
+export async function deleteScript(scriptId: string): Promise<ScriptActionResult> {
+  const ctx = await getCreativeContext()
+  if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
+  const { supabase } = ctx
+
+  const { data: rawScript } = await supabase
+    .from('scripts')
+    .select('id, sub_phase_id, is_selected')
+    .eq('id', scriptId)
+    .maybeSingle()
+  const script = rawScript as Pick<Script, 'id' | 'sub_phase_id' | 'is_selected'> | null
+  if (!script) return { success: false, error: 'Script introuvable' }
+
+  const { error } = await db(supabase).from('scripts').delete().eq('id', scriptId)
+  if (error) return { success: false, error: error.message }
+
+  // Si on a supprimé la version client, on en re-sélectionne une (la 1re restante).
+  if (script.is_selected) {
+    const { data: rawRest } = await supabase
+      .from('scripts')
+      .select('id')
+      .eq('sub_phase_id', script.sub_phase_id)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .limit(1)
+    const rest = (rawRest as { id: string }[] | null) ?? []
+    if (rest[0]) {
+      await db(supabase).from('scripts').update({ is_selected: true }).eq('id', rest[0].id)
+    }
+  }
+
+  await revalidateSubPhase(supabase, script.sub_phase_id)
+  return { success: true }
+}
+
+/** Marque un script comme la « version client » (un seul sélectionné par sous-phase). */
+export async function setSelectedScript(scriptId: string): Promise<ScriptActionResult> {
+  const ctx = await getCreativeContext()
+  if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
+  const { supabase } = ctx
+
+  const subPhaseId = await getScriptSubPhaseId(supabase, scriptId)
+  if (!subPhaseId) return { success: false, error: 'Script introuvable' }
+
+  await db(supabase).from('scripts').update({ is_selected: false }).eq('sub_phase_id', subPhaseId)
+  const { error } = await db(supabase).from('scripts').update({ is_selected: true }).eq('id', scriptId)
+  if (error) return { success: false, error: error.message }
+
+  await revalidateSubPhase(supabase, subPhaseId)
+  return { success: true }
+}
+
 // ── saveScriptBlocks ──────────────────────────────────────────────
-// Remplace tous les blocs script_section de la sous-phase par la nouvelle liste
+// Remplace tous les blocs script_section d'UN script par la nouvelle liste.
 
 export async function saveScriptBlocks(
-  subPhaseId: string,
+  scriptId: string,
   blocks: { id?: string; content: ScriptSectionContent; sort_order: number }[],
 ): Promise<ScriptActionResult> {
   const ctx = await getCreativeContext()
   if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
   const { supabase } = ctx
 
-  // Delete existing
+  const { data: rawScript } = await supabase
+    .from('scripts')
+    .select('id, sub_phase_id')
+    .eq('id', scriptId)
+    .maybeSingle()
+  const script = rawScript as Pick<Script, 'id' | 'sub_phase_id'> | null
+  if (!script) return { success: false, error: 'Script introuvable' }
+
+  // Delete existing blocks for this script
   const { error: delErr } = await db(supabase)
     .from('phase_blocks')
     .delete()
-    .eq('sub_phase_id', subPhaseId)
+    .eq('script_id', scriptId)
     .eq('type', 'script_section')
 
   if (delErr) return { success: false, error: delErr.message }
@@ -70,8 +229,9 @@ export async function saveScriptBlocks(
   // Insert new list
   if (blocks.length > 0) {
     const rows = blocks.map((b, i) => ({
-      sub_phase_id: subPhaseId,
+      sub_phase_id: script.sub_phase_id,
       phase_id: null,
+      script_id: scriptId,
       type: 'script_section',
       content: b.content,
       sort_order: i + 1,
@@ -83,13 +243,6 @@ export async function saveScriptBlocks(
     if (insErr) return { success: false, error: insErr.message }
   }
 
-  const parents = await getSubPhaseParents(supabase, subPhaseId)
-  if (parents) {
-    revalidatePath(`/projects/${parents.phase.project_id}`)
-    revalidatePath(
-      `/projects/${parents.phase.project_id}/phases/${parents.phase.id}/sub/${subPhaseId}`,
-    )
-  }
-
+  await revalidateSubPhase(supabase, script.sub_phase_id)
   return { success: true }
 }

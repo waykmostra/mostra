@@ -10,6 +10,7 @@ import RevisionAlert from '@/components/project/RevisionAlert'
 import SubPhaseActions from '@/components/project/SubPhaseActions'
 import FormSubPhaseAdmin from '@/components/project/FormSubPhaseAdmin'
 import ScriptEditor from '@/components/project/ScriptEditor'
+import ScriptsGrid from '@/components/project/ScriptsGrid'
 import MoodboardEditor from '@/components/project/MoodboardEditor'
 import StoryboardEditor from '@/components/project/StoryboardEditor'
 import DesignEditor from '@/components/project/DesignEditor'
@@ -18,11 +19,12 @@ import { getMoodboardBlocks, type MoodboardBlock } from '@/app/projects/moodboar
 import { getStoryboardShots, type StoryboardShot } from '@/app/projects/storyboard-actions'
 import { getDesignFiles, type DesignFile } from '@/app/projects/design-actions'
 import { getAudioTracks, type AudioTrack } from '@/app/projects/audio-actions'
-import type { Project, ProjectPhase, SubPhase, FormTemplate, FormQuestionContent, ScriptSectionContent, UserRole, Profile } from '@/lib/types'
+import type { Project, ProjectPhase, SubPhase, FormTemplate, FormQuestionContent, ScriptSectionContent, UserRole, Profile, Script } from '@/lib/types'
 import type { BlockComment } from '@/lib/hooks/useRealtimeBlockComments'
 
 interface SubPhasePageProps {
   params: { id: string; phaseId: string; subPhaseId: string }
+  searchParams?: { script?: string }
 }
 
 const FORM_SLUGS = ['formulaire', 'form']
@@ -82,7 +84,7 @@ export async function generateMetadata({ params }: SubPhasePageProps): Promise<M
   return { title: `${name} — MOSTRA` }
 }
 
-export default async function SubPhasePage({ params }: SubPhasePageProps) {
+export default async function SubPhasePage({ params, searchParams }: SubPhasePageProps) {
   const profile = await getCurrentProfile()
   if (!profile) redirect('/login')
   if (!profile.is_admin) redirect('/client/dashboard')
@@ -188,55 +190,82 @@ export default async function SubPhasePage({ params }: SubPhasePageProps) {
     formTemplates = (rawTemplates ?? []) as FormTemplate[]
   }
 
-  // Data spécifique script
+  // Data spécifique script (multi-scripts, migration 027)
   let scriptBlocks: { id: string; content: ScriptSectionContent; sort_order: number }[] = []
   let scriptComments: BlockComment[] = []
+  let scripts: Script[] = []
+  let activeScriptId: string | null = null
+  const scriptSectionCounts: Record<string, number> = {}
 
   if (isScriptSubPhase) {
-    const { data: rawScriptBlocks } = await db(supabase)
-      .from('phase_blocks')
-      .select('id, content, sort_order')
-      .eq('sub_phase_id', params.subPhaseId)
-      .eq('type', 'script_section')
-      .order('sort_order', { ascending: true })
-    scriptBlocks = (rawScriptBlocks ?? []) as { id: string; content: ScriptSectionContent; sort_order: number }[]
-
-    // Fetch comments for this sub-phase
-    const { data: rawComments } = await supabase
-      .from('comments')
+    const { data: rawScripts } = await supabase
+      .from('scripts')
       .select('*')
       .eq('sub_phase_id', params.subPhaseId)
+      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })
+    scripts = (rawScripts as Script[] | null) ?? []
 
-    const rawCommentList = (rawComments ?? []) as {
-      id: string
-      block_id: string | null
-      sub_phase_id: string | null
-      phase_id: string | null
-      user_id: string
-      content: string
-      is_resolved: boolean
-      created_at: string
-      updated_at: string
-    }[]
-
-    // Fetch author profiles
-    const authorIds = [...new Set(rawCommentList.map((c) => c.user_id))]
-    const authorMap = new Map<string, Pick<Profile, 'id' | 'full_name' | 'avatar_url'>>()
-    if (authorIds.length > 0) {
-      const { data: rawAuthors } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url')
-        .in('id', authorIds)
-      ;(rawAuthors as Pick<Profile, 'id' | 'full_name' | 'avatar_url'>[] | null)?.forEach((p) =>
-        authorMap.set(p.id, p),
-      )
+    // Compte des sections par script (pour la grille)
+    const { data: rawCounts } = await db(supabase)
+      .from('phase_blocks')
+      .select('script_id')
+      .eq('sub_phase_id', params.subPhaseId)
+      .eq('type', 'script_section')
+    for (const row of (rawCounts as { script_id: string | null }[] | null) ?? []) {
+      if (row.script_id) scriptSectionCounts[row.script_id] = (scriptSectionCounts[row.script_id] ?? 0) + 1
     }
 
-    scriptComments = rawCommentList.map((c) => ({
-      ...c,
-      author: authorMap.get(c.user_id) ?? null,
-    }))
+    const requested = searchParams?.script
+    if (requested && scripts.some((s) => s.id === requested)) activeScriptId = requested
+    else if (scripts.length === 1) activeScriptId = scripts[0].id
+
+    if (activeScriptId) {
+      const { data: rawScriptBlocks } = await db(supabase)
+        .from('phase_blocks')
+        .select('id, content, sort_order')
+        .eq('script_id', activeScriptId)
+        .eq('type', 'script_section')
+        .order('sort_order', { ascending: true })
+      scriptBlocks = (rawScriptBlocks ?? []) as { id: string; content: ScriptSectionContent; sort_order: number }[]
+
+      // Fetch comments for this sub-phase
+      const { data: rawComments } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('sub_phase_id', params.subPhaseId)
+        .order('created_at', { ascending: true })
+
+      const rawCommentList = (rawComments ?? []) as {
+        id: string
+        block_id: string | null
+        sub_phase_id: string | null
+        phase_id: string | null
+        user_id: string
+        content: string
+        is_resolved: boolean
+        created_at: string
+        updated_at: string
+      }[]
+
+      // Fetch author profiles
+      const authorIds = [...new Set(rawCommentList.map((c) => c.user_id))]
+      const authorMap = new Map<string, Pick<Profile, 'id' | 'full_name' | 'avatar_url'>>()
+      if (authorIds.length > 0) {
+        const { data: rawAuthors } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', authorIds)
+        ;(rawAuthors as Pick<Profile, 'id' | 'full_name' | 'avatar_url'>[] | null)?.forEach((p) =>
+          authorMap.set(p.id, p),
+        )
+      }
+
+      scriptComments = rawCommentList.map((c) => ({
+        ...c,
+        author: authorMap.get(c.user_id) ?? null,
+      }))
+    }
   }
 
   // Data spécifique storyboard
@@ -461,18 +490,39 @@ export default async function SubPhasePage({ params }: SubPhasePageProps) {
           />
         )}
 
-        {/* Éditeur de script */}
+        {/* Script(s) — grille si plusieurs, éditeur si 1 sélectionné */}
         {isScriptSubPhase && (
-          <ScriptEditor
-            subPhaseId={subPhase.id}
-            subPhaseStatus={subPhase.status}
-            userRole={userRole}
-            canStart={canStart}
-            initialBlocks={scriptBlocks}
-            projectId={project.id}
-            phaseId={phase.id}
-            initialComments={scriptComments}
-          />
+          activeScriptId ? (
+            <div className="space-y-4">
+              {scripts.length > 1 && (
+                <Link
+                  href={`/projects/${project.id}/phases/${phase.id}/sub/${subPhase.id}`}
+                  className="inline-flex items-center gap-1.5 text-xs text-[#666666] hover:text-white transition-colors"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Tous les scripts
+                </Link>
+              )}
+              <ScriptEditor
+                scriptId={activeScriptId}
+                subPhaseId={subPhase.id}
+                subPhaseStatus={subPhase.status}
+                userRole={userRole}
+                canStart={canStart}
+                initialBlocks={scriptBlocks}
+                projectId={project.id}
+                phaseId={phase.id}
+                initialComments={scriptComments}
+              />
+            </div>
+          ) : (
+            <ScriptsGrid
+              subPhaseId={subPhase.id}
+              basePath={`/projects/${project.id}/phases/${phase.id}/sub/${subPhase.id}`}
+              scripts={scripts}
+              sectionCounts={scriptSectionCounts}
+            />
+          )
         )}
 
         {/* Éditeur de storyboard */}

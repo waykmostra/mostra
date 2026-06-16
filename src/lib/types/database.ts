@@ -230,10 +230,24 @@ export interface SubPhase {
   updated_at: string
 }
 
+/** Un script (variante) au sein d'une sous-phase « Script » (migration 027). */
+export interface Script {
+  id: string
+  sub_phase_id: string
+  title: string
+  description: string | null
+  is_selected: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
 export interface PhaseBlock {
   id: string
   sub_phase_id: string | null
   phase_id: string | null
+  /** Script auquel appartient le bloc (sections de script multi-scripts). */
+  script_id: string | null
   type: BlockType
   content: Json
   sort_order: number
@@ -833,6 +847,11 @@ export interface Database {
         Row:    PhaseBlock
         Insert: PhaseBlockInsert
         Update: PhaseBlockUpdate
+      }
+      scripts: {
+        Row:    Script
+        Insert: Partial<Script>
+        Update: Partial<Script>
       }
       form_templates: {
         Row:    FormTemplate

@@ -435,16 +435,29 @@ export default async function ClientSubPhasePage({ params }: ClientSubPhasePageP
   }
 
   // ── Script path ────────────────────────────────────────────────
-
-  const { data: rawBlocks } = await admin
-    .from('phase_blocks')
-    .select('id, content, sort_order')
+  // Multi-scripts (027) : le client voit la « version client » (is_selected),
+  // sinon le 1er script de la sous-phase.
+  const { data: rawClientScripts } = await admin
+    .from('scripts')
+    .select('id')
     .eq('sub_phase_id', params.subPhaseId)
-    .eq('type', 'script_section')
+    .order('is_selected', { ascending: false })
     .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+    .limit(1)
+  const clientScriptId = (rawClientScripts as { id: string }[] | null)?.[0]?.id ?? null
 
-  const scriptBlocks =
-    (rawBlocks as { id: string; content: ScriptSectionContent; sort_order: number }[] | null) ?? []
+  let scriptBlocks: { id: string; content: ScriptSectionContent; sort_order: number }[] = []
+  if (clientScriptId) {
+    const { data: rawBlocks } = await admin
+      .from('phase_blocks')
+      .select('id, content, sort_order')
+      .eq('script_id', clientScriptId)
+      .eq('type', 'script_section')
+      .order('sort_order', { ascending: true })
+    scriptBlocks =
+      (rawBlocks as { id: string; content: ScriptSectionContent; sort_order: number }[] | null) ?? []
+  }
 
   // Fetch comments for this sub_phase
   const { data: rawComments } = await admin

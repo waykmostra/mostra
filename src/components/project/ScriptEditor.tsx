@@ -56,6 +56,7 @@ interface ScriptBlock {
 }
 
 interface ScriptEditorProps {
+  scriptId: string
   subPhaseId: string
   subPhaseStatus: PhaseStatus
   userRole: UserRole
@@ -497,6 +498,7 @@ function ScriptSummary({ blocks }: { blocks: ScriptBlock[] }) {
 // ── ScriptEditor ──────────────────────────────────────────────────
 
 export default function ScriptEditor({
+  scriptId,
   subPhaseId,
   subPhaseStatus,
   userRole,
@@ -559,7 +561,7 @@ export default function ScriptEditor({
   async function handleSave() {
     setSaving(true)
     const payload = blocks.map((b, i) => ({ content: b.content, sort_order: i + 1 }))
-    const result = await saveScriptBlocks(subPhaseId, payload)
+    const result = await saveScriptBlocks(scriptId, payload)
     setSaving(false)
     if (!result.success) toast.error((result as { error: string }).error)
     else toast.success('Script sauvegardé')
