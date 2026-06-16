@@ -244,6 +244,76 @@ export async function approveScriptSubPhase(
   return { success: true }
 }
 
+// ── selectScript ──────────────────────────────────────────────────
+// Le client choisit un script parmi plusieurs : marque is_selected et
+// approuve la sous-phase (le script choisi devient la version finale).
+
+export async function selectScript(
+  token: string,
+  scriptId: string,
+): Promise<ScriptClientActionResult> {
+  const admin = createAdminClient()
+  const project = await verifyToken(token)
+  if (!project) return { success: false, error: 'Token invalide' }
+
+  const { data: rawScript } = await admin
+    .from('scripts')
+    .select('id, sub_phase_id')
+    .eq('id', scriptId)
+    .maybeSingle()
+  const script = rawScript as { id: string; sub_phase_id: string } | null
+  if (!script) return { success: false, error: 'Script introuvable' }
+
+  const ownership = await verifySubPhaseOwnership(admin, script.sub_phase_id, project.id)
+  if (!ownership) return { success: false, error: 'Accès refusé' }
+  const { subPhase, phase } = ownership
+
+  if (subPhase.status !== 'in_review') {
+    return { success: false, error: 'Le script doit être en review pour être choisi.' }
+  }
+
+  // Marque ce script comme choisi (un seul par sous-phase).
+  await db(admin).from('scripts').update({ is_selected: false }).eq('sub_phase_id', script.sub_phase_id)
+  await db(admin).from('scripts').update({ is_selected: true }).eq('id', scriptId)
+
+  // Approuve la sous-phase (le choix vaut validation).
+  const { error } = await db(admin)
+    .from('sub_phases')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', script.sub_phase_id)
+  if (error) return { success: false, error: error.message }
+
+  // Auto-complete la phase parente si toutes les sous-phases sont terminées.
+  const { data: rawAllSps } = await admin
+    .from('sub_phases')
+    .select('id, status')
+    .eq('phase_id', phase.id)
+  const allSps = (rawAllSps as Pick<SubPhase, 'id' | 'status'>[] | null) ?? []
+  const updatedSps = allSps.map((s) =>
+    s.id === script.sub_phase_id ? { ...s, status: 'completed' as const } : s,
+  )
+  if (updatedSps.every((s) => s.status === 'completed' || s.status === 'approved')) {
+    await db(admin)
+      .from('project_phases')
+      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .eq('id', phase.id)
+  }
+
+  const clientUserId = await resolveClientUserId(admin, project)
+  if (clientUserId) {
+    await db(admin).from('activity_logs').insert({
+      project_id: project.id,
+      user_id: clientUserId,
+      action: 'phase_approved',
+      details: { phase_name: 'Script choisi par le client' },
+    })
+  }
+
+  revalidatePath(`/client/${token}`)
+  revalidatePath(`/client/${token}/phases/${phase.id}/sub/${script.sub_phase_id}`)
+  return { success: true }
+}
+
 // ── requestScriptRevisions ────────────────────────────────────────
 
 export async function requestScriptRevisions(

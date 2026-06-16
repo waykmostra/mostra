@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import {
   AlertCircle,
+  ArrowLeft,
   ChevronRight,
   Hash,
   LogIn,
@@ -24,6 +25,7 @@ import {
   requestScriptRevisions,
   resolveBlockComment,
   fetchSubPhaseComments,
+  selectScript,
 } from '@/app/client/script-actions'
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -43,6 +45,16 @@ interface ScriptViewerClientProps {
   initialComments: BlockComment[]
   clientId: string | null
   isAuthenticated: boolean
+  /** Multi-scripts : id du script affiché. */
+  scriptId?: string
+  /** true s'il y a plusieurs scripts (le client choisit). */
+  multiScript?: boolean
+  /** true si ce script est celui choisi par le client. */
+  isSelected?: boolean
+  /** Lien retour vers la grille des scripts (mode multi). */
+  backHref?: string
+  /** Titre du script (mode multi). */
+  scriptTitle?: string
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -293,6 +305,11 @@ export default function ScriptViewerClient({
   initialComments,
   clientId,
   isAuthenticated,
+  scriptId,
+  multiScript = false,
+  isSelected = false,
+  backHref,
+  scriptTitle,
 }: ScriptViewerClientProps) {
   // Local state — no realtime (anon client can't subscribe to Supabase postgres_changes).
   // We use optimistic updates for own actions + polling every 10s for admin comments.
@@ -347,14 +364,20 @@ export default function ScriptViewerClient({
   }
 
   async function handleApprove() {
-    if (!confirm('Approuver définitivement ce script ?')) return
+    const msg = multiScript
+      ? 'Choisir ce script comme version finale ? Cela le valide.'
+      : 'Approuver définitivement ce script ?'
+    if (!confirm(msg)) return
     setApproving(true)
-    const result = await approveScriptSubPhase(token, subPhaseId)
+    const result =
+      multiScript && scriptId
+        ? await selectScript(token, scriptId)
+        : await approveScriptSubPhase(token, subPhaseId)
     setApproving(false)
     if (!result.success) {
       toast.error((result as { error: string }).error)
     } else {
-      toast.success('Script approuvé — merci !')
+      toast.success(multiScript ? 'Script choisi ✓' : 'Script approuvé — merci !')
       setApproved(true)
     }
   }
@@ -378,6 +401,27 @@ export default function ScriptViewerClient({
 
   return (
     <div className="space-y-4">
+
+      {/* ── En-tête multi-scripts : retour + titre ── */}
+      {multiScript && backHref && (
+        <div className="flex items-center justify-between gap-2">
+          <Link
+            href={backHref}
+            className="inline-flex items-center gap-1.5 text-xs text-[#666666] hover:text-white transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Tous les scripts
+          </Link>
+          <div className="flex items-center gap-2 min-w-0">
+            {scriptTitle && <span className="text-xs font-medium text-white truncate">{scriptTitle}</span>}
+            {isSelected && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#00D76B] flex-shrink-0">
+                <CheckCircle className="h-3 w-3" /> Choisi
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Auth gate (anonymous viewer with action available) ── */}
       {!isApproved && status === 'in_review' && !isAuthenticated && (
@@ -425,7 +469,7 @@ export default function ScriptViewerClient({
                 ) : (
                   <CheckCircle className="h-4 w-4" />
                 )}
-                Approuver le script
+                {multiScript ? 'Choisir ce script' : 'Approuver le script'}
               </button>
               <button
                 type="button"

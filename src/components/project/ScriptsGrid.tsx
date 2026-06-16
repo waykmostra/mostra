@@ -28,7 +28,7 @@ export default function ScriptsGrid({ subPhaseId, basePath, scripts, sectionCoun
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-[#888888]">
-          {scripts.length} script{scripts.length !== 1 ? 's' : ''} · le client verra la « version client »
+          {scripts.length} script{scripts.length !== 1 ? 's' : ''} · le client les voit tous et en choisit un
         </p>
         <button
           onClick={() => setCreating((v) => !v)}
@@ -223,12 +223,12 @@ function ScriptCard({
         {script.is_selected ? (
           <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#00D76B]">
             <Star className="h-3 w-3 fill-[#00D76B]" />
-            Version client
+            Choisi par le client
           </span>
         ) : (
           <button onClick={makeSelected} disabled={isPending} className="inline-flex items-center gap-1 text-[11px] text-[#666666] hover:text-white transition-colors disabled:opacity-50">
             <Star className="h-3 w-3" />
-            Définir version client
+            Marquer comme choisi
           </button>
         )}
         <Link href={`${basePath}?script=${script.id}`} className="inline-flex items-center gap-1 text-[11px] text-[#888888] hover:text-white transition-colors">

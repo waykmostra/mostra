@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/lib/auth'
 import FormSubPhaseClient from '@/components/client/FormSubPhaseClient'
 import ScriptViewerClient from '@/components/client/ScriptViewerClient'
+import ClientScriptsGrid from '@/components/client/ClientScriptsGrid'
 import MoodboardViewerClient from '@/components/client/MoodboardViewerClient'
 import StoryboardViewerClient from '@/components/client/StoryboardViewerClient'
 import DesignViewerClient from '@/components/client/DesignViewerClient'
@@ -14,6 +15,7 @@ import type { BlockComment } from '@/lib/hooks/useRealtimeBlockComments'
 
 interface ClientSubPhasePageProps {
   params: { token: string; phaseId: string; subPhaseId: string }
+  searchParams?: { s?: string }
 }
 
 const FORM_SLUGS = ['formulaire', 'form']
@@ -23,7 +25,7 @@ const STORYBOARD_SLUGS = ['storyboard']
 const DESIGN_SLUGS = ['design']
 const AUDIO_SLUGS = ['vo', 'musique', 'voix-off']
 
-export default async function ClientSubPhasePage({ params }: ClientSubPhasePageProps) {
+export default async function ClientSubPhasePage({ params, searchParams }: ClientSubPhasePageProps) {
   const admin = createAdminClient()
 
   // 0. Check authentication (anon allowed in read-only, but mutations require login)
@@ -434,25 +436,58 @@ export default async function ClientSubPhasePage({ params }: ClientSubPhasePageP
     )
   }
 
-  // ── Script path ────────────────────────────────────────────────
-  // Multi-scripts (027) : le client voit la « version client » (is_selected),
-  // sinon le 1er script de la sous-phase.
-  const { data: rawClientScripts } = await admin
+  // ── Script path (multi-scripts, 027) ───────────────────────────
+  // Le client voit TOUS les scripts, navigue, et en choisit un.
+  const { data: rawAllScripts } = await admin
     .from('scripts')
-    .select('id')
+    .select('id, title, description, is_selected, sort_order, created_at')
     .eq('sub_phase_id', params.subPhaseId)
-    .order('is_selected', { ascending: false })
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
-    .limit(1)
-  const clientScriptId = (rawClientScripts as { id: string }[] | null)?.[0]?.id ?? null
+  const allScripts =
+    (rawAllScripts as { id: string; title: string; description: string | null; is_selected: boolean }[] | null) ?? []
 
+  const multiScript = allScripts.length >= 2
+  const requestedS = typeof searchParams?.s === 'string' ? searchParams.s : null
+
+  let viewScriptId: string | null = null
+  if (requestedS && allScripts.some((s) => s.id === requestedS)) viewScriptId = requestedS
+  else if (!multiScript) viewScriptId = allScripts[0]?.id ?? null
+
+  const scriptBasePath = `/client/${params.token}/phases/${phase.id}/sub/${subPhase.id}`
+
+  // Grille : plusieurs scripts, aucun ouvert → le client choisit lequel consulter.
+  if (multiScript && !viewScriptId) {
+    const { data: rawCounts } = await admin
+      .from('phase_blocks')
+      .select('script_id')
+      .eq('sub_phase_id', params.subPhaseId)
+      .eq('type', 'script_section')
+    const counts: Record<string, number> = {}
+    for (const r of (rawCounts as { script_id: string | null }[] | null) ?? []) {
+      if (r.script_id) counts[r.script_id] = (counts[r.script_id] ?? 0) + 1
+    }
+    return (
+      <PageShell
+        token={params.token}
+        projectName={project.name}
+        phaseName={phase.name}
+        subPhaseName={subPhase.name}
+        subtitle="Plusieurs propositions de script — parcourez-les et choisissez votre préférée."
+        wide
+      >
+        <ClientScriptsGrid scripts={allScripts} sectionCounts={counts} basePath={scriptBasePath} />
+      </PageShell>
+    )
+  }
+
+  // Vue d'un script
   let scriptBlocks: { id: string; content: ScriptSectionContent; sort_order: number }[] = []
-  if (clientScriptId) {
+  if (viewScriptId) {
     const { data: rawBlocks } = await admin
       .from('phase_blocks')
       .select('id, content, sort_order')
-      .eq('script_id', clientScriptId)
+      .eq('script_id', viewScriptId)
       .eq('type', 'script_section')
       .order('sort_order', { ascending: true })
     scriptBlocks =
@@ -497,6 +532,7 @@ export default async function ClientSubPhasePage({ params }: ClientSubPhasePageP
   }))
 
   const scriptStatus = subPhase.status as 'in_review' | 'completed' | 'approved'
+  const viewedScript = allScripts.find((s) => s.id === viewScriptId)
 
   return (
     <PageShell
@@ -516,6 +552,11 @@ export default async function ClientSubPhasePage({ params }: ClientSubPhasePageP
         initialComments={initialComments}
         clientId={clientProfileId}
         isAuthenticated={isAuthenticated}
+        scriptId={viewScriptId ?? undefined}
+        multiScript={multiScript}
+        isSelected={viewedScript?.is_selected ?? false}
+        backHref={multiScript ? scriptBasePath : undefined}
+        scriptTitle={multiScript ? viewedScript?.title : undefined}
       />
     </PageShell>
   )
