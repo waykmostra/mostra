@@ -24,7 +24,7 @@ import type { BlockComment } from '@/lib/hooks/useRealtimeBlockComments'
 
 interface SubPhasePageProps {
   params: { id: string; phaseId: string; subPhaseId: string }
-  searchParams?: { script?: string }
+  searchParams?: { script?: string; grid?: string }
 }
 
 const FORM_SLUGS = ['formulaire', 'form']
@@ -217,8 +217,9 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
     }
 
     const requested = searchParams?.script
+    const forceGrid = searchParams?.grid === '1'
     if (requested && scripts.some((s) => s.id === requested)) activeScriptId = requested
-    else if (scripts.length === 1) activeScriptId = scripts[0].id
+    else if (!forceGrid && scripts.length === 1) activeScriptId = scripts[0].id
 
     if (activeScriptId) {
       const { data: rawScriptBlocks } = await db(supabase)
@@ -494,15 +495,13 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
         {isScriptSubPhase && (
           activeScriptId ? (
             <div className="space-y-4">
-              {scripts.length > 1 && (
-                <Link
-                  href={`/projects/${project.id}/phases/${phase.id}/sub/${subPhase.id}`}
-                  className="inline-flex items-center gap-1.5 text-xs text-[#666666] hover:text-white transition-colors"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  Tous les scripts
-                </Link>
-              )}
+              <Link
+                href={`/projects/${project.id}/phases/${phase.id}/sub/${subPhase.id}?grid=1`}
+                className="inline-flex items-center gap-1.5 text-xs text-[#666666] hover:text-white transition-colors"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Tous les scripts
+              </Link>
               <ScriptEditor
                 scriptId={activeScriptId}
                 subPhaseId={subPhase.id}
