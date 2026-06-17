@@ -4,6 +4,10 @@ import ClientProjectView from '@/components/client/ClientProjectView'
 import ContactManager from '@/components/client/ContactManager'
 import type { Profile, Project, ProjectPhase, SubPhase } from '@/lib/types'
 
+// Toujours lire l'état réel : le client doit voir les ajouts/suppressions/démarrages
+// de phases faits côté admin (les actions admin ne revalident pas la route client).
+export const dynamic = 'force-dynamic'
+
 interface ClientProjectPageProps {
   params: { token: string }
 }

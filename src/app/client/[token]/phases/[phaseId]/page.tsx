@@ -10,6 +10,9 @@ import ApprovalPanel from '@/components/client/ApprovalPanel'
 import VideoViewerClient from '@/components/client/VideoViewerClient'
 import type { Project, ProjectPhase } from '@/lib/types'
 
+// Lecture toujours fraîche (le client doit voir les changements admin en temps réel au reload).
+export const dynamic = 'force-dynamic'
+
 interface ClientPhasePageProps {
   params: { token: string; phaseId: string }
   searchParams: { v?: string }

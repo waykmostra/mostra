@@ -14,6 +14,9 @@ import type { Project, ProjectPhase, SubPhase, FormQuestionContent, ScriptSectio
 import type { BlockComment } from '@/lib/hooks/useRealtimeBlockComments'
 import { ensureTableModel } from '@/lib/scriptTable'
 
+// Lecture toujours fraîche (le client doit voir les changements admin au reload).
+export const dynamic = 'force-dynamic'
+
 interface ClientSubPhasePageProps {
   params: { token: string; phaseId: string; subPhaseId: string }
   searchParams?: { s?: string }
@@ -89,25 +92,25 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
   }
 
   // Review-gated types: accessibles en in_review / completed / approved.
-  // Cas spécial : quand le client a DEMANDÉ une révision, la sous-phase repasse
-  // en in_progress. On ne l'éjecte plus — il garde l'accès (lecture + commentaires)
-  // avec une bannière « modifications en cours de traitement ». On distingue ce cas
-  // d'un simple brouillon jamais reviewé via la présence d'un commentaire de révision.
+  // Modèle : dès qu'une phase a des COMMENTAIRES, elle est considérée « en révision »
+  // et reste accessible au client (lecture + ses commentaires), même repassée en
+  // in_progress. On distingue ainsi un vrai brouillon jamais commenté (caché) d'une
+  // phase déjà travaillée avec le client. Couvre aussi les anciens projets sans
+  // marqueur [Demande de modification].
   const isReviewGated = isScript || isMoodboard || isStoryboard || isDesign || isAudio
-  let revisionRequested = false
+  let hasComments = false
   if (isReviewGated && subPhase.status === 'in_progress') {
-    const { data: rawRev } = await admin
+    const { data: rawComment } = await admin
       .from('comments')
       .select('id')
       .eq('sub_phase_id', subPhase.id)
-      .ilike('content', '[Demande de modification]%')
       .limit(1)
       .maybeSingle()
-    revisionRequested = !!rawRev
+    hasComments = !!rawComment
   }
-  const revisionInProgress = subPhase.status === 'in_progress' && revisionRequested
+  const revisionInProgress = subPhase.status === 'in_progress' && hasComments
 
-  if (isReviewGated && (subPhase.status === 'pending' || (subPhase.status === 'in_progress' && !revisionRequested))) {
+  if (isReviewGated && (subPhase.status === 'pending' || (subPhase.status === 'in_progress' && !hasComments))) {
     redirect(`/client/${params.token}`)
   }
 

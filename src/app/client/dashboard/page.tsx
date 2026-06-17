@@ -4,6 +4,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import ClientDashboardTabs from './ClientDashboardTabs'
 import type { Project, ProjectPhase } from '@/lib/types'
 
+// Lecture toujours fraîche (statuts/avancement des projets côté client).
+export const dynamic = 'force-dynamic'
+
 type ProjectRow = Project & { project_phases: ProjectPhase[] }
 
 export default async function ClientDashboardPage() {
