@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight, RotateCcw } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/lib/auth'
 import FormSubPhaseClient from '@/components/client/FormSubPhaseClient'
@@ -10,7 +10,7 @@ import MoodboardViewerClient from '@/components/client/MoodboardViewerClient'
 import StoryboardViewerClient from '@/components/client/StoryboardViewerClient'
 import DesignViewerClient from '@/components/client/DesignViewerClient'
 import AudioViewerClient from '@/components/client/AudioViewerClient'
-import type { Project, ProjectPhase, SubPhase, FormQuestionContent, ScriptSectionContent, MoodboardImageContent, StoryboardShotContent, DesignFileContent, AudioTrackContent, Profile, Script } from '@/lib/types'
+import type { Project, ProjectPhase, SubPhase, FormQuestionContent, ScriptSectionContent, MoodboardImageContent, StoryboardShotContent, DesignFileContent, AudioTrackContent, Profile, Script, PhaseStatus } from '@/lib/types'
 import type { BlockComment } from '@/lib/hooks/useRealtimeBlockComments'
 import { ensureTableModel } from '@/lib/scriptTable'
 
@@ -88,8 +88,26 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
     redirect(`/client/${params.token}`)
   }
 
-  // Review-gated types: only accessible when in_review, completed or approved
-  if ((isScript || isMoodboard || isStoryboard || isDesign || isAudio) && (subPhase.status === 'pending' || subPhase.status === 'in_progress')) {
+  // Review-gated types: accessibles en in_review / completed / approved.
+  // Cas spécial : quand le client a DEMANDÉ une révision, la sous-phase repasse
+  // en in_progress. On ne l'éjecte plus — il garde l'accès (lecture + commentaires)
+  // avec une bannière « modifications en cours de traitement ». On distingue ce cas
+  // d'un simple brouillon jamais reviewé via la présence d'un commentaire de révision.
+  const isReviewGated = isScript || isMoodboard || isStoryboard || isDesign || isAudio
+  let revisionRequested = false
+  if (isReviewGated && subPhase.status === 'in_progress') {
+    const { data: rawRev } = await admin
+      .from('comments')
+      .select('id')
+      .eq('sub_phase_id', subPhase.id)
+      .ilike('content', '[Demande de modification]%')
+      .limit(1)
+      .maybeSingle()
+    revisionRequested = !!rawRev
+  }
+  const revisionInProgress = subPhase.status === 'in_progress' && revisionRequested
+
+  if (isReviewGated && (subPhase.status === 'pending' || (subPhase.status === 'in_progress' && !revisionRequested))) {
     redirect(`/client/${params.token}`)
   }
 
@@ -185,7 +203,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
       updated_at: string
     }[]).map((c) => ({ ...c, author: authorMap.get(c.user_id) ?? null }))
 
-    const moodboardStatus = subPhase.status as 'in_review' | 'completed' | 'approved'
+    const moodboardStatus = subPhase.status as PhaseStatus
 
     return (
       <PageShell
@@ -195,6 +213,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
         subPhaseName={subPhase.name}
         subtitle="Découvrez les directions artistiques et choisissez votre style préféré."
         wide
+        revisionInProgress={revisionInProgress}
       >
         <MoodboardViewerClient
           token={params.token}
@@ -260,7 +279,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
       is_resolved: boolean; created_at: string; updated_at: string
     }[]).map((c) => ({ ...c, author: sbAuthorMap.get(c.user_id) ?? null }))
 
-    const storyboardStatus = subPhase.status as 'in_review' | 'completed' | 'approved'
+    const storyboardStatus = subPhase.status as PhaseStatus
 
     return (
       <PageShell
@@ -270,6 +289,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
         subPhaseName={subPhase.name}
         subtitle="Parcourez chaque scène du storyboard et partagez vos retours."
         wide
+        revisionInProgress={revisionInProgress}
       >
         <StoryboardViewerClient
           token={params.token}
@@ -335,7 +355,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
       is_resolved: boolean; created_at: string; updated_at: string
     }[]).map((c) => ({ ...c, author: designAuthorMap.get(c.user_id) ?? null }))
 
-    const designStatus = subPhase.status as 'in_review' | 'completed' | 'approved'
+    const designStatus = subPhase.status as PhaseStatus
 
     return (
       <PageShell
@@ -345,6 +365,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
         subPhaseName={subPhase.name}
         subtitle="Consultez les maquettes finales et partagez vos retours."
         wide
+        revisionInProgress={revisionInProgress}
       >
         <DesignViewerClient
           token={params.token}
@@ -411,7 +432,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
     }[]).map((c) => ({ ...c, author: audioAuthorMap.get(c.user_id) ?? null }))
 
     const audioKind: 'vo' | 'music' = subPhase.slug === 'musique' ? 'music' : 'vo'
-    const audioStatus = subPhase.status as 'in_review' | 'completed' | 'approved'
+    const audioStatus = subPhase.status as PhaseStatus
 
     return (
       <PageShell
@@ -421,6 +442,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
         subPhaseName={subPhase.name}
         subtitle={audioKind === 'vo' ? 'Écoutez les propositions de voix off et choisissez votre préférée.' : 'Écoutez les propositions musicales et choisissez votre préférée.'}
         wide
+        revisionInProgress={revisionInProgress}
       >
         <AudioViewerClient
           token={params.token}
@@ -475,6 +497,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
         subPhaseName={subPhase.name}
         subtitle="Plusieurs propositions de script — parcourez-les et choisissez votre préférée."
         wide
+        revisionInProgress={revisionInProgress}
       >
         <ClientScriptsGrid scripts={allScripts} sectionCounts={counts} basePath={scriptBasePath} />
       </PageShell>
@@ -531,7 +554,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
     author: authorMap.get(c.user_id) ?? null,
   }))
 
-  const scriptStatus = subPhase.status as 'in_review' | 'completed' | 'approved'
+  const scriptStatus = subPhase.status as PhaseStatus
   const viewedScript = allScripts.find((s) => s.id === viewScriptId)
 
   // Modèle tableau (migration 028) — migre l'ancien format « cartes » à la volée.
@@ -547,6 +570,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
       subPhaseName={subPhase.name}
       subtitle="Relisez le script (tableau ou résumé) et commentez ligne par ligne."
       wide
+      revisionInProgress={revisionInProgress}
     >
       <ScriptViewerClient
         token={params.token}
@@ -579,6 +603,7 @@ function PageShell({
   subPhaseName,
   subtitle,
   wide = false,
+  revisionInProgress = false,
   children,
 }: {
   token: string
@@ -587,6 +612,8 @@ function PageShell({
   subPhaseName: string
   subtitle?: string
   wide?: boolean
+  /** Affiche une bannière « révision en cours de traitement » au-dessus du contenu. */
+  revisionInProgress?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -618,6 +645,20 @@ function PageShell({
           <h1 className="text-xl font-bold text-white">{subPhaseName}</h1>
           {subtitle && <p className="text-xs text-[#555555] mt-1">{subtitle}</p>}
         </div>
+
+        {/* Révision demandée : la phase est de nouveau travaillée par l'équipe */}
+        {revisionInProgress && (
+          <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-[#F59E0B]/10 border border-[#F59E0B]/20">
+            <RotateCcw className="h-4 w-4 text-[#F59E0B] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-[#F59E0B]">Modifications en cours de traitement</p>
+              <p className="text-xs text-[#9a7b3a] mt-0.5 leading-relaxed">
+                L&apos;équipe traite votre demande de révision. Vous pouvez relire la version actuelle
+                et vos commentaires ci-dessous — une nouvelle version vous sera soumise pour validation.
+              </p>
+            </div>
+          </div>
+        )}
 
         {children}
       </div>
