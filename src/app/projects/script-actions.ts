@@ -4,17 +4,23 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
 import { requireAdmin } from '@/lib/auth'
-import type { ScriptSectionContent, SubPhase, ProjectPhase, Script } from '@/lib/types'
+import { defaultLayout } from '@/lib/scriptTable'
+import type { SubPhase, ProjectPhase, Script, ScriptColumn, ScriptCategory, ScriptBeat } from '@/lib/types'
 
 export type ScriptActionResult = { success: true } | { success: false; error: string }
 export type CreateScriptResult =
   | { success: true; scriptId: string }
   | { success: false; error: string }
+export type SaveScriptResult =
+  | { success: true; idMap: Record<string, string> }
+  | { success: false; error: string }
 
-export interface ScriptBlock {
-  id: string
-  content: ScriptSectionContent
-  sort_order: number
+/** Une ligne de tableau telle qu'envoyée par l'éditeur (id null = nouvelle ligne). */
+export interface SaveScriptRow {
+  _key: string
+  id: string | null
+  categoryId: string
+  cells: Record<string, string>
 }
 
 // ── Auth helper ───────────────────────────────────────────────────
@@ -102,6 +108,7 @@ export async function createScript(
     .eq('sub_phase_id', subPhaseId)
 
   const isFirst = (count ?? 0) === 0
+  const layout = defaultLayout()
 
   const { data, error } = await db(supabase)
     .from('scripts')
@@ -111,6 +118,10 @@ export async function createScript(
       description: description?.trim() || null,
       is_selected: isFirst, // le 1er script est la version client par défaut
       sort_order: count ?? 0,
+      // Layout de départ du tableau (migration 028)
+      columns: layout.columns,
+      categories: layout.categories,
+      beats: layout.beats,
     })
     .select('id')
     .single()
@@ -198,13 +209,21 @@ export async function setSelectedScript(scriptId: string): Promise<ScriptActionR
   return { success: true }
 }
 
-// ── saveScriptBlocks ──────────────────────────────────────────────
-// Remplace tous les blocs script_section d'UN script par la nouvelle liste.
+// ── saveScript ────────────────────────────────────────────────────
+// Sauvegarde le LAYOUT du tableau (colonnes/catégories/beats) sur la ligne
+// `scripts`, et UPSERTE les lignes dans `phase_blocks` en PRÉSERVANT les id
+// existants (= ancres des commentaires). Seules les lignes réellement
+// supprimées sont effacées. Renvoie l'id réel des nouvelles lignes (idMap).
 
-export async function saveScriptBlocks(
+export async function saveScript(
   scriptId: string,
-  blocks: { id?: string; content: ScriptSectionContent; sort_order: number }[],
-): Promise<ScriptActionResult> {
+  payload: {
+    columns: ScriptColumn[]
+    categories: ScriptCategory[]
+    beats: ScriptBeat[]
+    rows: SaveScriptRow[]
+  },
+): Promise<SaveScriptResult> {
   const ctx = await getCreativeContext()
   if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
   const { supabase } = ctx
@@ -217,32 +236,60 @@ export async function saveScriptBlocks(
   const script = rawScript as Pick<Script, 'id' | 'sub_phase_id'> | null
   if (!script) return { success: false, error: 'Script introuvable' }
 
-  // Delete existing blocks for this script
-  const { error: delErr } = await db(supabase)
+  // 1. Layout du tableau sur la ligne scripts
+  const { error: layoutErr } = await db(supabase)
+    .from('scripts')
+    .update({ columns: payload.columns, categories: payload.categories, beats: payload.beats })
+    .eq('id', scriptId)
+  if (layoutErr) return { success: false, error: layoutErr.message }
+
+  // 2. Lignes déjà en base pour ce script
+  const { data: rawExisting } = await supabase
     .from('phase_blocks')
-    .delete()
+    .select('id')
     .eq('script_id', scriptId)
     .eq('type', 'script_section')
+  const existingIds = new Set(((rawExisting as { id: string }[] | null) ?? []).map((r) => r.id))
+  const keepIds = new Set(payload.rows.filter((r) => r.id).map((r) => r.id as string))
 
-  if (delErr) return { success: false, error: delErr.message }
+  // 3. Supprime les lignes retirées (cascade → leurs commentaires)
+  const toDelete = [...existingIds].filter((id) => !keepIds.has(id))
+  if (toDelete.length) {
+    const { error } = await db(supabase).from('phase_blocks').delete().in('id', toDelete)
+    if (error) return { success: false, error: error.message }
+  }
 
-  // Insert new list
-  if (blocks.length > 0) {
-    const rows = blocks.map((b, i) => ({
-      sub_phase_id: script.sub_phase_id,
-      phase_id: null,
-      script_id: scriptId,
-      type: 'script_section',
-      content: b.content,
-      sort_order: i + 1,
-      is_approved: false,
-      created_by: null,
-    }))
-
-    const { error: insErr } = await db(supabase).from('phase_blocks').insert(rows)
-    if (insErr) return { success: false, error: insErr.message }
+  // 4. Upsert dans l'ordre (update existant / insert nouveau)
+  const idMap: Record<string, string> = {}
+  for (let i = 0; i < payload.rows.length; i++) {
+    const row = payload.rows[i]
+    const content = { categoryId: row.categoryId, cells: row.cells }
+    if (row.id && existingIds.has(row.id)) {
+      const { error } = await db(supabase)
+        .from('phase_blocks')
+        .update({ content, sort_order: i + 1 })
+        .eq('id', row.id)
+      if (error) return { success: false, error: error.message }
+    } else {
+      const { data, error } = await db(supabase)
+        .from('phase_blocks')
+        .insert({
+          sub_phase_id: script.sub_phase_id,
+          phase_id: null,
+          script_id: scriptId,
+          type: 'script_section',
+          content,
+          sort_order: i + 1,
+          is_approved: false,
+          created_by: null,
+        })
+        .select('id')
+        .single()
+      if (error || !data) return { success: false, error: error?.message ?? 'Erreur création ligne' }
+      idMap[row._key] = data.id as string
+    }
   }
 
   await revalidateSubPhase(supabase, script.sub_phase_id)
-  return { success: true }
+  return { success: true, idMap }
 }

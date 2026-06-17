@@ -19,6 +19,7 @@ import { getMoodboardBlocks, type MoodboardBlock } from '@/app/projects/moodboar
 import { getStoryboardShots, type StoryboardShot } from '@/app/projects/storyboard-actions'
 import { getDesignFiles, type DesignFile } from '@/app/projects/design-actions'
 import { getAudioTracks, type AudioTrack } from '@/app/projects/audio-actions'
+import { ensureTableModel } from '@/lib/scriptTable'
 import type { Project, ProjectPhase, SubPhase, FormTemplate, FormQuestionContent, ScriptSectionContent, UserRole, Profile, Script } from '@/lib/types'
 import type { BlockComment } from '@/lib/hooks/useRealtimeBlockComments'
 
@@ -425,6 +426,10 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
 
   const meta = SUB_PHASE_META[subPhase.slug]
 
+  // Modèle tableau du script actif (migration 028) — migre l'ancien format à la volée.
+  const activeScript = activeScriptId ? scripts.find((s) => s.id === activeScriptId) ?? null : null
+  const scriptModel = activeScript ? ensureTableModel(activeScript, scriptBlocks) : null
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] px-4 sm:px-6 py-6 sm:py-8">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -493,7 +498,7 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
 
         {/* Script(s) — grille si plusieurs, éditeur si 1 sélectionné */}
         {isScriptSubPhase && (
-          activeScriptId ? (
+          activeScriptId && scriptModel ? (
             <div className="space-y-4">
               <Link
                 href={`/projects/${project.id}/phases/${phase.id}/sub/${subPhase.id}?grid=1`}
@@ -508,7 +513,10 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
                 subPhaseStatus={subPhase.status}
                 userRole={userRole}
                 canStart={canStart}
-                initialBlocks={scriptBlocks}
+                initialColumns={scriptModel.columns}
+                initialCategories={scriptModel.categories}
+                initialBeats={scriptModel.beats}
+                initialRows={scriptModel.rows}
                 projectId={project.id}
                 phaseId={phase.id}
                 initialComments={scriptComments}

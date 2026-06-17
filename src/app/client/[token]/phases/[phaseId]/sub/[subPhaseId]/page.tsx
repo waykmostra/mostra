@@ -10,8 +10,9 @@ import MoodboardViewerClient from '@/components/client/MoodboardViewerClient'
 import StoryboardViewerClient from '@/components/client/StoryboardViewerClient'
 import DesignViewerClient from '@/components/client/DesignViewerClient'
 import AudioViewerClient from '@/components/client/AudioViewerClient'
-import type { Project, ProjectPhase, SubPhase, FormQuestionContent, ScriptSectionContent, MoodboardImageContent, StoryboardShotContent, DesignFileContent, AudioTrackContent, Profile } from '@/lib/types'
+import type { Project, ProjectPhase, SubPhase, FormQuestionContent, ScriptSectionContent, MoodboardImageContent, StoryboardShotContent, DesignFileContent, AudioTrackContent, Profile, Script } from '@/lib/types'
 import type { BlockComment } from '@/lib/hooks/useRealtimeBlockComments'
+import { ensureTableModel } from '@/lib/scriptTable'
 
 interface ClientSubPhasePageProps {
   params: { token: string; phaseId: string; subPhaseId: string }
@@ -440,12 +441,11 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
   // Le client voit TOUS les scripts, navigue, et en choisit un.
   const { data: rawAllScripts } = await admin
     .from('scripts')
-    .select('id, title, description, is_selected, sort_order, created_at')
+    .select('*')
     .eq('sub_phase_id', params.subPhaseId)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
-  const allScripts =
-    (rawAllScripts as { id: string; title: string; description: string | null; is_selected: boolean }[] | null) ?? []
+  const allScripts = (rawAllScripts as Script[] | null) ?? []
 
   const multiScript = allScripts.length >= 2
   const requestedS = typeof searchParams?.s === 'string' ? searchParams.s : null
@@ -534,13 +534,18 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
   const scriptStatus = subPhase.status as 'in_review' | 'completed' | 'approved'
   const viewedScript = allScripts.find((s) => s.id === viewScriptId)
 
+  // Modèle tableau (migration 028) — migre l'ancien format « cartes » à la volée.
+  const scriptModel = viewedScript
+    ? ensureTableModel(viewedScript, scriptBlocks)
+    : { columns: [], categories: [], beats: [], rows: [] }
+
   return (
     <PageShell
       token={params.token}
       projectName={project.name}
       phaseName={phase.name}
       subPhaseName={subPhase.name}
-      subtitle="Relisez le script et partagez vos retours section par section."
+      subtitle="Relisez le script (tableau ou résumé) et commentez ligne par ligne."
       wide
     >
       <ScriptViewerClient
@@ -548,7 +553,10 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
         projectId={project.id}
         subPhaseId={subPhase.id}
         status={scriptStatus}
-        blocks={scriptBlocks}
+        columns={scriptModel.columns}
+        categories={scriptModel.categories}
+        beats={scriptModel.beats}
+        rows={scriptModel.rows}
         initialComments={initialComments}
         clientId={clientProfileId}
         isAuthenticated={isAuthenticated}

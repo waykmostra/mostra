@@ -230,7 +230,35 @@ export interface SubPhase {
   updated_at: string
 }
 
-/** Un script (variante) au sein d'une sous-phase « Script » (migration 027). */
+/** Tag d'une colonne de tableau de script — seul `voixoff` (Narration) est compté. */
+export type ColumnTag = 'texte' | 'section' | 'intention' | 'voixoff' | 'visuals' | 'sfx'
+
+/** Une colonne du tableau de script (migration 028). */
+export interface ScriptColumn {
+  id: string
+  title: string
+  tag: ColumnTag
+  /** Largeur figée en px (sinon la colonne s'étire). */
+  width?: number
+  /** Colonne repliée (exclue du résumé et du comptage de mots). */
+  collapsed?: boolean
+}
+
+/** Une catégorie (groupe de lignes : Hook, Corps, CTA…) du tableau (migration 028). */
+export interface ScriptCategory {
+  id: string
+  name: string
+  color?: string
+}
+
+/** Un repère de rythme/intention affiché dans le résumé, non compté (migration 028). */
+export interface ScriptBeat {
+  id: string
+  title: string
+  note: string
+}
+
+/** Un script (variante) au sein d'une sous-phase « Script » (migration 027 + 028). */
 export interface Script {
   id: string
   sub_phase_id: string
@@ -238,6 +266,10 @@ export interface Script {
   description: string | null
   is_selected: boolean
   sort_order: number
+  // ── Layout du tableau (migration 028) ──
+  columns: ScriptColumn[]
+  categories: ScriptCategory[]
+  beats: ScriptBeat[]
   created_at: string
   updated_at: string
 }
@@ -385,6 +417,11 @@ export interface FormQuestionContent {
   helpText?: string
 }
 
+/**
+ * Ancien format d'une section de script (modèle « cartes », pré-migration 028).
+ * Conservé pour la lecture rétro-compatible — l'app le convertit vers le modèle
+ * tableau à la volée (voir src/lib/scriptTable.ts).
+ */
 export interface ScriptSectionContent {
   title: string
   color: string
@@ -392,6 +429,17 @@ export interface ScriptSectionContent {
   description?: string
   /** Texte de la voix off (narration) de la section. */
   vo?: string
+}
+
+/**
+ * Contenu d'une LIGNE du tableau de script (phase_blocks type `script_section`,
+ * migration 028). Le layout (colonnes/catégories) vit sur la ligne `scripts`.
+ */
+export interface ScriptRowContent {
+  /** Catégorie (ScriptCategory.id) à laquelle la ligne appartient. */
+  categoryId: string
+  /** Texte par colonne : { [ScriptColumn.id]: valeur }. */
+  cells: Record<string, string>
 }
 
 export interface MoodboardImageContent {

@@ -65,6 +65,12 @@ export type {
   FormQuestion,
   FormQuestionContent,
   ScriptSectionContent,
+  // Script tableau (migration 028)
+  ColumnTag,
+  ScriptColumn,
+  ScriptCategory,
+  ScriptBeat,
+  ScriptRowContent,
   MoodboardImageContent,
   StoryboardShotContent,
   AudioTrackContent,
