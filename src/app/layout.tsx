@@ -29,7 +29,10 @@ export const metadata: Metadata = {
     title: 'Mostra',
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
     apple: '/icons/icon-180.png',
   },
 }
