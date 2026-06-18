@@ -5,6 +5,7 @@ import type { Profile, ContactMethod } from '@/lib/types'
 import ProfileSection from './ProfileSection'
 import SecuritySection from './SecuritySection'
 import PreferencesSection from './PreferencesSection'
+import PushNotificationsSection from '@/components/account/PushNotificationsSection'
 
 export const metadata = { title: 'Mon compte — Mostra' }
 
@@ -39,6 +40,7 @@ export default async function AccountPage() {
       <ProfileSection name={name} email={email} avatarUrl={avatarUrl} />
       <SecuritySection />
       <PreferencesSection contactMethod={contactMethod} />
+      <PushNotificationsSection />
     </div>
   )
 }

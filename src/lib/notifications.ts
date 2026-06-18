@@ -3,6 +3,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
+import { sendPushToUser } from '@/lib/push/server'
 
 export type NotificationType =
   | 'comment_added'
@@ -33,6 +34,14 @@ export async function createNotification(input: CreateNotificationInput): Promis
       message: input.message ?? null,
       link: input.link ?? null,
     })
+
+    // Notification native (Web Push) en plus de l'entrée in-app — best-effort.
+    await sendPushToUser(input.userId, {
+      title: input.title,
+      body: input.message ?? undefined,
+      url: input.link ?? '/',
+      tag: input.type,
+    })
   } catch (err) {
     console.error('[createNotification] error:', err)
   }
@@ -51,6 +60,18 @@ export async function createNotifications(inputs: CreateNotificationInput[]): Pr
         message: input.message ?? null,
         link: input.link ?? null,
       })),
+    )
+
+    // Notifications natives (Web Push) — best-effort, en parallèle.
+    await Promise.all(
+      inputs.map((input) =>
+        sendPushToUser(input.userId, {
+          title: input.title,
+          body: input.message ?? undefined,
+          url: input.link ?? '/',
+          tag: input.type,
+        }),
+      ),
     )
   } catch (err) {
     console.error('[createNotifications] error:', err)

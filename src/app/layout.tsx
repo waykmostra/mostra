@@ -1,6 +1,7 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono, Poppins } from 'next/font/google'
 import './globals.css'
+import ServiceWorkerRegistrar from '@/components/shared/ServiceWorkerRegistrar'
 
 const inter = Inter({
   variable: '--font-sans',
@@ -21,6 +22,20 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'MOSTRA — Gestion de production créative',
   description: 'SaaS de gestion de production pour agences créatives',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Mostra',
+  },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icons/icon-180.png',
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#0a0a0a',
 }
 
 export default function RootLayout({
@@ -33,7 +48,10 @@ export default function RootLayout({
       lang="fr"
       className={`${inter.variable} ${poppins.variable} ${jetbrainsMono.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ServiceWorkerRegistrar />
+        {children}
+      </body>
     </html>
   )
 }
