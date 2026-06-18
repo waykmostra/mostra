@@ -78,6 +78,33 @@ export async function createNotifications(inputs: CreateNotificationInput[]): Pr
   }
 }
 
+/**
+ * Notifie les admins + le PM qu'un client a validé / choisi une étape.
+ * Best-effort (fire-and-forget côté appelant).
+ */
+export async function notifyClientValidation(
+  projectId: string,
+  label: string,
+  link: string,
+): Promise<void> {
+  const r = await getProjectRecipients(projectId)
+  if (!r.projectName) return
+  const recipientIds = [
+    ...new Set([...r.adminIds, ...(r.projectManagerId ? [r.projectManagerId] : [])]),
+  ]
+  if (recipientIds.length === 0) return
+  await createNotifications(
+    recipientIds.map((userId) => ({
+      userId,
+      projectId,
+      type: 'phase_approved' as const,
+      title: `✅ Validé — « ${r.projectName} »`,
+      message: label,
+      link,
+    })),
+  )
+}
+
 // ── Project recipient helpers ─────────────────────────────────────
 
 export interface ProjectRecipients {

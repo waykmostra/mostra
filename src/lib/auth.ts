@@ -99,6 +99,69 @@ export async function requireProjectAccess(
   return { ...result, canEdit: false }
 }
 
+export type AssignedClientAccess = {
+  project: { id: string; client_id: string | null; share_token: string }
+  /** Id auth de l'appelant (= auteur des commentaires). */
+  userId: string
+  isAdmin: boolean
+}
+
+/**
+ * Gating des ACTIONS client (valider / commenter) via le share_token.
+ * Exige que l'appelant soit AUTHENTIFIÉ et soit le client assigné au projet
+ * (match par `clients.profile_id = auth.uid()` OU email identique — tolère les
+ * fiches en double), ou admin. Empêche « n'importe qui avec le lien » d'agir.
+ */
+export async function requireAssignedClient(
+  token: string,
+): Promise<AuthError | AssignedClientAccess> {
+  const admin = createAdminClient()
+
+  const { data: rawProject } = await admin
+    .from('projects')
+    .select('id, client_id, share_token')
+    .eq('share_token', token)
+    .maybeSingle()
+  const project = rawProject as
+    | { id: string; client_id: string | null; share_token: string }
+    | null
+  if (!project) return { error: 'Lien invalide.' }
+
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Connectez-vous pour effectuer cette action.' }
+
+  const { data: rawProfile } = await admin
+    .from('profiles')
+    .select('id, is_admin, email')
+    .eq('id', user.id)
+    .maybeSingle()
+  const profile = rawProfile as { id: string; is_admin: boolean; email: string | null } | null
+  if (!profile) return { error: 'Profil introuvable.' }
+
+  if (profile.is_admin) return { project, userId: user.id, isAdmin: true }
+
+  if (!project.client_id) return { error: 'Accès refusé à ce projet.' }
+  const { data: rawClient } = await admin
+    .from('clients')
+    .select('profile_id, email')
+    .eq('id', project.client_id)
+    .maybeSingle()
+  const client = rawClient as { profile_id: string | null; email: string | null } | null
+  if (!client) return { error: 'Accès refusé à ce projet.' }
+
+  const emailMatch =
+    !!client.email &&
+    !!profile.email &&
+    client.email.toLowerCase() === profile.email.toLowerCase()
+  if (client.profile_id === user.id || emailMatch) {
+    return { project, userId: user.id, isAdmin: false }
+  }
+  return { error: 'Accès refusé à ce projet.' }
+}
+
 /**
  * Helper pour les pages côté client (sans middleware) — vérifie juste l'auth
  * et renvoie le profil ou null. Ne lève pas d'erreur, à utiliser dans les

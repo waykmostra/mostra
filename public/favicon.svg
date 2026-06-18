@@ -1,22 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 687.88 687.88">
-  <defs>
-    <style>
-      .cls-1 {
-        fill: #121212;
-      }
-
-      .cls-2 {
-        fill: #fff;
-      }
-    </style>
-  </defs>
-  <g id="Hero">
-    <rect class="cls-1" width="687.88" height="687.88"/>
-    <g>
-      <polygon class="cls-2" points="343.94 253.12 162.29 253.12 162.29 288.79 343.94 253.12"/>
-      <polygon class="cls-2" points="393.97 434.77 525.59 434.77 343.94 253.12 393.97 434.77"/>
-      <polygon class="cls-2" points="343.94 253.12 162.29 343.94 162.29 434.77 253.12 434.77 343.94 253.12"/>
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="137.54 137.55 412.8 412.8">
+  <style>
+    .mark { fill: #0a0a0a; }
+    @media (prefers-color-scheme: dark) {
+      .mark { fill: #ffffff; }
+    }
+  </style>
+  <g class="mark">
+    <polygon points="343.94 253.12 162.29 253.12 162.29 288.79"/>
+    <polygon points="393.97 434.77 525.59 434.77 343.94 253.12"/>
+    <polygon points="343.94 253.12 162.29 343.94 162.29 434.77 253.12 434.77"/>
   </g>
 </svg>

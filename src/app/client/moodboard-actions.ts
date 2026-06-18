@@ -3,7 +3,8 @@
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
-import { createNotifications, getProjectRecipients } from '@/lib/notifications'
+import { createNotifications, getProjectRecipients, notifyClientValidation } from '@/lib/notifications'
+import { requireAssignedClient } from '@/lib/auth'
 import { sendEmail } from '@/lib/email/send'
 import type { Project, ProjectPhase, SubPhase, MoodboardImageContent, Profile } from '@/lib/types'
 import type { BlockComment } from '@/lib/hooks/useRealtimeBlockComments'
@@ -149,8 +150,9 @@ export async function selectMoodboard(
   blockId: string,
 ): Promise<MoodboardClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project } = access
 
   // Get block → sub_phase
   const { data: rawBlock } = await admin
@@ -201,12 +203,11 @@ export async function addMoodboardComment(
   content: string,
 ): Promise<MoodboardClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
   if (!content.trim()) return { success: false, error: 'Contenu vide' }
 
-  const userId = await resolveClientUserId(admin, project)
-  if (!userId) return { success: false, error: 'Client introuvable' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project, userId } = access
 
   const { data: rawBlock } = await admin
     .from('phase_blocks')
@@ -240,8 +241,9 @@ export async function resolveMoodboardComment(
   commentId: string,
 ): Promise<MoodboardClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project, userId, isAdmin } = access
 
   const { data: rawComment } = await admin
     .from('comments')
@@ -258,8 +260,7 @@ export async function resolveMoodboardComment(
   if (!comment || comment.project_id !== project.id) {
     return { success: false, error: 'Commentaire introuvable' }
   }
-  const clientUserId = await resolveClientUserId(admin, project)
-  if (clientUserId && comment.user_id !== clientUserId) {
+  if (!isAdmin && comment.user_id !== userId) {
     return { success: false, error: 'Vous ne pouvez résoudre que vos propres commentaires' }
   }
 
@@ -279,8 +280,9 @@ export async function approveMoodboardSubPhase(
   subPhaseId: string,
 ): Promise<MoodboardClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project } = access
 
   const ownership = await verifySubPhaseOwnership(admin, subPhaseId, project.id)
   if (!ownership) return { success: false, error: 'Sous-phase introuvable' }
@@ -340,6 +342,8 @@ export async function approveMoodboardSubPhase(
     })
   }
 
+  void notifyClientValidation(project.id, 'Moodboard / Style validé par le client.', `/projects/${project.id}`)
+
   revalidatePath(`/client/${token}`)
   revalidatePath(`/client/${token}/phases/${phase.id}/sub/${subPhaseId}`)
   return { success: true }
@@ -353,11 +357,9 @@ export async function requestMoodboardRevisions(
   message: string,
 ): Promise<MoodboardClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
-
-  const userId = await resolveClientUserId(admin, project)
-  if (!userId) return { success: false, error: 'Client introuvable' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project, userId } = access
 
   const ownership = await verifySubPhaseOwnership(admin, subPhaseId, project.id)
   if (!ownership) return { success: false, error: 'Sous-phase introuvable' }
