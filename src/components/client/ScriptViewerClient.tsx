@@ -507,6 +507,7 @@ export default function ScriptViewerClient({
               rows={rows}
               beats={beats}
               renderRowComment={rowCommentNode}
+              rowHasComments={(row) => !!row.id && comments.some((c) => c.block_id === row.id)}
             />
           )}
 

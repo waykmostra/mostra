@@ -35,6 +35,8 @@ interface ClientPhaseCardProps {
   isFirst?: boolean
   isLast?: boolean
   subPhases?: SubPhase[]
+  /** Sous-phases ayant des commentaires → cliquables même en révision (in_progress). */
+  commentedSubPhaseIds?: string[]
 }
 
 // ── Composant ─────────────────────────────────────────────────────
@@ -45,6 +47,7 @@ export default function ClientPhaseCard({
   isFirst,
   isLast,
   subPhases = [],
+  commentedSubPhaseIds = [],
 }: ClientPhaseCardProps) {
   const Icon = PHASE_ICONS[phase.slug] ?? FileText
   const viewHref = `/client/${token}/phases/${phase.id}`
@@ -169,6 +172,9 @@ export default function ClientPhaseCard({
             const spDone       = sp.status === 'completed' || sp.status === 'approved'
             const spInReview   = sp.status === 'in_review'
             const spInProgress = sp.status === 'in_progress'
+            const spHasComments = commentedSubPhaseIds.includes(sp.id)
+            // « En révision » = repassée en in_progress mais déjà commentée → accessible.
+            const spInRevision = spInProgress && spHasComments
             const spHref       = `/client/${token}/phases/${phase.id}/sub/${sp.id}`
 
             const isMoodboardSp  = sp.slug === 'style' || sp.slug === 'moodboard'
@@ -178,14 +184,14 @@ export default function ClientPhaseCard({
 
             const hasClientPage =
               (isFormSp && (spInProgress || spInReview || spDone)) ||
-              (isScriptSp && (spInReview || spDone)) ||
-              (isMoodboardSp && (spInReview || spDone)) ||
-              (isStoryboardSp && (spInReview || spDone)) ||
-              (isDesignSp && (spInReview || spDone)) ||
-              (isAudioSp && (spInReview || spDone))
+              (isScriptSp && (spInReview || spDone || spInRevision)) ||
+              (isMoodboardSp && (spInReview || spDone || spInRevision)) ||
+              (isStoryboardSp && (spInReview || spDone || spInRevision)) ||
+              (isDesignSp && (spInReview || spDone || spInRevision)) ||
+              (isAudioSp && (spInReview || spDone || spInRevision))
 
-            // Couleur du point de statut
-            const dotColor = spDone ? '#22C55E' : spInReview ? '#F59E0B' : spInProgress ? '#3B82F6' : '#3a3a3a'
+            // Couleur du point de statut (révision = amber, comme « à valider »)
+            const dotColor = spDone ? '#22C55E' : (spInReview || spInRevision) ? '#F59E0B' : spInProgress ? '#3B82F6' : '#3a3a3a'
 
             // Label d'action
             let actionLabel: React.ReactNode = null
@@ -199,6 +205,12 @@ export default function ClientPhaseCard({
               actionLabel = (
                 <span className="text-xs font-semibold text-[#F59E0B] border border-[#F59E0B]/30 bg-[#F59E0B]/10 rounded-md px-2.5 py-1 flex-shrink-0">
                   À valider
+                </span>
+              )
+            } else if (spInRevision) {
+              actionLabel = (
+                <span className="text-xs font-semibold text-[#F59E0B] border border-[#F59E0B]/30 bg-[#F59E0B]/10 rounded-md px-2.5 py-1 flex-shrink-0">
+                  En révision
                 </span>
               )
             } else if (spDone) {

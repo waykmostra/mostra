@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Loader2,
   Save,
@@ -243,30 +243,91 @@ export default function ScriptEditor({
     ? allComments.filter((c) => !c.is_resolved && c.block_id !== null).length
     : 0
 
-  const setRowId = useCallback((key: string, id: string) => {
-    setRows((prev) => prev.map((r) => (r._key === key ? { ...r, id } : r)))
-  }, [])
+  // Dernière version éditée, lue par la sauvegarde (évite les closures périmées).
+  const stateRef = useRef({ columns, categories, beats, rows })
+  useEffect(() => {
+    stateRef.current = { columns, categories, beats, rows }
+  }, [columns, categories, beats, rows])
 
-  async function handleSave() {
+  const savingRef = useRef(false) // verrou : pas de saves concurrentes
+  const dirtyRef = useRef(false) // des changements sont arrivés pendant une save
+  const persistRef = useRef<(() => Promise<boolean>) | null>(null)
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
+
+  /** Sauvegarde le script (layout + lignes). Sérialisée ; réapplique les id créés. */
+  const persist = useCallback(async (): Promise<boolean> => {
+    if (savingRef.current) {
+      dirtyRef.current = true // une save tourne déjà → on resauvera juste après
+      return true
+    }
+    savingRef.current = true
     setSaving(true)
+
+    const s = stateRef.current
     const result = await saveScript(scriptId, {
-      columns,
-      categories,
-      beats,
-      rows: rows.map((r) => ({ _key: r._key, id: r.id, categoryId: r.categoryId, cells: r.cells })),
+      columns: s.columns,
+      categories: s.categories,
+      beats: s.beats,
+      rows: s.rows.map((r) => ({ _key: r._key, id: r.id, categoryId: r.categoryId, cells: r.cells })),
     })
+
+    if (result.success && Object.keys(result.idMap).length) {
+      const idMap = result.idMap
+      // Synchrone (pour une resave immédiate sans double-insert) + état React (UI/commentaires).
+      stateRef.current = {
+        ...stateRef.current,
+        rows: stateRef.current.rows.map((r) => (idMap[r._key] ? { ...r, id: idMap[r._key] } : r)),
+      }
+      setRows((prev) => prev.map((r) => (idMap[r._key] ? { ...r, id: idMap[r._key] } : r)))
+    }
+
+    savingRef.current = false
     setSaving(false)
+
     if (!result.success) {
       toast.error((result as { error: string }).error)
+      return false
+    }
+    setLastSavedAt(Date.now())
+
+    if (dirtyRef.current) {
+      dirtyRef.current = false
+      void persistRef.current?.() // resauve les changements survenus pendant la save
+    }
+    return true
+  }, [scriptId])
+  useEffect(() => {
+    persistRef.current = persist
+  }, [persist])
+
+  // Auto-save débouncé tant que la sous-phase est éditable (in_progress, admin).
+  const autoSaveOn = canAct && subPhaseStatus === 'in_progress'
+  const autoSaveMounted = useRef(false)
+  useEffect(() => {
+    if (!autoSaveOn) return
+    if (!autoSaveMounted.current) {
+      autoSaveMounted.current = true // pas de save au montage initial
       return
     }
-    // Récupère les id réels des nouvelles lignes (pour activer leurs commentaires).
-    for (const [key, id] of Object.entries(result.idMap)) setRowId(key, id)
-    toast.success('Script sauvegardé')
+    const t = setTimeout(() => void persist(), 1200)
+    return () => clearTimeout(t)
+  }, [columns, categories, beats, rows, autoSaveOn, persist])
+
+  async function handleSave() {
+    const ok = await persist()
+    if (ok) toast.success('Script sauvegardé')
   }
 
   async function handleTransition(action: 'start' | 'review' | 'approve') {
     setTransitioning(action)
+    // Envoi en review : on SAUVEGARDE d'abord (sinon le brouillon non sauvé est perdu).
+    if (action === 'review') {
+      const ok = await persist()
+      if (!ok) {
+        setTransitioning(null)
+        return
+      }
+    }
     const result =
       action === 'start'
         ? await startSubPhase(subPhaseId)
@@ -464,6 +525,7 @@ export default function ScriptEditor({
           beats={beats}
           onBeatsChange={readOnly ? undefined : setBeats}
           renderRowComment={canComment ? rowCommentNode : undefined}
+          rowHasComments={(row) => !!row.id && allComments.some((c) => c.block_id === row.id)}
         />
       )}
 
@@ -483,8 +545,11 @@ export default function ScriptEditor({
 
       {subPhaseStatus === 'in_progress' && !readOnly && (
         <p className="text-[11px] text-[#333333] text-center">
-          Les modifications ne sont pas sauvegardées automatiquement — clique sur{' '}
-          <span className="text-[#555555]">Sauvegarder le brouillon</span>.
+          {saving
+            ? 'Enregistrement…'
+            : lastSavedAt
+              ? 'Brouillon enregistré automatiquement ✓'
+              : 'Enregistrement automatique activé — tes modifications sont sauvegardées en continu.'}
         </p>
       )}
     </div>

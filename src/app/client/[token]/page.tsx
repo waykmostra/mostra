@@ -53,6 +53,22 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
     })
   }
 
+  // 3b. Sous-phases ayant des commentaires → considérées « en révision » et donc
+  //     accessibles au client même repassées en in_progress (cf. gating sous-phase).
+  const commentedSubPhaseIds: string[] = []
+  const visibleSubPhaseIds = Object.values(subPhasesByPhase).flat().map((sp) => sp.id)
+  if (visibleSubPhaseIds.length > 0) {
+    const { data: rawCommented } = await admin
+      .from('comments')
+      .select('sub_phase_id')
+      .in('sub_phase_id', visibleSubPhaseIds)
+    const seen = new Set<string>()
+    for (const c of (rawCommented as { sub_phase_id: string | null }[] | null) ?? []) {
+      if (c.sub_phase_id) seen.add(c.sub_phase_id)
+    }
+    commentedSubPhaseIds.push(...seen)
+  }
+
   // 4. Project Manager
   let projectManager: Profile | null = null
   if (project.project_manager_id) {
@@ -71,6 +87,7 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
         project={project}
         phases={phases}
         subPhasesByPhase={subPhasesByPhase}
+        commentedSubPhaseIds={commentedSubPhaseIds}
         token={params.token}
       />
 

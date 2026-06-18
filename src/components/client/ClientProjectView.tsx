@@ -7,6 +7,8 @@ interface ClientProjectViewProps {
   project: Project
   phases: ProjectPhase[]
   subPhasesByPhase: Record<string, SubPhase[]>
+  /** Sous-phases ayant des commentaires → cliquables même en révision (in_progress). */
+  commentedSubPhaseIds: string[]
   token: string
 }
 
@@ -14,6 +16,7 @@ export default function ClientProjectView({
   project,
   phases,
   subPhasesByPhase,
+  commentedSubPhaseIds,
   token,
 }: ClientProjectViewProps) {
   return (
@@ -91,6 +94,7 @@ export default function ClientProjectView({
                 isFirst={i === 0}
                 isLast={i === phases.length - 1}
                 subPhases={subPhasesByPhase[phase.id] ?? []}
+                commentedSubPhaseIds={commentedSubPhaseIds}
               />
             ))
           )}

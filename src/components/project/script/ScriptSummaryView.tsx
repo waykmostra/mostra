@@ -23,20 +23,24 @@ interface ScriptSummaryViewProps {
   onBeatsChange?: (beats: ScriptBeat[]) => void
   /** Déclencheur de commentaires d'une ligne (icône hover desktop / swipe mobile). */
   renderRowComment?: (row: EditorRow) => React.ReactNode
+  /** Vrai si la ligne a déjà des commentaires → indicateur affiché en permanence. */
+  rowHasComments?: (row: EditorRow) => boolean
 }
 
 const REVEAL = 48 // largeur révélée au swipe (mobile)
 
 /**
  * Une ligne du résumé, commentable :
- *  - desktop : icône au survol, à droite ;
- *  - mobile  : on glisse la ligne vers la droite → icône révélée à gauche.
+ *  - si la ligne a déjà des commentaires → indicateur affiché en permanence à droite ;
+ *  - sinon (affordance « ajouter ») : desktop = icône au survol ; mobile = swipe à droite.
  */
 function SummaryRow({
   comment,
+  hasComments = false,
   children,
 }: {
   comment?: React.ReactNode
+  hasComments?: boolean
   children: React.ReactNode
 }) {
   const [offset, setOffset] = useState(0)
@@ -46,6 +50,16 @@ function SummaryRow({
 
   if (!comment) {
     return <div className="text-[14px] leading-relaxed">{children}</div>
+  }
+
+  // Ligne déjà commentée → indicateur permanent (visible sans survol ni swipe).
+  if (hasComments) {
+    return (
+      <div className="relative">
+        <div className="text-[14px] leading-relaxed pr-9">{children}</div>
+        <div className="absolute right-0 top-0 flex items-start pt-0.5">{comment}</div>
+      </div>
+    )
   }
 
   return (
@@ -117,6 +131,7 @@ export default function ScriptSummaryView({
   beats,
   onBeatsChange,
   renderRowComment,
+  rowHasComments,
 }: ScriptSummaryViewProps) {
   const total = tableWordCount(columns, rows)
   const editable = !!onBeatsChange
@@ -262,7 +277,11 @@ export default function ScriptSummaryView({
                         </>
                       )
                       return (
-                        <SummaryRow key={row._key} comment={renderRowComment?.(row)}>
+                        <SummaryRow
+                          key={row._key}
+                          comment={renderRowComment?.(row)}
+                          hasComments={rowHasComments?.(row) ?? false}
+                        >
                           {body}
                         </SummaryRow>
                       )
