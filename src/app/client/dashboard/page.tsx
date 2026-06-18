@@ -19,21 +19,29 @@ export default async function ClientDashboardPage() {
 
   const admin = createAdminClient()
 
-  // 1. Résoudre le clients row du user via profile_id, en parallèle avec le profile.
-  const [crmClientResult, profileResult] = await Promise.all([
-    admin.from('clients').select('id').eq('profile_id', user.id).maybeSingle(),
-    admin.from('profiles').select('full_name, email').eq('id', user.id).maybeSingle(),
-  ])
+  // 1. Profil de l'utilisateur (nom + email).
+  const { data: rawProfile } = await admin
+    .from('profiles')
+    .select('full_name, email')
+    .eq('id', user.id)
+    .maybeSingle()
+  const profileData = rawProfile as { full_name: string; email: string } | null
+  const email = profileData?.email ?? user.email ?? null
 
-  const crmClientId = (crmClientResult.data as { id: string } | null)?.id ?? null
-  const profileData = profileResult.data as { full_name: string; email: string } | null
+  // 2. Toutes les fiches CRM de l'utilisateur — par compte lié (profile_id) OU email.
+  //    Tolère les fiches en double pour le même email (projet assigné à l'une, compte sur l'autre).
+  const orFilter = email
+    ? `profile_id.eq.${user.id},email.eq.${email}`
+    : `profile_id.eq.${user.id}`
+  const { data: rawClients } = await admin.from('clients').select('id').or(orFilter)
+  const clientIds = [...new Set(((rawClients as { id: string }[] | null) ?? []).map((c) => c.id))]
 
-  // 2. Récupérer les projets uniquement si on a une fiche CRM liée
-  const rawProjects: ProjectRow[] = crmClientId
+  // 3. Projets de toutes ces fiches.
+  const rawProjects: ProjectRow[] = clientIds.length
     ? (((await admin
         .from('projects')
         .select('*, project_phases(*)')
-        .eq('client_id', crmClientId)
+        .in('client_id', clientIds)
         .order('updated_at', { ascending: false })).data as unknown as ProjectRow[] | null) ?? [])
     : []
 

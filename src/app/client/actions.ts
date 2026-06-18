@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
 import { requireProjectAccess } from '@/lib/auth'
-import { createNotifications, getProjectRecipients } from '@/lib/notifications'
+import { createNotifications, getProjectRecipients, notifyClientValidation } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
 import type { PhaseFile, Project, ProjectPhase } from '@/lib/types'
 
@@ -92,6 +92,8 @@ export async function approveAsClient(projectId: string, phaseId: string): Promi
       action: 'phase_approved',
       details: { phase_name: phase.name, via: 'client_auth' },
     })
+
+  void notifyClientValidation(projectId, `${phase.name} validé par le client.`, `/projects/${projectId}/phases/${phaseId}`)
 
   // Token (pour revalidate du path public)
   const { data: rawProj } = await admin

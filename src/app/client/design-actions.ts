@@ -4,7 +4,8 @@ import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
 import { requireProjectAccess } from '@/lib/auth'
-import { createNotifications, getProjectRecipients } from '@/lib/notifications'
+import { createNotifications, getProjectRecipients, notifyClientValidation } from '@/lib/notifications'
+import { requireAssignedClient } from '@/lib/auth'
 import { sendEmail } from '@/lib/email/send'
 import type { Project, ProjectPhase, SubPhase, DesignFileContent, Profile } from '@/lib/types'
 import type { BlockComment } from '@/lib/hooks/useRealtimeBlockComments'
@@ -148,12 +149,11 @@ export async function addDesignComment(
   content: string,
 ): Promise<DesignClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
   if (!content.trim()) return { success: false, error: 'Contenu vide' }
 
-  const userId = await getClientIdFromProject(admin, project)
-  if (!userId) return { success: false, error: 'Client introuvable' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project, userId } = access
 
   const { data: rawBlock } = await admin
     .from('phase_blocks')
@@ -187,8 +187,9 @@ export async function resolveDesignComment(
   commentId: string,
 ): Promise<DesignClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project, userId, isAdmin } = access
 
   const { data: rawComment } = await admin
     .from('comments')
@@ -205,8 +206,7 @@ export async function resolveDesignComment(
   if (!comment || comment.project_id !== project.id)
     return { success: false, error: 'Commentaire introuvable' }
 
-  const clientUserId = await getClientIdFromProject(admin, project)
-  if (clientUserId && comment.user_id !== clientUserId)
+  if (!isAdmin && comment.user_id !== userId)
     return { success: false, error: 'Vous ne pouvez résoudre que vos propres commentaires' }
 
   const { error } = await db(admin)
@@ -225,8 +225,9 @@ export async function approveDesignSubPhase(
   subPhaseId: string,
 ): Promise<DesignClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project } = access
 
   const ownership = await verifySubPhaseOwnership(admin, subPhaseId, project.id)
   if (!ownership) return { success: false, error: 'Sous-phase introuvable' }
@@ -271,6 +272,8 @@ export async function approveDesignSubPhase(
     })
   }
 
+  void notifyClientValidation(project.id, 'Design validé par le client.', `/projects/${project.id}`)
+
   revalidatePath(`/client/${token}`)
   revalidatePath(`/client/${token}/phases/${phase.id}/sub/${subPhaseId}`)
   return { success: true }
@@ -284,11 +287,9 @@ export async function requestDesignRevisions(
   message: string,
 ): Promise<DesignClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
-
-  const userId = await getClientIdFromProject(admin, project)
-  if (!userId) return { success: false, error: 'Client introuvable' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project, userId } = access
 
   const ownership = await verifySubPhaseOwnership(admin, subPhaseId, project.id)
   if (!ownership) return { success: false, error: 'Sous-phase introuvable' }

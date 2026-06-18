@@ -3,7 +3,8 @@
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
-import { createNotifications, getProjectRecipients } from '@/lib/notifications'
+import { createNotifications, getProjectRecipients, notifyClientValidation } from '@/lib/notifications'
+import { requireAssignedClient } from '@/lib/auth'
 import { sendEmail } from '@/lib/email/send'
 import type { Project, ProjectPhase, SubPhase, AudioTrackContent, Profile } from '@/lib/types'
 import type { BlockComment } from '@/lib/hooks/useRealtimeBlockComments'
@@ -138,8 +139,9 @@ export async function selectAudioTrack(
   blockId: string,
 ): Promise<AudioClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project } = access
 
   const { data: rawBlock } = await admin
     .from('phase_blocks')
@@ -189,12 +191,11 @@ export async function addAudioComment(
   content: string,
 ): Promise<AudioClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
   if (!content.trim()) return { success: false, error: 'Contenu vide' }
 
-  const userId = await resolveClientUserId(admin, project)
-  if (!userId) return { success: false, error: 'Client introuvable' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project, userId } = access
 
   const { data: rawBlock } = await admin
     .from('phase_blocks')
@@ -228,8 +229,9 @@ export async function resolveAudioComment(
   commentId: string,
 ): Promise<AudioClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project, userId, isAdmin } = access
 
   const { data: rawComment } = await admin
     .from('comments')
@@ -240,8 +242,7 @@ export async function resolveAudioComment(
   if (!comment || comment.project_id !== project.id)
     return { success: false, error: 'Commentaire introuvable' }
 
-  const clientUserId = await resolveClientUserId(admin, project)
-  if (clientUserId && comment.user_id !== clientUserId)
+  if (!isAdmin && comment.user_id !== userId)
     return { success: false, error: 'Vous ne pouvez résoudre que vos propres commentaires' }
 
   const { error } = await db(admin)
@@ -260,8 +261,9 @@ export async function approveAudioSubPhase(
   subPhaseId: string,
 ): Promise<AudioClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project } = access
 
   const ownership = await verifySubPhaseOwnership(admin, subPhaseId, project.id)
   if (!ownership) return { success: false, error: 'Sous-phase introuvable' }
@@ -318,6 +320,8 @@ export async function approveAudioSubPhase(
     })
   }
 
+  void notifyClientValidation(project.id, 'Audio validé par le client.', `/projects/${project.id}`)
+
   revalidatePath(`/client/${token}`)
   revalidatePath(`/client/${token}/phases/${phase.id}/sub/${subPhaseId}`)
   return { success: true }
@@ -331,11 +335,9 @@ export async function requestAudioRevisions(
   message: string,
 ): Promise<AudioClientResult> {
   const admin = createAdminClient()
-  const project = await verifyToken(token)
-  if (!project) return { success: false, error: 'Token invalide' }
-
-  const userId = await resolveClientUserId(admin, project)
-  if (!userId) return { success: false, error: 'Client introuvable' }
+  const access = await requireAssignedClient(token)
+  if ('error' in access) return { success: false, error: access.error }
+  const { project, userId } = access
 
   const ownership = await verifySubPhaseOwnership(admin, subPhaseId, project.id)
   if (!ownership) return { success: false, error: 'Sous-phase introuvable' }

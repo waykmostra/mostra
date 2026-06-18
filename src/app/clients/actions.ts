@@ -258,6 +258,22 @@ export async function createAccountForClient(clientId: string): Promise<CreateAc
 
   if (existingUser) {
     userId = existingUser.id
+    // Email déjà associé à un compte : refuser si ce compte est déjà lié à une AUTRE
+    // fiche (clients.profile_id est UNIQUE → la liaison échouerait sinon en silence,
+    // et le client ne verrait pas le projet assigné à cette fiche-ci).
+    const { data: rawOther } = await admin
+      .from('clients')
+      .select('id')
+      .eq('profile_id', userId)
+      .neq('id', clientId)
+      .maybeSingle()
+    if (rawOther) {
+      return {
+        success: false,
+        error:
+          'Ce contact a déjà un compte lié à une autre fiche client. Assigne le projet à cette fiche existante, ou supprime le doublon.',
+      }
+    }
   } else {
     const { data: newUser, error: authErr } = await admin.auth.admin.createUser({
       email,
@@ -290,10 +306,13 @@ export async function createAccountForClient(clientId: string): Promise<CreateAc
       ? 'active'
       : client.status
 
-  await db(admin)
+  const { error: linkErr } = await db(admin)
     .from('clients')
     .update({ profile_id: userId, status: nextStatus })
     .eq('id', clientId)
+  if (linkErr) {
+    return { success: false, error: `Impossible de lier le compte à la fiche : ${linkErr.message}` }
+  }
 
   // Générer le password_setup_token (expire dans 30 jours)
   const { data: tokenRow, error: tokenErr } = await db(admin)

@@ -4,7 +4,7 @@ import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
 import { requireProjectAccess } from '@/lib/auth'
-import { createNotifications, getProjectRecipients } from '@/lib/notifications'
+import { createNotifications, getProjectRecipients, notifyClientValidation } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
 import type { Project, ProjectPhase, Profile } from '@/lib/types'
 import type { VideoFile, VideoComment } from '@/app/projects/video-actions'
@@ -275,6 +275,8 @@ export async function approveAnimationPhase(
     action: 'phase_approved',
     details: { phase_name: phase.name, via: 'client_auth' },
   })
+
+  void notifyClientValidation(projectId, `${phase.name} validé par le client.`, `/projects/${projectId}/phases/${phaseId}`)
 
   const { data: rawProj } = await admin
     .from('projects')
