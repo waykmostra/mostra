@@ -168,6 +168,8 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
   const isStoryboardSubPhase = STORYBOARD_SLUGS.includes(subPhase.slug)
   const isDesignSubPhase = DESIGN_SLUGS.includes(subPhase.slug)
   const isAudioSubPhase = AUDIO_SLUGS.includes(subPhase.slug)
+  // Éditeurs en grille (images) → pleine largeur pour s'adapter à l'écran
+  const isWideLayout = isMoodboardSubPhase || isStoryboardSubPhase || isDesignSubPhase
 
   // Data spécifique formulaire
   let formBlocks: { id: string; content: FormQuestionContent; sort_order: number }[] = []
@@ -432,7 +434,7 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] px-4 sm:px-6 py-6 sm:py-8">
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className={`${isWideLayout ? 'max-w-none' : 'max-w-3xl'} mx-auto space-y-6`}>
 
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 text-xs text-[#444444] flex-wrap">
