@@ -1,26 +1,302 @@
 /*
- * MOSTRA — Design System
- * Ce fichier contient les variables CSS custom du thème MOSTRA.
- * Les variables shadcn/ui sont dans src/app/globals.css (géré par shadcn).
- * Importer ce fichier dans le layout pour les tokens spécifiques MOSTRA.
+ * MOSTRA — Système visuel de l'app
+ *
+ * Source d'autorité : la DA du site mostra_site. L'app et le site partagent
+ * un seul monde de marque. Les valeurs ci-dessous sont reprises du site,
+ * pas réinventées.
+ *
+ * Le principe structurant : le CHROME est sombre (rail, topbar, scènes média)
+ * et les ZONES DE TRAVAIL sont des feuilles claires. C'est l'alternance
+ * scènes nuit / feuilles blanches du site, transposée en app.
+ *
+ * Deux familles de tokens, à ne pas mélanger :
+ *   --chrome-*  le rail et la topbar, toujours sombres, indépendants du thème
+ *   --c-*       les feuilles de travail, claires en jour, sombres en nuit
  */
 
 :root {
-  /* MOSTRA Custom Tokens — Charte graphique officielle */
-  --mostra-bg: #070707;
-  --mostra-card-bg: #0f0f0f;
-  --mostra-card-bg-hover: #171717;
-  --mostra-border: #1f1f1f;
-  --mostra-text-primary: #ffffff;
-  --mostra-text-secondary: #a0a0a0;
-  --mostra-text-muted: #666666;
-  --mostra-accent: #00D76B;
-  --mostra-accent-hover: #00C061;
+  /* ── Marque ────────────────────────────────────────────────────────── */
+  --brand: #00d96b;
+  /* #00d96b ne fait que 1.81:1 sur fond clair : interdit en texte.
+     Cette variante est la seule autorisée pour du vert lisible sur papier. */
+  --brand-text: #036e36;
 
-  /* Status colors */
-  --mostra-status-active: #00D76B;
-  --mostra-status-completed: #00D76B;
-  --mostra-status-pending: #6B7280;
-  --mostra-status-in-progress: #3B82F6;
-  --mostra-status-in-review: #F59E0B;
+  /* ── Chrome sombre ─────────────────────────────────────────────────── */
+  /* Volontairement pas du noir pur : R2 G3 B2, le vert reste faiblement
+     dominant, comme sur les scènes nuit du site. */
+  --chrome: #020302;
+  --chrome-2: #080b09;
+  --chrome-3: #101512;
+  --chrome-line: rgb(255 255 255 / 0.09);
+  --chrome-line-strong: rgb(255 255 255 / 0.18);
+  --chrome-text: #ffffff;
+  --chrome-dim: rgb(255 255 255 / 0.64);
+  --chrome-faint: rgb(255 255 255 / 0.42);
+
+  /* ── Feuilles de travail (triplets R G B, sans virgule) ────────────── */
+  --c-bg: 250 250 249;           /* #fafaf9 — le papier du site */
+  --c-surface: 255 255 255;      /* cartes, panneaux */
+  --c-surface-2: 245 245 243;    /* champs, puces */
+  --c-surface-3: 235 235 231;
+  --c-border: 229 229 225;       /* #e5e5e1 — le --line du site */
+  --c-border-strong: 203 203 196;
+  --c-text: 2 3 2;               /* #020302 — même encre que le chrome */
+  --c-text-dim: 82 82 78;
+  --c-text-faint: 130 130 124;
+  --c-brand: 0 217 107;
+
+  --ink: #020302;                /* fond des boutons primaires sur clair */
+  --ink-text: #ffffff;
+
+  /* ── Signaux (échéances, états) ────────────────────────────────────── */
+  --c-late: #e5484d;
+  --c-soon: #e8950c;
+  --c-ok: #16a34a;
+
+  /* ── Rayons : échelle fermée, choisie par taille d'objet ───────────── */
+  --r-xs: 4px;    /* pastilles */
+  --r-sm: 8px;    /* boutons, champs, onglets */
+  --r-md: 12px;   /* tuiles média */
+  --r-lg: 16px;   /* cartes, panneaux */
+  --r-xl: 20px;   /* grands conteneurs, modales */
+
+  /* ── Élévation ─────────────────────────────────────────────────────── */
+  /* Teintée rgb(9 26 17) — jamais du noir pur : une ombre neutre sur un
+     papier chaud vire au gris sale. Multi-couches pour une vraie chute. */
+  --hairline: 0 0 0 1px rgb(9 26 17 / 0.06);
+  --e1: 0 1px 2px -1px rgb(9 26 17 / 0.08), 0 2px 6px -2px rgb(9 26 17 / 0.06),
+        0 6px 12px -6px rgb(9 26 17 / 0.05);
+  --e2: 0 1px 2px -1px rgb(9 26 17 / 0.07), 0 4px 10px -3px rgb(9 26 17 / 0.07),
+        0 12px 24px -8px rgb(9 26 17 / 0.07), 0 24px 36px -12px rgb(9 26 17 / 0.06);
+  --e3: 0 1px 2px -1px rgb(9 26 17 / 0.07), 0 6px 14px -4px rgb(9 26 17 / 0.08),
+        0 16px 32px -10px rgb(9 26 17 / 0.08), 0 32px 48px -14px rgb(9 26 17 / 0.08),
+        0 48px 64px -20px rgb(9 26 17 / 0.07);
+  --e-brand: 0 4px 14px -4px rgb(0 217 107 / 0.35), 0 10px 34px -8px rgb(0 217 107 / 0.25);
+
+  /* ── Mouvement ─────────────────────────────────────────────────────── */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);       /* déplacements */
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);    /* fondus, couleurs */
+  --t-fast: 160ms;
+  --t-base: 260ms;
+  --t-slow: 520ms;
+
+  /* Largeur du rail. Pilotée par la sidebar (repliée / dépliée) : le contenu
+     s'y adosse via md:ml-[var(--rail-w)], donc une seule valeur à bouger. */
+  --rail-w: 248px;
+
+  /* ── Métal vert : bordure des cartes posées sur le chrome sombre ───── */
+  --metal: linear-gradient(150deg, #c9ffe4 0%, #00d96b 24%, #046b36 48%,
+                           #00d96b 72%, #e6fff2 100%);
+
+  color-scheme: light;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   MODE NUIT — bascule via .dark sur <html>.
+   On ne ré-override QUE les --c-* : les feuilles deviennent sombres,
+   le chrome ne bouge pas (il était déjà sombre). Toute l'UI qui utilise
+   bg-surface / text-ink / border-line suit automatiquement.
+   ───────────────────────────────────────────────────────────────────── */
+.dark {
+  --c-bg: 2 3 2;                 /* la feuille rejoint la scène nuit */
+  --c-surface: 8 11 9;           /* #080b09 — les cartes du site sur fond nuit */
+  --c-surface-2: 16 21 18;
+  --c-surface-3: 26 32 28;
+  --c-border: 32 38 34;
+  --c-border-strong: 52 60 55;
+  --c-text: 255 255 255;
+  --c-text-dim: 168 173 170;
+  --c-text-faint: 116 122 118;
+  --c-brand: 0 217 107;
+
+  --ink: #ffffff;                /* boutons primaires : clairs sur nuit */
+  --ink-text: #020302;
+
+  --c-late: #ff6166;
+  --c-soon: #f0a935;
+  --c-ok: #34c759;
+
+  /* Sur fond sombre le vert de marque est à 10:1 : il redevient lisible
+     en texte, la variante foncée n'a plus de raison d'être. */
+  --brand-text: #00d96b;
+
+  --hairline: 0 0 0 1px rgb(255 255 255 / 0.07);
+  --e1: 0 2px 8px -2px rgb(0 0 0 / 0.5);
+  --e2: 0 8px 24px -8px rgb(0 0 0 / 0.65);
+  --e3: 0 24px 70px -20px rgb(0 0 0 / 0.85);
+
+  color-scheme: dark;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Surfaces du navigateur — sélection, caret, barres de défilement,
+   anneau de focus. Livrées par défaut elles n'appartiennent à aucun
+   système ; ici elles sont teintées comme le reste.
+   ───────────────────────────────────────────────────────────────────── */
+::selection {
+  background: var(--brand);
+  color: #052e16;
+}
+
+:root {
+  caret-color: var(--brand);
+  accent-color: var(--brand);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+/* Fine, discrète, teintée — pas la barre grise du système. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--c-text-faint) / 0.35) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-text-faint) / 0.3);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--c-text-faint) / 0.55);
+  background-clip: content-box;
+}
+
+/* Le chrome sombre a sa propre barre : la claire y serait invisible. */
+.chrome-scroll {
+  scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+}
+.chrome-scroll::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.18);
+  background-clip: content-box;
+}
+.chrome-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.34);
+  background-clip: content-box;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Primitives de la DA
+   ───────────────────────────────────────────────────────────────────── */
+
+/* Micro-label mono, capitales espacées. La seule typo mono de l'app :
+   labels de section, compteurs, unités. Jamais pour du texte courant.
+   Ne jamais renommer en .overline — collision avec Tailwind. */
+.mono-label {
+  font-family: var(--font-mono), ui-monospace, "SF Mono", SFMono-Regular, Menlo,
+    Consolas, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+/* Carte posée sur une feuille claire : la bordure est une ombre, donc
+   le hover peut l'épaissir sans décaler quoi que ce soit. */
+.surface {
+  background: rgb(var(--c-surface));
+  border-radius: var(--r-lg);
+  box-shadow: var(--hairline), var(--e1);
+}
+
+/* Carte posée sur le chrome sombre. */
+.surface-nuit {
+  background: var(--chrome-2);
+  border-radius: var(--r-lg);
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.06),
+              0 24px 70px -20px rgb(0 0 0 / 0.85);
+}
+
+/* Bordure métal vert — réservée aux cartes sur fond sombre. Une variante
+   claire a été essayée sur le site puis retirée : elle ne tient pas. */
+.bord-metal {
+  position: relative;
+  background: var(--chrome-2);
+  border-radius: var(--r-lg);
+}
+.bord-metal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: var(--metal);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Filet de lumière 1px sur l'arête haute — la carte attrape la lumière. */
+.rim-top {
+  position: relative;
+}
+.rim-top::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.22), transparent);
+  pointer-events: none;
+}
+
+/* Grain. Reprend le feTurbulence du site à l'identique (0.82 / 4 octaves,
+   180×180, opacité 0.03). Sans lui le chrome sombre est une aplat mort. */
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Décollement au survol. */
+.lift {
+  transition: transform var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease);
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--hairline), var(--e3);
+}
+
+/* Halo vert — un seul par vue, sur l'élément qui appelle l'action. */
+.glow-brand {
+  box-shadow: var(--e-brand);
+}
+
+/* Tout ce qui se presse s'enfonce. Appliqué globalement plus bas. */
+button:active,
+a[role="button"]:active,
+[role="button"]:active {
+  transform: translateY(1px) scale(0.994);
+}
+
+/* Chiffres alignés en colonne — obligatoire dans les tableaux et les KPI. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lift:hover {
+    transform: none;
+  }
+  button:active,
+  a[role="button"]:active,
+  [role="button"]:active {
+    transform: none;
+  }
 }

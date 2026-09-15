@@ -19,7 +19,7 @@ export default function DashboardKpis({
 }: DashboardKpisProps) {
   const cards: { label: string; value: string; icon: LucideIcon; color: string }[] = [
     { label: 'Projets actifs', value: String(activeCount), icon: Activity, color: '#3B82F6' },
-    { label: 'Encaissé ce mois', value: eur(caMonth), icon: TrendingUp, color: '#00D76B' },
+    { label: 'Encaissé ce mois', value: eur(caMonth), icon: TrendingUp, color: 'rgb(var(--c-brand))' },
     { label: 'À facturer', value: eur(toInvoice), icon: FileText, color: '#F59E0B' },
     {
       label: 'Deadlines < 7j',
@@ -36,7 +36,7 @@ export default function DashboardKpis({
         return (
           <div
             key={c.label}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-5 py-4 flex items-center gap-4"
+            className="bg-surface-2 border border-line rounded-xl px-5 py-4 flex items-center gap-4"
           >
             <div
               className="rounded-lg p-2.5 flex-shrink-0"
@@ -45,8 +45,8 @@ export default function DashboardKpis({
               <Icon className="h-5 w-5" style={{ color: c.color }} />
             </div>
             <div className="min-w-0">
-              <p className="text-2xl font-semibold text-white tabular-nums truncate">{c.value}</p>
-              <p className="text-xs text-[#666666] mt-0.5">{c.label}</p>
+              <p className="text-2xl font-semibold text-ink tabular-nums truncate">{c.value}</p>
+              <p className="text-xs text-faint mt-0.5">{c.label}</p>
             </div>
           </div>
         )

@@ -2,26 +2,22 @@ import type { PhaseStatus, ProjectStatus } from '@/lib/types'
 
 type Status = ProjectStatus | PhaseStatus
 
+/**
+ * Les quatre états du pipeline ne pèsent pas pareil : « en review » attend
+ * quelqu'un, « en attente » n'attend personne. Chacun a donc son propre poids
+ * visuel plutôt qu'une pastille de couleur interchangeable.
+ */
 const STATUS_CONFIG: Record<Status, { label: string; className: string }> = {
-  // Project statuses
-  active: { label: 'Active', className: 'bg-[#22C55E]/10 text-[#22C55E] border-[#22C55E]/20' },
-  completed: {
-    label: 'Completed',
-    className: 'bg-[#22C55E]/10 text-[#22C55E] border-[#22C55E]/20',
-  },
-  archived: { label: 'Archived', className: 'bg-[#6B7280]/10 text-[#6B7280] border-[#6B7280]/20' },
-  on_hold: { label: 'On hold', className: 'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20' },
-  // Phase statuses
-  pending: { label: 'Pending', className: 'bg-[#6B7280]/10 text-[#6B7280] border-[#6B7280]/20' },
-  in_progress: {
-    label: 'In Progress',
-    className: 'bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/20',
-  },
-  in_review: {
-    label: 'In Review',
-    className: 'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20',
-  },
-  approved: { label: 'Approved', className: 'bg-[#22C55E]/10 text-[#22C55E] border-[#22C55E]/20' },
+  // Projets
+  active: { label: 'En cours', className: 'bg-brand/15 text-brand-text' },
+  completed: { label: 'Terminé', className: 'bg-brand/15 text-brand-text' },
+  on_hold: { label: 'En pause', className: 'bg-soon/15 text-soon' },
+  archived: { label: 'Archivé', className: 'bg-surface-3 text-faint' },
+  // Phases
+  pending: { label: 'En attente', className: 'bg-surface-3 text-faint' },
+  in_progress: { label: 'En cours', className: 'bg-surface-3 text-dim' },
+  in_review: { label: 'En review', className: 'bg-soon/15 text-soon' },
+  approved: { label: 'Approuvé', className: 'bg-brand/15 text-brand-text' },
 }
 
 interface StatusBadgeProps {
@@ -34,10 +30,7 @@ export default function StatusBadge({ status, className = '' }: StatusBadgeProps
 
   return (
     <span
-      className={`
-        inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
-        ${config.className} ${className}
-      `}
+      className={`mono-label inline-flex items-center rounded-full px-2.5 py-1 ${config.className} ${className}`}
     >
       {config.label}
     </span>

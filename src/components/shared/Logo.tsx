@@ -3,8 +3,11 @@ import Image from 'next/image'
 interface LogoProps {
   /** "icon" = symbole seul, "full" = logo complet */
   variant?: 'icon' | 'full'
-  /** "white" = logo blanc, "green" = logo vert (full seulement) */
-  color?: 'white' | 'green'
+  /**
+   * "theme" (défaut) = noir en mode jour, blanc en mode nuit.
+   * "white" / "green" = forcé (à réserver aux fonds fixes, ex. média sombre).
+   */
+  color?: 'theme' | 'white' | 'green'
   /** Hauteur CSS Tailwind (ex: "h-8", "h-10"). Largeur auto. */
   className?: string
 }
@@ -24,10 +27,14 @@ const DIMENSIONS: Record<string, { width: number; height: number }> = {
 
 export default function Logo({
   variant = 'full',
-  color = 'white',
+  color = 'theme',
   className = 'h-8',
 }: LogoProps) {
-  const key = variant === 'icon' ? 'icon-white' : `full-${color}`
+  // En mode "theme" on part du SVG blanc et on le teinte en CSS :
+  //   brightness-0        → noir plein (mode jour)
+  //   dark:invert (+ le brightness-0 ci-dessus) → blanc plein (mode nuit)
+  const themed = color === 'theme'
+  const key = variant === 'icon' ? 'icon-white' : `full-${themed ? 'white' : color}`
   const { width, height } = DIMENSIONS[key]
 
   return (
@@ -36,7 +43,7 @@ export default function Logo({
       alt="MOSTRA"
       width={width}
       height={height}
-      className={`w-auto ${className}`}
+      className={`w-auto ${themed ? 'brightness-0 dark:invert' : ''} ${className}`}
       unoptimized
       priority
     />

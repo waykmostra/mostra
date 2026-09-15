@@ -8,8 +8,8 @@ interface ContactManagerProps {
 export default function ContactManager({ projectManager }: ContactManagerProps) {
   if (!projectManager) {
     return (
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
-        <p className="text-xs text-[#444444] italic">Aucun responsable assigné.</p>
+      <div className="surface px-5 py-4">
+        <p className="text-[13px] text-faint">Aucun responsable assigné pour l’instant.</p>
       </div>
     )
   }
@@ -29,9 +29,9 @@ export default function ContactManager({ projectManager }: ContactManagerProps) 
   }
 
   function getContactLabel(): string {
-    if (contact_method === 'whatsapp') return 'WhatsApp'
+    if (contact_method === 'whatsapp') return 'Écrire sur WhatsApp'
     if (contact_method === 'phone') return 'Appeler'
-    return 'Email'
+    return 'Envoyer un email'
   }
 
   const contactHref = getContactHref()
@@ -44,57 +44,42 @@ export default function ContactManager({ projectManager }: ContactManagerProps) 
     .toUpperCase()
 
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl overflow-hidden">
-      {/* En-tête de la carte */}
-      <div className="px-5 py-3 border-b border-[#1a1a1a]">
-        <p className="text-[10px] text-[#444444] uppercase tracking-widest font-medium">
-          Your Project Manager
-        </p>
-      </div>
+    <div className="surface p-5">
+      <p className="mono-label text-faint">Votre interlocuteur</p>
 
-      <div className="p-5 space-y-4">
-        {/* Avatar + nom */}
-        <div className="flex items-center gap-3">
-          {avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatar_url}
-              alt={full_name}
-              className="w-12 h-12 rounded-full object-cover border border-[#2a2a2a]"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-[#00D76B]/10 border border-[#00D76B]/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-sm font-bold text-[#00D76B]">{initials}</span>
-            </div>
-          )}
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{full_name}</p>
-            <p className="text-[11px] text-[#555555]">Project Manager</p>
+      <div className="mt-4 flex items-center gap-3">
+        {avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatar_url}
+            alt={full_name}
+            className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-brand/15">
+            <span className="text-[15px] font-semibold text-brand-text">{initials}</span>
           </div>
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-[15px] font-medium text-ink">{full_name}</p>
+          <p className="text-[12.5px] text-faint">Responsable du projet</p>
         </div>
-
-        {/* Méthode de contact préférée */}
-        <div className="flex items-center gap-2 text-[11px] text-[#555555]">
-          <ContactIcon method={contact_method} />
-          <span className="truncate">{contact_method === 'email' ? email : (phone ?? email)}</span>
-        </div>
-
-        {/* Bouton CTA */}
-        <a
-          href={contactHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="
-            flex items-center justify-center gap-2
-            w-full px-4 py-2.5 rounded-lg text-sm font-medium
-            bg-[#00D76B] hover:bg-[#00C061] text-white
-            transition-colors
-          "
-        >
-          <ContactIcon method={contact_method} className="h-4 w-4" />
-          Contact Manager — {contactLabel}
-        </a>
       </div>
+
+      <p className="mt-4 flex items-center gap-2 text-[13px] text-dim">
+        <ContactIcon method={contact_method} className="h-4 w-4 flex-shrink-0 text-faint" />
+        <span className="truncate">{contact_method === 'email' ? email : (phone ?? email)}</span>
+      </p>
+
+      <a
+        href={contactHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn-brand mt-4 w-full"
+      >
+        <ContactIcon method={contact_method} className="h-4 w-4" />
+        {contactLabel}
+      </a>
     </div>
   )
 }

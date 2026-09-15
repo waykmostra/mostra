@@ -63,10 +63,10 @@ export default function RouteError({ error, reset, message }: Props) {
         <AlertTriangle className="h-5 w-5 text-[#EF4444]" />
       </div>
       <div className="space-y-1.5">
-        <h2 className="text-base font-semibold text-white">
+        <h2 className="text-base font-semibold text-ink">
           {isChunk ? 'Mise à jour de l’application' : 'Une erreur est survenue'}
         </h2>
-        <p className="text-sm text-[#666666] max-w-sm">
+        <p className="text-sm text-faint max-w-sm">
           {isChunk
             ? 'Une nouvelle version vient d’être déployée. Rechargement en cours…'
             : error.message || message || 'Quelque chose a mal tourné. Réessayez ou contactez le support.'}
@@ -75,7 +75,7 @@ export default function RouteError({ error, reset, message }: Props) {
       <button
         onClick={isChunk ? () => window.location.reload() : reset}
         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
-          bg-[#111111] border border-[#2a2a2a] text-[#a0a0a0] hover:text-white hover:border-[#3a3a3a]
+          bg-surface border border-line text-dim hover:text-ink hover:border-line-strong
           transition-colors"
       >
         <RotateCcw className="h-3.5 w-3.5" />

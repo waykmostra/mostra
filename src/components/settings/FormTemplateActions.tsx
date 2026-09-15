@@ -53,7 +53,7 @@ export default function FormTemplateActions({ templateId, isDefault }: FormTempl
           type="button"
           onClick={() => handle('default')}
           disabled={isBusy}
-          className="p-1.5 rounded-lg text-[#444444] hover:text-[#F59E0B] hover:bg-[#1a1a1a] transition-colors disabled:opacity-40"
+          className="p-1.5 rounded-lg text-faint hover:text-[#F59E0B] hover:bg-surface-2 transition-colors disabled:opacity-40"
           title="Définir par défaut"
         >
           {busy === 'default' ? (
@@ -68,7 +68,7 @@ export default function FormTemplateActions({ templateId, isDefault }: FormTempl
         type="button"
         onClick={() => handle('duplicate')}
         disabled={isBusy}
-        className="p-1.5 rounded-lg text-[#444444] hover:text-white hover:bg-[#1a1a1a] transition-colors disabled:opacity-40"
+        className="p-1.5 rounded-lg text-faint hover:text-ink hover:bg-surface-2 transition-colors disabled:opacity-40"
         title="Dupliquer"
       >
         {busy === 'duplicate' ? (
@@ -85,7 +85,7 @@ export default function FormTemplateActions({ templateId, isDefault }: FormTempl
           handle('delete')
         }}
         disabled={isBusy}
-        className="p-1.5 rounded-lg text-[#444444] hover:text-red-400 hover:bg-[#1a1a1a] transition-colors disabled:opacity-40"
+        className="p-1.5 rounded-lg text-faint hover:text-red-400 hover:bg-surface-2 transition-colors disabled:opacity-40"
         title="Supprimer"
       >
         {busy === 'delete' ? (

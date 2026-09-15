@@ -1,4 +1,4 @@
-import type { BillingCycle, FinanceCategory } from '@/lib/types'
+import type { BillingCycle, FinanceCategory, RevenueCategory } from '@/lib/types'
 
 // Libellés FR + couleurs pour les catégories de dépense/abonnement.
 export const CATEGORY_META: Record<FinanceCategory, { label: string; color: string }> = {
@@ -12,6 +12,21 @@ export const CATEGORY_META: Record<FinanceCategory, { label: string; color: stri
 
 export const CATEGORY_OPTIONS = Object.entries(CATEGORY_META).map(([value, m]) => ({
   value: value as FinanceCategory,
+  label: m.label,
+  color: m.color,
+}))
+
+// Catégories de revenu libre (table revenues, migration 032).
+export const REVENUE_CATEGORY_META: Record<RevenueCategory, { label: string; color: string }> = {
+  service:   { label: 'Prestation',  color: '#00D76B' },
+  retainer:  { label: 'Récurrent',   color: '#3B82F6' },
+  training:  { label: 'Formation',   color: '#A78BFA' },
+  affiliate: { label: 'Affiliation', color: '#F59E0B' },
+  other:     { label: 'Autre',       color: '#6B7280' },
+}
+
+export const REVENUE_CATEGORY_OPTIONS = Object.entries(REVENUE_CATEGORY_META).map(([value, m]) => ({
+  value: value as RevenueCategory,
   label: m.label,
   color: m.color,
 }))

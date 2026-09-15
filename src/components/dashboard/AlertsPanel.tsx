@@ -56,11 +56,11 @@ function Row({
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#1a1a1a] transition-colors group"
+      className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-2 transition-colors group"
     >
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-white truncate">{title}</p>
-        {subtitle && <p className="text-[11px] text-[#666666] truncate">{subtitle}</p>}
+        <p className="text-sm text-ink truncate">{title}</p>
+        {subtitle && <p className="text-[11px] text-faint truncate">{subtitle}</p>}
       </div>
       <span
         className="text-[11px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap flex-shrink-0"
@@ -68,7 +68,7 @@ function Row({
       >
         {right}
       </span>
-      <ChevronRight className="h-3.5 w-3.5 text-[#444444] group-hover:text-[#888888] flex-shrink-0" />
+      <ChevronRight className="h-3.5 w-3.5 text-faint group-hover:text-dim flex-shrink-0" />
     </Link>
   )
 }
@@ -90,13 +90,13 @@ function Section({
     <div>
       <div className="flex items-center gap-2 mb-2 px-3">
         {icon}
-        <h3 className="text-xs font-semibold text-white uppercase tracking-wider">{title}</h3>
+        <h3 className="text-xs font-semibold text-ink uppercase tracking-wider">{title}</h3>
         {count > 0 && (
-          <span className="text-[10px] text-[#666666] tabular-nums">{count}</span>
+          <span className="text-[10px] text-faint tabular-nums">{count}</span>
         )}
       </div>
       {count === 0 ? (
-        <p className="text-xs text-[#555555] italic px-3 py-2">{empty}</p>
+        <p className="text-xs text-faint italic px-3 py-2">{empty}</p>
       ) : (
         <div className="space-y-0.5">{children}</div>
       )}
@@ -113,12 +113,12 @@ export default function AlertsPanel({
 
   if (totalAlerts === 0) {
     return (
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
+      <div className="bg-surface border border-line rounded-xl p-5">
         <div className="flex items-center gap-2.5 text-[#22C55E]">
           <CheckCircle2 className="h-5 w-5" />
-          <p className="text-sm font-medium text-white">Tout est à jour</p>
+          <p className="text-sm font-medium text-ink">Tout est à jour</p>
         </div>
-        <p className="text-xs text-[#666666] mt-1">
+        <p className="text-xs text-faint mt-1">
           Aucune échéance proche, aucune facture en attente.
         </p>
       </div>
@@ -129,10 +129,10 @@ export default function AlertsPanel({
   const invoiceCount = toInvoiceList.length + overdueList.length
 
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-4">
+    <div className="bg-surface border border-line rounded-xl p-4">
       <div className="flex items-center justify-between mb-3 px-1">
-        <h2 className="text-sm font-semibold text-white">Alertes &amp; actions</h2>
-        <span className="text-[10px] text-[#444444] uppercase tracking-widest tabular-nums">
+        <h2 className="text-sm font-semibold text-ink">Alertes &amp; actions</h2>
+        <span className="text-[10px] text-faint uppercase tracking-widest tabular-nums">
           {totalAlerts} à traiter
         </span>
       </div>
@@ -159,7 +159,7 @@ export default function AlertsPanel({
             )
           })}
           {deadlineAlerts.length > MAX_ROWS && (
-            <p className="text-[11px] text-[#555555] px-3 pt-1">
+            <p className="text-[11px] text-faint px-3 pt-1">
               +{deadlineAlerts.length - MAX_ROWS} autre{deadlineAlerts.length - MAX_ROWS > 1 ? 's' : ''}
             </p>
           )}
@@ -193,7 +193,7 @@ export default function AlertsPanel({
             />
           ))}
           {invoiceCount > MAX_ROWS && (
-            <p className="text-[11px] text-[#555555] px-3 pt-1 flex items-center gap-1">
+            <p className="text-[11px] text-faint px-3 pt-1 flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
               +{invoiceCount - MAX_ROWS} autre{invoiceCount - MAX_ROWS > 1 ? 's' : ''}
             </p>

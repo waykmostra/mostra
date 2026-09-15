@@ -11,8 +11,8 @@ const CARDS = (stats: StatsCardsProps) => [
     label: 'Total Projects',
     value: stats.total,
     icon: FolderOpen,
-    iconColor: 'text-[#00D76B]',
-    iconBg: 'bg-[#00D76B]/10',
+    iconColor: 'text-brand',
+    iconBg: 'bg-brand/10',
   },
   {
     label: 'Active Projects',
@@ -38,14 +38,14 @@ export default function StatsCards(props: StatsCardsProps) {
         return (
           <div
             key={card.label}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-5 py-4 flex items-center gap-4"
+            className="bg-surface-2 border border-line rounded-xl px-5 py-4 flex items-center gap-4"
           >
             <div className={`${card.iconBg} rounded-lg p-2.5 flex-shrink-0`}>
               <Icon className={`h-5 w-5 ${card.iconColor}`} />
             </div>
             <div>
-              <p className="text-2xl font-semibold text-white tabular-nums">{card.value}</p>
-              <p className="text-xs text-[#666666] mt-0.5">{card.label}</p>
+              <p className="text-2xl font-semibold text-ink tabular-nums">{card.value}</p>
+              <p className="text-xs text-faint mt-0.5">{card.label}</p>
             </div>
           </div>
         )

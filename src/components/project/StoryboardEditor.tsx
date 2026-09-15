@@ -126,12 +126,12 @@ function StoryboardLightbox({
         onClick={onClose}
         className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-colors z-10"
       >
-        <X className="h-4 w-4 text-white" />
+        <X className="h-4 w-4 text-ink" />
       </button>
 
       {/* Shot counter */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white/10 border border-white/10">
-        <span className="text-xs text-white/70 tabular-nums font-medium">
+        <span className="text-xs text-ink/70 tabular-nums font-medium">
           Shot {currentIndex + 1} / {shots.length}
         </span>
       </div>
@@ -143,7 +143,7 @@ function StoryboardLightbox({
           onClick={(e) => { e.stopPropagation(); onPrev() }}
           className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-colors z-10"
         >
-          <ChevronLeft className="h-5 w-5 text-white" />
+          <ChevronLeft className="h-5 w-5 text-ink" />
         </button>
       )}
 
@@ -154,7 +154,7 @@ function StoryboardLightbox({
           onClick={(e) => { e.stopPropagation(); onNext() }}
           className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-colors z-10"
         >
-          <ChevronRight className="h-5 w-5 text-white" />
+          <ChevronRight className="h-5 w-5 text-ink" />
         </button>
       )}
 
@@ -172,7 +172,7 @@ function StoryboardLightbox({
           draggable={false}
         />
         {current.content.description && (
-          <p className="text-sm text-white/70 text-center max-w-2xl leading-relaxed px-4">
+          <p className="text-sm text-ink/70 text-center max-w-2xl leading-relaxed px-4">
             {current.content.description}
           </p>
         )}
@@ -218,7 +218,7 @@ function AdminCommentPanel({
   }
 
   return (
-    <div className="px-3 pb-3 pt-2.5 border-t border-[#1e1e1e] space-y-2.5">
+    <div className="px-3 pb-3 pt-2.5 border-t border-line space-y-2.5">
       {blockComments.length > 0 && (
         <div className="space-y-2">
           {blockComments.map((c) => {
@@ -226,25 +226,25 @@ function AdminCommentPanel({
             const initials = authorName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
             return (
               <div key={c.id} className={`flex gap-2 transition-opacity ${c.is_resolved ? 'opacity-40' : ''}`}>
-                <div className="w-5 h-5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
+                <div className="w-5 h-5 rounded-full bg-surface-3 border border-line flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
                   {c.author?.avatar_url
                     // eslint-disable-next-line @next/next/no-img-element
                     ? <img src={c.author.avatar_url} alt={authorName} className="w-full h-full object-cover" />
-                    : <span className="text-[8px] text-[#666666] font-medium">{initials}</span>}
+                    : <span className="text-[8px] text-faint font-medium">{initials}</span>}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                    <span className="text-[10px] font-medium text-white">{authorName}</span>
-                    <span className="text-[9px] text-[#444444]">{formatRelative(c.created_at)}</span>
+                    <span className="text-[10px] font-medium text-ink">{authorName}</span>
+                    <span className="text-[9px] text-faint">{formatRelative(c.created_at)}</span>
                     {c.is_resolved && (
-                      <span className="text-[9px] text-[#00D76B] bg-[#00D76B]/10 px-1 py-0.5 rounded-full border border-[#00D76B]/20">Résolu</span>
+                      <span className="text-[9px] text-brand bg-brand/10 px-1 py-0.5 rounded-full border border-brand/20">Résolu</span>
                     )}
                   </div>
-                  <p className="text-[11px] text-[#999999] leading-relaxed">{c.content}</p>
+                  <p className="text-[11px] text-dim leading-relaxed">{c.content}</p>
                 </div>
                 {!c.is_resolved && (
                   <button type="button" onClick={() => handleResolve(c.id)}
-                    className="text-[#333333] hover:text-[#00D76B] transition-colors flex-shrink-0 mt-0.5">
+                    className="text-faint hover:text-brand transition-colors flex-shrink-0 mt-0.5">
                     <CheckCircle className="h-3 w-3" />
                   </button>
                 )}
@@ -256,8 +256,8 @@ function AdminCommentPanel({
 
       {!open ? (
         <button type="button" onClick={() => setOpen(true)}
-          className="flex items-center gap-1.5 text-[10px] text-[#444444] hover:text-[#888888] transition-colors group">
-          <MessageSquare className="h-3 w-3 group-hover:text-[#00D76B] transition-colors" />
+          className="flex items-center gap-1.5 text-[10px] text-faint hover:text-dim transition-colors group">
+          <MessageSquare className="h-3 w-3 group-hover:text-brand transition-colors" />
           {blockComments.length === 0
             ? 'Commenter'
             : `${unresolvedCount > 0 ? `${unresolvedCount} non résolu${unresolvedCount > 1 ? 's' : ''}` : `${blockComments.length} commentaire${blockComments.length > 1 ? 's' : ''}`}`}
@@ -271,16 +271,16 @@ function AdminCommentPanel({
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit() }}
             placeholder="Note interne… (Ctrl+Entrée)"
             rows={2}
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-[11px] text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+            className="w-full bg-surface border border-line rounded-lg px-2.5 py-1.5 text-[11px] text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
           />
           <div className="flex items-center gap-2">
             <button type="button" onClick={handleSubmit} disabled={!text.trim() || sending}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-[10px] font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40">
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-medium hover:bg-brand/20 transition-colors disabled:opacity-40">
               {sending ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Send className="h-2.5 w-2.5" />}
               Envoyer
             </button>
             <button type="button" onClick={() => { setOpen(false); setText('') }}
-              className="text-[10px] text-[#444444] hover:text-white transition-colors">
+              className="text-[10px] text-faint hover:text-ink transition-colors">
               Annuler
             </button>
           </div>
@@ -342,13 +342,13 @@ function ShotCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="group bg-[#111111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl overflow-hidden hover:shadow-lg hover:shadow-black/30 flex flex-col"
+      className="group bg-surface border border-line hover:border-line rounded-xl overflow-hidden hover:shadow-lg hover:shadow-black/30 flex flex-col"
     >
       {/* Header strip: shot number + drag handle + delete */}
-      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#1a1a1a]">
-        <span className="text-[10px] text-[#555555] font-mono tabular-nums">
+      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-line">
+        <span className="text-[10px] text-faint font-mono tabular-nums">
           Shot {shot.content.shot_number}
-          {totalShots > 1 && <span className="text-[#333333]"> / {totalShots}</span>}
+          {totalShots > 1 && <span className="text-faint"> / {totalShots}</span>}
         </span>
         {canEdit && (
           <div className="flex items-center gap-1">
@@ -361,7 +361,7 @@ function ShotCard({
                 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium border transition-colors opacity-0 group-hover:opacity-100
                 ${confirmDelete
                   ? 'bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30'
-                  : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#555555] hover:text-white hover:border-[#444444]'}
+                  : 'bg-surface-2 border-line text-faint hover:text-ink hover:border-line-strong'}
               `}
             >
               {deleting ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Trash2 className="h-2.5 w-2.5" />}
@@ -370,7 +370,7 @@ function ShotCard({
             {/* Drag handle — attributes + listeners both here, matching DraggablePhaseList pattern */}
             <button
               type="button"
-              className="w-6 h-6 rounded flex items-center justify-center cursor-grab active:cursor-grabbing text-[#666666] hover:text-white hover:bg-[#2a2a2a] transition-colors touch-none"
+              className="w-6 h-6 rounded flex items-center justify-center cursor-grab active:cursor-grabbing text-faint hover:text-ink hover:bg-[rgb(var(--c-border))] transition-colors touch-none"
               {...attributes}
               {...listeners}
               title="Réorganiser"
@@ -383,12 +383,12 @@ function ShotCard({
 
       {/* Image */}
       <div
-        className="relative aspect-video bg-[#0d0d0d] cursor-zoom-in overflow-hidden"
+        className="relative aspect-video bg-surface cursor-zoom-in overflow-hidden"
         onClick={onOpenLightbox}
       >
         {!imageLoaded && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <ImageIcon className="h-6 w-6 text-[#2a2a2a]" />
+            <ImageIcon className="h-6 w-6 text-[rgb(var(--c-border))]" />
           </div>
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -403,7 +403,7 @@ function ShotCard({
         {/* Expand overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center">
           <div className="w-8 h-8 rounded-xl bg-black/60 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <Maximize2 className="h-3.5 w-3.5 text-white" />
+            <Maximize2 className="h-3.5 w-3.5 text-ink" />
           </div>
         </div>
       </div>
@@ -420,11 +420,11 @@ function ShotCard({
             }}
             placeholder="Description, composition, durée…"
             rows={2}
-            className="w-full bg-transparent text-[11px] text-[#888888] placeholder-[#444444] focus:outline-none resize-none leading-relaxed focus:text-[#aaaaaa] transition-colors"
+            className="w-full bg-transparent text-[11px] text-dim placeholder-faint focus:outline-none resize-none leading-relaxed focus:text-dim transition-colors"
           />
         ) : (
           shot.content.description && (
-            <p className="text-[11px] text-[#888888] leading-relaxed">{shot.content.description}</p>
+            <p className="text-[11px] text-dim leading-relaxed">{shot.content.description}</p>
           )
         )}
       </div>
@@ -511,7 +511,7 @@ function UploadZone({
     <div
       className={`
         relative rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-3 py-10 px-6 cursor-pointer transition-all duration-200
-        ${dragging ? 'border-[#00D76B] bg-[#00D76B]/5 scale-[1.01]' : 'border-[#2a2a2a] hover:border-[#3a3a3a] hover:bg-[#111111]/50'}
+        ${dragging ? 'border-brand bg-brand/5 scale-[1.01]' : 'border-line hover:border-line-strong hover:bg-surface/50'}
         ${uploading ? 'pointer-events-none' : ''}
       `}
       onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
@@ -521,25 +521,25 @@ function UploadZone({
     >
       {uploading ? (
         <>
-          <Loader2 className="h-8 w-8 text-[#00D76B] animate-spin" />
+          <Loader2 className="h-8 w-8 text-brand animate-spin" />
           <div className="text-center">
-            <p className="text-sm text-white font-medium">Upload en cours…</p>
-            <p className="text-xs text-[#666666] mt-0.5">
+            <p className="text-sm text-ink font-medium">Upload en cours…</p>
+            <p className="text-xs text-faint mt-0.5">
               {uploadCount} image{uploadCount > 1 ? 's' : ''} en traitement
             </p>
           </div>
         </>
       ) : (
         <>
-          <div className="w-14 h-14 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
-            <Upload className={`h-6 w-6 transition-colors ${dragging ? 'text-[#00D76B]' : 'text-[#555555]'}`} />
+          <div className="w-14 h-14 rounded-2xl bg-surface-2 border border-line flex items-center justify-center">
+            <Upload className={`h-6 w-6 transition-colors ${dragging ? 'text-brand' : 'text-faint'}`} />
           </div>
           <div className="text-center">
-            <p className="text-sm text-[#888888]">
+            <p className="text-sm text-dim">
               {dragging ? 'Relâchez pour importer' : 'Glissez vos images ici'}
             </p>
-            <p className="text-xs text-[#555555] mt-0.5">ou cliquez pour parcourir — sélection multiple</p>
-            <p className="text-[11px] text-[#444444] mt-2">PNG, JPG, WEBP — max 10 MB par image</p>
+            <p className="text-xs text-faint mt-0.5">ou cliquez pour parcourir — sélection multiple</p>
+            <p className="text-[11px] text-faint mt-2">PNG, JPG, WEBP — max 10 MB par image</p>
           </div>
         </>
       )}
@@ -685,11 +685,11 @@ export default function StoryboardEditor({
     <div className="space-y-5">
 
       {/* ── Actions panel ── */}
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-2xl p-4 flex items-center gap-3 flex-wrap">
-        <Film className="h-4 w-4 text-[#555555] flex-shrink-0" />
+      <div className="bg-surface border border-line rounded-2xl p-4 flex items-center gap-3 flex-wrap">
+        <Film className="h-4 w-4 text-faint flex-shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-[#555555] uppercase tracking-widest">Storyboard</p>
-          <p className="text-sm text-[#888888] mt-0.5">
+          <p className="text-xs text-faint uppercase tracking-widest">Storyboard</p>
+          <p className="text-sm text-dim mt-0.5">
             {shots.length === 0
               ? 'Aucun shot — importez des images'
               : `${shots.length} shot${shots.length > 1 ? 's' : ''}`}
@@ -726,7 +726,7 @@ export default function StoryboardEditor({
               type="button"
               onClick={() => handleAction('approve')}
               disabled={!!loadingAction}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-xs font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand/10 border border-brand/20 text-brand text-xs font-medium hover:bg-brand/20 transition-colors disabled:opacity-40"
             >
               {loadingAction === 'approve' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
               Approuver
@@ -744,7 +744,7 @@ export default function StoryboardEditor({
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors disabled:opacity-40 ${
                 confirmUnapprove
                   ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
-                  : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444]'
+                  : 'bg-surface-2 border-line text-faint hover:text-ink hover:border-line-strong'
               }`}
             >
               {loadingAction === 'unapprove' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
@@ -757,8 +757,8 @@ export default function StoryboardEditor({
       {/* ── Column selector ── */}
       {shots.length > 0 && (
         <div className="flex items-center gap-3">
-          <Columns className="h-3.5 w-3.5 text-[#444444] flex-shrink-0" />
-          <span className="text-xs text-[#555555]">Colonnes</span>
+          <Columns className="h-3.5 w-3.5 text-faint flex-shrink-0" />
+          <span className="text-xs text-faint">Colonnes</span>
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
@@ -767,8 +767,8 @@ export default function StoryboardEditor({
                 onClick={() => setCols(n)}
                 className={`w-7 h-7 rounded-lg text-xs font-medium border transition-colors ${
                   cols === n
-                    ? 'bg-[#00D76B]/15 border-[#00D76B]/30 text-[#00D76B]'
-                    : 'bg-[#111111] border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#3a3a3a]'
+                    ? 'bg-brand/15 border-brand/30 text-brand'
+                    : 'bg-surface border-line text-faint hover:text-ink hover:border-line-strong'
                 }`}
               >
                 {n}
@@ -812,19 +812,19 @@ export default function StoryboardEditor({
         </DndContext>
       ) : !canEdit ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#111111] border border-[#1e1e1e] flex items-center justify-center">
-            <Film className="h-7 w-7 text-[#333333]" />
+          <div className="w-16 h-16 rounded-2xl bg-surface border border-line flex items-center justify-center">
+            <Film className="h-7 w-7 text-faint" />
           </div>
           <div>
-            <p className="text-sm font-medium text-[#555555]">Aucun shot</p>
-            <p className="text-xs text-[#444444] mt-1">Les shots apparaîtront ici une fois ajoutés</p>
+            <p className="text-sm font-medium text-faint">Aucun shot</p>
+            <p className="text-xs text-faint mt-1">Les shots apparaîtront ici une fois ajoutés</p>
           </div>
         </div>
       ) : null}
 
       {/* ── Pending indicator ── */}
       {isPending && (
-        <p className="text-[10px] text-[#555555] flex items-center gap-1.5">
+        <p className="text-[10px] text-faint flex items-center gap-1.5">
           <Loader2 className="h-3 w-3 animate-spin" />
           Sauvegarde…
         </p>

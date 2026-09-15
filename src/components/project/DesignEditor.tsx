@@ -86,7 +86,7 @@ function FileTypeIcon({ content, className }: { content: DesignFileContent; clas
   }
 
   return (
-    <div className={`flex items-center justify-center rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-[#444444] ${className ?? 'w-12 h-12'}`}>
+    <div className={`flex items-center justify-center rounded-xl bg-surface-2 border border-line text-faint ${className ?? 'w-12 h-12'}`}>
       <File className="h-5 w-5" />
     </div>
   )
@@ -137,11 +137,11 @@ function DesignLightbox({
         onClick={onClose}
         className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-colors z-10"
       >
-        <X className="h-4 w-4 text-white" />
+        <X className="h-4 w-4 text-ink" />
       </button>
 
       <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white/10 border border-white/10">
-        <span className="text-xs text-white/70 font-medium">{currentIndex + 1} / {files.length}</span>
+        <span className="text-xs text-ink/70 font-medium">{currentIndex + 1} / {files.length}</span>
       </div>
 
       {hasPrev && (
@@ -150,7 +150,7 @@ function DesignLightbox({
           onClick={(e) => { e.stopPropagation(); onPrev() }}
           className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-colors z-10"
         >
-          <ChevronLeft className="h-5 w-5 text-white" />
+          <ChevronLeft className="h-5 w-5 text-ink" />
         </button>
       )}
 
@@ -160,7 +160,7 @@ function DesignLightbox({
           onClick={(e) => { e.stopPropagation(); onNext() }}
           className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-colors z-10"
         >
-          <ChevronRight className="h-5 w-5 text-white" />
+          <ChevronRight className="h-5 w-5 text-ink" />
         </button>
       )}
 
@@ -176,7 +176,7 @@ function DesignLightbox({
           className="max-h-[72vh] max-w-full object-contain rounded-2xl shadow-2xl"
           draggable={false}
         />
-        <p className="text-xs text-white/50">{current.content.file_name}</p>
+        <p className="text-xs text-ink/50">{current.content.file_name}</p>
       </div>
     </div>
   )
@@ -219,7 +219,7 @@ function AdminCommentPanel({
   }
 
   return (
-    <div className="px-3 pb-3 pt-2.5 border-t border-[#1e1e1e] space-y-2.5">
+    <div className="px-3 pb-3 pt-2.5 border-t border-line space-y-2.5">
       {blockComments.length > 0 && (
         <div className="space-y-2">
           {blockComments.map((c) => {
@@ -227,25 +227,25 @@ function AdminCommentPanel({
             const initials = authorName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
             return (
               <div key={c.id} className={`flex gap-2 transition-opacity ${c.is_resolved ? 'opacity-40' : ''}`}>
-                <div className="w-5 h-5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
+                <div className="w-5 h-5 rounded-full bg-surface-3 border border-line flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
                   {c.author?.avatar_url
                     // eslint-disable-next-line @next/next/no-img-element
                     ? <img src={c.author.avatar_url} alt={authorName} className="w-full h-full object-cover" />
-                    : <span className="text-[8px] text-[#666666] font-medium">{initials}</span>}
+                    : <span className="text-[8px] text-faint font-medium">{initials}</span>}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                    <span className="text-[10px] font-medium text-white">{authorName}</span>
-                    <span className="text-[9px] text-[#444444]">{formatRelative(c.created_at)}</span>
+                    <span className="text-[10px] font-medium text-ink">{authorName}</span>
+                    <span className="text-[9px] text-faint">{formatRelative(c.created_at)}</span>
                     {c.is_resolved && (
-                      <span className="text-[9px] text-[#00D76B] bg-[#00D76B]/10 px-1 py-0.5 rounded-full border border-[#00D76B]/20">Résolu</span>
+                      <span className="text-[9px] text-brand bg-brand/10 px-1 py-0.5 rounded-full border border-brand/20">Résolu</span>
                     )}
                   </div>
-                  <p className="text-[11px] text-[#999999] leading-relaxed">{c.content}</p>
+                  <p className="text-[11px] text-dim leading-relaxed">{c.content}</p>
                 </div>
                 {!c.is_resolved && (
                   <button type="button" onClick={() => handleResolve(c.id)}
-                    className="text-[#333333] hover:text-[#00D76B] transition-colors flex-shrink-0 mt-0.5">
+                    className="text-faint hover:text-brand transition-colors flex-shrink-0 mt-0.5">
                     <CheckCircle className="h-3 w-3" />
                   </button>
                 )}
@@ -257,8 +257,8 @@ function AdminCommentPanel({
 
       {!open ? (
         <button type="button" onClick={() => setOpen(true)}
-          className="flex items-center gap-1.5 text-[10px] text-[#444444] hover:text-[#888888] transition-colors group">
-          <MessageSquare className="h-3 w-3 group-hover:text-[#00D76B] transition-colors" />
+          className="flex items-center gap-1.5 text-[10px] text-faint hover:text-dim transition-colors group">
+          <MessageSquare className="h-3 w-3 group-hover:text-brand transition-colors" />
           {blockComments.length === 0
             ? 'Commenter'
             : `${unresolvedCount > 0 ? `${unresolvedCount} non résolu${unresolvedCount > 1 ? 's' : ''}` : `${blockComments.length} commentaire${blockComments.length > 1 ? 's' : ''}`}`}
@@ -272,16 +272,16 @@ function AdminCommentPanel({
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit() }}
             placeholder="Note interne… (Ctrl+Entrée)"
             rows={2}
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-[11px] text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+            className="w-full bg-surface border border-line rounded-lg px-2.5 py-1.5 text-[11px] text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
           />
           <div className="flex items-center gap-2">
             <button type="button" onClick={handleSubmit} disabled={!text.trim() || sending}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-[10px] font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40">
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-medium hover:bg-brand/20 transition-colors disabled:opacity-40">
               {sending ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Send className="h-2.5 w-2.5" />}
               Envoyer
             </button>
             <button type="button" onClick={() => { setOpen(false); setText('') }}
-              className="text-[10px] text-[#444444] hover:text-white transition-colors">
+              className="text-[10px] text-faint hover:text-ink transition-colors">
               Annuler
             </button>
           </div>
@@ -329,16 +329,16 @@ function FileCard({
   }
 
   return (
-    <div className="group bg-[#111111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl overflow-hidden transition-all duration-200 hover:shadow-lg hover:shadow-black/30 flex flex-col">
+    <div className="group bg-surface border border-line hover:border-line rounded-xl overflow-hidden transition-all duration-200 hover:shadow-lg hover:shadow-black/30 flex flex-col">
 
       {/* Header strip */}
-      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#1a1a1a]">
-        <span className="text-[10px] text-[#555555] font-mono truncate max-w-[70%]" title={file.content.file_name}>
+      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-line">
+        <span className="text-[10px] text-faint font-mono truncate max-w-[70%]" title={file.content.file_name}>
           {file.content.file_name}
         </span>
         <div className="flex items-center gap-1">
           {file.content.file_size > 0 && (
-            <span className="text-[9px] text-[#3a3a3a] tabular-nums">{formatBytes(file.content.file_size)}</span>
+            <span className="text-[9px] text-faint tabular-nums">{formatBytes(file.content.file_size)}</span>
           )}
           {/* Download */}
           <a
@@ -346,7 +346,7 @@ function FileCard({
             download={file.content.file_name}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-6 h-6 rounded flex items-center justify-center text-[#444444] hover:text-[#00D76B] transition-colors"
+            className="w-6 h-6 rounded flex items-center justify-center text-faint hover:text-brand transition-colors"
             title="Télécharger"
           >
             <Download className="h-3 w-3" />
@@ -360,7 +360,7 @@ function FileCard({
               className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium border transition-colors opacity-0 group-hover:opacity-100 ${
                 confirmDelete
                   ? 'bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30'
-                  : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#555555] hover:text-white hover:border-[#444444]'
+                  : 'bg-surface-2 border-line text-faint hover:text-ink hover:border-line-strong'
               }`}
             >
               {deleting ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Trash2 className="h-2.5 w-2.5" />}
@@ -373,12 +373,12 @@ function FileCard({
       {/* Preview area */}
       {isImage ? (
         <div
-          className="relative aspect-video bg-[#0d0d0d] cursor-zoom-in overflow-hidden"
+          className="relative aspect-video bg-surface cursor-zoom-in overflow-hidden"
           onClick={onOpenLightbox}
         >
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <FileImage className="h-6 w-6 text-[#2a2a2a]" />
+              <FileImage className="h-6 w-6 text-[rgb(var(--c-border))]" />
             </div>
           )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -391,13 +391,13 @@ function FileCard({
           />
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center">
             <div className="w-8 h-8 rounded-xl bg-black/60 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Maximize2 className="h-3.5 w-3.5 text-white" />
+              <Maximize2 className="h-3.5 w-3.5 text-ink" />
             </div>
           </div>
         </div>
       ) : (
         /* Non-image file: large icon area */
-        <div className="aspect-video bg-[#0a0a0a] flex items-center justify-center">
+        <div className="aspect-video bg-canvas flex items-center justify-center">
           <FileTypeIcon content={file.content} className="w-16 h-16 text-2xl" />
         </div>
       )}
@@ -417,11 +417,11 @@ function FileCard({
             }}
             placeholder="Description, notes, commentaires…"
             rows={2}
-            className="w-full bg-transparent text-[11px] text-[#888888] placeholder-[#444444] focus:outline-none resize-none leading-relaxed focus:text-[#aaaaaa] transition-colors"
+            className="w-full bg-transparent text-[11px] text-dim placeholder-faint focus:outline-none resize-none leading-relaxed focus:text-dim transition-colors"
           />
         ) : (
           file.content.description && (
-            <p className="text-[11px] text-[#888888] leading-relaxed">{file.content.description}</p>
+            <p className="text-[11px] text-dim leading-relaxed">{file.content.description}</p>
           )
         )}
       </div>
@@ -488,8 +488,8 @@ function UploadZone({
     <div
       className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
         dragOver
-          ? 'border-[#00D76B]/50 bg-[#00D76B]/5'
-          : 'border-[#2a2a2a] hover:border-[#3a3a3a] bg-[#0a0a0a]'
+          ? 'border-brand/50 bg-brand/5'
+          : 'border-line hover:border-line-strong bg-canvas'
       }`}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
@@ -507,16 +507,16 @@ function UploadZone({
 
       {uploading ? (
         <div className="flex flex-col items-center gap-2">
-          <Loader2 className="h-7 w-7 text-[#00D76B] animate-spin" />
-          <p className="text-sm text-[#555555]">Import en cours…</p>
+          <Loader2 className="h-7 w-7 text-brand animate-spin" />
+          <p className="text-sm text-faint">Import en cours…</p>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-2">
-          <Upload className="h-7 w-7 text-[#333333]" />
-          <p className="text-sm text-[#555555]">
-            Glissez vos fichiers ici ou <span className="text-[#00D76B] font-medium">parcourir</span>
+          <Upload className="h-7 w-7 text-faint" />
+          <p className="text-sm text-faint">
+            Glissez vos fichiers ici ou <span className="text-brand font-medium">parcourir</span>
           </p>
-          <p className="text-[11px] text-[#3a3a3a]">
+          <p className="text-[11px] text-faint">
             PNG, JPG, SVG, PDF, PSD, AI, Fig, XD, Sketch — max 100 MB
           </p>
         </div>
@@ -620,11 +620,11 @@ export default function DesignEditor({
     <div className="space-y-5">
 
       {/* ── Actions panel ── */}
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-2xl p-4 flex items-center gap-3 flex-wrap">
-        <Palette className="h-4 w-4 text-[#555555] flex-shrink-0" />
+      <div className="bg-surface border border-line rounded-2xl p-4 flex items-center gap-3 flex-wrap">
+        <Palette className="h-4 w-4 text-faint flex-shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-[#555555] uppercase tracking-widest">Maquettes Design</p>
-          <p className="text-sm text-[#888888] mt-0.5">
+          <p className="text-xs text-faint uppercase tracking-widest">Maquettes Design</p>
+          <p className="text-sm text-dim mt-0.5">
             {files.length === 0
               ? 'Aucun fichier — importez vos maquettes'
               : `${files.length} fichier${files.length > 1 ? 's' : ''}`}
@@ -661,7 +661,7 @@ export default function DesignEditor({
               type="button"
               onClick={() => handleAction('approve')}
               disabled={!!loadingAction}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-xs font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand/10 border border-brand/20 text-brand text-xs font-medium hover:bg-brand/20 transition-colors disabled:opacity-40"
             >
               {loadingAction === 'approve' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
               Approuver
@@ -679,7 +679,7 @@ export default function DesignEditor({
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors disabled:opacity-40 ${
                 confirmUnapprove
                   ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
-                  : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444]'
+                  : 'bg-surface-2 border-line text-faint hover:text-ink hover:border-line-strong'
               }`}
             >
               {loadingAction === 'unapprove' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
@@ -717,12 +717,12 @@ export default function DesignEditor({
         </div>
       ) : !canEdit ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#111111] border border-[#1e1e1e] flex items-center justify-center">
-            <Palette className="h-7 w-7 text-[#333333]" />
+          <div className="w-16 h-16 rounded-2xl bg-surface border border-line flex items-center justify-center">
+            <Palette className="h-7 w-7 text-faint" />
           </div>
           <div>
-            <p className="text-sm font-medium text-[#555555]">Aucun fichier</p>
-            <p className="text-xs text-[#444444] mt-1">Les fichiers de design apparaîtront ici une fois ajoutés</p>
+            <p className="text-sm font-medium text-faint">Aucun fichier</p>
+            <p className="text-xs text-faint mt-1">Les fichiers de design apparaîtront ici une fois ajoutés</p>
           </div>
         </div>
       ) : null}

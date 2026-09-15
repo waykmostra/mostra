@@ -105,19 +105,19 @@ function ClientRowCommentDock({
   }
 
   return (
-    <div className="rounded-2xl border bg-[#0e0e0e] overflow-hidden" style={{ borderColor: `${blockColor}40` }}>
+    <div className="rounded-2xl border bg-surface overflow-hidden" style={{ borderColor: `${blockColor}40` }}>
       <div
         className="flex items-center gap-2 px-4 py-2.5 border-b"
         style={{ borderColor: `${blockColor}22`, background: `${blockColor}10` }}
       >
         <MessageSquare className="h-3.5 w-3.5" style={{ color: blockColor }} />
-        <span className="text-xs font-medium text-white truncate flex-1">
-          Commentaires · <span className="text-[#999999]">{rowTitle}</span>
+        <span className="text-xs font-medium text-ink truncate flex-1">
+          Commentaires · <span className="text-dim">{rowTitle}</span>
         </span>
         <button
           type="button"
           onClick={onClose}
-          className="h-6 w-6 grid place-items-center rounded text-[#666666] hover:text-white hover:bg-[#1a1a1a]"
+          className="h-6 w-6 grid place-items-center rounded text-faint hover:text-ink hover:bg-surface-2"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -132,32 +132,32 @@ function ClientRowCommentDock({
               const canResolve = !!clientId && c.user_id === clientId
               return (
                 <div key={c.id} className={`flex gap-3 ${c.is_resolved ? 'opacity-40' : ''}`}>
-                  <div className="w-7 h-7 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
+                  <div className="w-7 h-7 rounded-full bg-surface-3 border border-line flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
                     {c.author?.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={c.author.avatar_url} alt={authorName} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-[10px] text-[#666666] font-medium">{initials}</span>
+                      <span className="text-[10px] text-faint font-medium">{initials}</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-xs font-medium text-white">{authorName}</span>
-                      <span className="text-[10px] text-[#444444]">{formatRelative(c.created_at)}</span>
+                      <span className="text-xs font-medium text-ink">{authorName}</span>
+                      <span className="text-[10px] text-faint">{formatRelative(c.created_at)}</span>
                       {c.is_resolved && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-[#00D76B] bg-[#00D76B]/10 px-1.5 py-0.5 rounded-full border border-[#00D76B]/20">
+                        <span className="inline-flex items-center gap-1 text-[10px] text-brand bg-brand/10 px-1.5 py-0.5 rounded-full border border-brand/20">
                           <CheckCircle className="h-2.5 w-2.5" />
                           Résolu
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[#999999] leading-relaxed">{c.content}</p>
+                    <p className="text-xs text-dim leading-relaxed">{c.content}</p>
                   </div>
                   {canResolve && !c.is_resolved && (
                     <button
                       type="button"
                       onClick={() => onResolve(c.id)}
-                      className="text-[#333333] hover:text-[#00D76B] transition-colors flex-shrink-0 mt-1"
+                      className="text-faint hover:text-brand transition-colors flex-shrink-0 mt-1"
                       title="Marquer comme résolu"
                     >
                       <CheckCircle className="h-3.5 w-3.5" />
@@ -177,20 +177,20 @@ function ClientRowCommentDock({
               onKeyDown={handleKeyDown}
               placeholder="Votre commentaire… (Ctrl+Entrée pour envoyer)"
               rows={3}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-xs text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+              className="w-full bg-surface border border-line rounded-xl px-3 py-2.5 text-xs text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
             />
             <button
               type="button"
               onClick={handleSubmit}
               disabled={!text.trim() || sending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-xs font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand/10 border border-brand/20 text-brand text-xs font-medium hover:bg-brand/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
               Envoyer
             </button>
           </div>
         ) : blockComments.length === 0 ? (
-          <p className="text-[11px] text-[#444444]">Connectez-vous pour commenter cette ligne.</p>
+          <p className="text-[11px] text-faint">Connectez-vous pour commenter cette ligne.</p>
         ) : null}
       </div>
     </div>
@@ -243,9 +243,9 @@ export default function ScriptViewerClient({
 
   const openRow = openRowKey ? rows.find((r) => r._key === openRowKey) ?? null : null
   const openRowColor = (() => {
-    if (!openRow) return '#00D76B'
+    if (!openRow) return 'rgb(var(--c-brand))'
     const cat = categories.find((c) => c.id === openRow.categoryId)
-    return cat?.color ?? '#00D76B'
+    return cat?.color ?? 'rgb(var(--c-brand))'
   })()
 
   /** Bouton commentaire d'une ligne (partagé tableau + résumé). */
@@ -260,7 +260,7 @@ export default function ScriptViewerClient({
         type="button"
         onClick={() => setOpenRowKey(active ? null : row._key)}
         title="Commentaires de la ligne"
-        className={`relative h-7 w-7 grid place-items-center rounded-lg transition-colors ${active ? 'bg-[#1f1f1f] text-white' : 'text-[#555555] hover:text-white hover:bg-[#1a1a1a]'}`}
+        className={`relative h-7 w-7 grid place-items-center rounded-lg transition-colors ${active ? 'bg-[rgb(var(--c-border))] text-ink' : 'text-faint hover:text-ink hover:bg-surface-2'}`}
       >
         <MessageSquare className="h-4 w-4" />
         {unresolved > 0 && (
@@ -334,15 +334,15 @@ export default function ScriptViewerClient({
         <div className="flex items-center justify-between gap-2">
           <Link
             href={backHref}
-            className="inline-flex items-center gap-1.5 text-xs text-[#666666] hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-faint hover:text-ink transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Tous les scripts
           </Link>
           <div className="flex items-center gap-2 min-w-0">
-            {scriptTitle && <span className="text-xs font-medium text-white truncate">{scriptTitle}</span>}
+            {scriptTitle && <span className="text-xs font-medium text-ink truncate">{scriptTitle}</span>}
             {isSelected && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#00D76B] flex-shrink-0">
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-brand flex-shrink-0">
                 <CheckCircle className="h-3 w-3" /> Choisi
               </span>
             )}
@@ -356,8 +356,8 @@ export default function ScriptViewerClient({
           <div className="flex items-start gap-3">
             <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-white">Connectez-vous pour valider</p>
-              <p className="text-xs text-[#666666] mt-0.5">
+              <p className="text-sm font-semibold text-ink">Connectez-vous pour valider</p>
+              <p className="text-xs text-faint mt-0.5">
                 Vous devez être connecté pour valider, commenter ou modifier cette phase.
               </p>
             </div>
@@ -374,14 +374,14 @@ export default function ScriptViewerClient({
 
       {/* Panneau d'approbation */}
       {!isApproved && status === 'in_review' && isAuthenticated && (
-        <div className="bg-[#111111] border border-[#F59E0B]/25 rounded-2xl p-5 space-y-4">
+        <div className="bg-surface border border-[#F59E0B]/25 rounded-2xl p-5 space-y-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center flex-shrink-0">
               <ThumbsUp className="h-4 w-4 text-[#F59E0B]" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">Script en attente de validation</p>
-              <p className="text-xs text-[#666666] mt-0.5 leading-relaxed">
+              <p className="text-sm font-semibold text-ink">Script en attente de validation</p>
+              <p className="text-xs text-faint mt-0.5 leading-relaxed">
                 Relisez attentivement le tableau (ou le résumé). Vous pouvez commenter chaque ligne
                 via l&apos;icône à droite, ou demander des modifications globales.
               </p>
@@ -394,7 +394,7 @@ export default function ScriptViewerClient({
                 type="button"
                 onClick={handleApprove}
                 disabled={approving}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00D76B]/10 border border-[#00D76B]/25 text-[#00D76B] text-sm font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand/10 border border-brand/25 text-brand text-sm font-medium hover:bg-brand/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {approving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                 {multiScript ? 'Choisir ce script' : 'Approuver le script'}
@@ -402,7 +402,7 @@ export default function ScriptViewerClient({
               <button
                 type="button"
                 onClick={() => setShowRevisionForm(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#2a2a2a] text-[#888888] text-sm hover:text-white hover:border-[#444444] transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-line text-dim text-sm hover:text-ink hover:border-line-strong transition-colors"
               >
                 <RotateCcw className="h-4 w-4" />
                 Demander des modifications
@@ -410,7 +410,7 @@ export default function ScriptViewerClient({
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs text-[#666666]">
+              <p className="text-xs text-faint">
                 Décrivez les modifications souhaitées — l&apos;équipe en sera notifiée.
               </p>
               <textarea
@@ -419,7 +419,7 @@ export default function ScriptViewerClient({
                 onChange={(e) => setRevisionText(e.target.value)}
                 placeholder="Ex: Le hook n'est pas assez percutant, la partie CTA manque de clarté…"
                 rows={4}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+                className="w-full bg-surface border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
               />
               <div className="flex items-center gap-2">
                 <button
@@ -437,7 +437,7 @@ export default function ScriptViewerClient({
                     setShowRevisionForm(false)
                     setRevisionText('')
                   }}
-                  className="text-xs text-[#444444] hover:text-white transition-colors"
+                  className="text-xs text-faint hover:text-ink transition-colors"
                 >
                   Annuler
                 </button>
@@ -449,11 +449,11 @@ export default function ScriptViewerClient({
 
       {/* Bandeau approuvé */}
       {isApproved && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#00D76B]/10 border border-[#00D76B]/20">
-          <CheckCircle className="h-4 w-4 text-[#00D76B] flex-shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-brand/10 border border-brand/20">
+          <CheckCircle className="h-4 w-4 text-brand flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-[#00D76B]">Script approuvé</p>
-            <p className="text-[11px] text-[#00D76B]/60">La production peut commencer.</p>
+            <p className="text-sm font-semibold text-brand">Script approuvé</p>
+            <p className="text-[11px] text-brand/60">La production peut commencer.</p>
           </div>
         </div>
       )}
@@ -470,18 +470,18 @@ export default function ScriptViewerClient({
       )}
 
       {/* Bascule Résumé / Tableau */}
-      <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-[#111111] border border-[#2a2a2a]">
+      <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-surface border border-line">
         <button
           type="button"
           onClick={() => setView('summary')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'summary' ? 'bg-[#1f1f1f] text-white' : 'text-[#666666] hover:text-white'}`}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'summary' ? 'bg-[rgb(var(--c-border))] text-ink' : 'text-faint hover:text-ink'}`}
         >
           <AlignLeft className="h-3.5 w-3.5" /> Résumé
         </button>
         <button
           type="button"
           onClick={() => setView('table')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'table' ? 'bg-[#1f1f1f] text-white' : 'text-[#666666] hover:text-white'}`}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'table' ? 'bg-[rgb(var(--c-border))] text-ink' : 'text-faint hover:text-ink'}`}
         >
           <Table2 className="h-3.5 w-3.5" /> Tableau
         </button>
@@ -489,7 +489,7 @@ export default function ScriptViewerClient({
 
       {/* Corps */}
       {rows.length === 0 ? (
-        <div className="text-center py-10 text-[#444444] text-sm">Aucune ligne dans ce script.</div>
+        <div className="text-center py-10 text-faint text-sm">Aucune ligne dans ce script.</div>
       ) : (
         <>
           {view === 'table' ? (

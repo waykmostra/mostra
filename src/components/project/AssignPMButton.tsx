@@ -65,7 +65,7 @@ export default function AssignPMButton({
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={loading}
-        className="inline-flex items-center gap-1.5 text-[11px] text-[#555555] hover:text-[#00D76B] transition-colors disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 text-[11px] text-faint hover:text-brand transition-colors disabled:opacity-50"
       >
         {loading ? (
           <Loader2 className="h-3 w-3 animate-spin" />
@@ -77,9 +77,9 @@ export default function AssignPMButton({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-20 w-64 bg-[#111111] border border-[#2a2a2a] rounded-xl shadow-2xl shadow-black/50 py-1 overflow-hidden">
+        <div className="absolute left-0 top-full mt-1 z-20 w-64 bg-surface border border-line rounded-xl shadow-2xl shadow-black/50 py-1 overflow-hidden">
           {members.length === 0 ? (
-            <p className="px-3 py-2.5 text-xs text-[#555555] italic">
+            <p className="px-3 py-2.5 text-xs text-faint italic">
               Aucun membre éligible dans l&apos;agence
             </p>
           ) : (
@@ -89,32 +89,32 @@ export default function AssignPMButton({
                   key={m.userId}
                   type="button"
                   onClick={() => handleSelect(m.userId)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[#1a1a1a] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-xs text-white truncate">{m.fullName}</p>
-                      <span className="text-[9px] uppercase tracking-wider text-[#555555] bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1 py-px flex-shrink-0">
+                      <p className="text-xs text-ink truncate">{m.fullName}</p>
+                      <span className="text-[9px] uppercase tracking-wider text-faint bg-surface-2 border border-line rounded px-1 py-px flex-shrink-0">
                         {ROLE_LABEL[m.role]}
                       </span>
                     </div>
-                    <p className="text-[10px] text-[#555555] truncate">{m.email}</p>
+                    <p className="text-[10px] text-faint truncate">{m.email}</p>
                   </div>
                   {m.userId === currentPMId && (
-                    <Check className="h-3.5 w-3.5 text-[#00D76B] flex-shrink-0" />
+                    <Check className="h-3.5 w-3.5 text-brand flex-shrink-0" />
                   )}
                 </button>
               ))}
               {currentPMId && (
                 <>
-                  <div className="h-px bg-[#1a1a1a] my-1" />
+                  <div className="h-px bg-surface-2 my-1" />
                   <button
                     type="button"
                     onClick={() => handleSelect(null)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[#1a1a1a] transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
                   >
-                    <X className="h-3.5 w-3.5 text-[#555555]" />
-                    <span className="text-xs text-[#555555]">Retirer le PM</span>
+                    <X className="h-3.5 w-3.5 text-faint" />
+                    <span className="text-xs text-faint">Retirer le PM</span>
                   </button>
                 </>
               )}

@@ -24,7 +24,7 @@ export default function CopyLinkButton({
     <button
       onClick={handleCopy}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px]
-        border border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444]
+        border border-line text-faint hover:text-ink hover:border-line-strong
         transition-colors ${mono ? 'font-mono tracking-wider' : ''}`}
       title={label ? `Copier ${label}` : 'Copier le lien'}
     >

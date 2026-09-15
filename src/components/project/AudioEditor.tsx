@@ -90,7 +90,7 @@ function AudioPlayer({ src, trackId }: { src: string; trackId: string }) {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a]">
+    <div className="flex items-center gap-3 px-3 py-2.5 bg-canvas rounded-xl border border-line">
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio
         ref={audioRef}
@@ -110,7 +110,7 @@ function AudioPlayer({ src, trackId }: { src: string; trackId: string }) {
         type="button"
         onClick={toggle}
         disabled={!src || buffering}
-        className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[#888888] hover:text-white hover:border-[#444444] transition-colors disabled:opacity-30 flex-shrink-0"
+        className="w-8 h-8 rounded-full bg-surface-2 border border-line flex items-center justify-center text-dim hover:text-ink hover:border-line-strong transition-colors disabled:opacity-30 flex-shrink-0"
       >
         {buffering
           ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -120,7 +120,7 @@ function AudioPlayer({ src, trackId }: { src: string; trackId: string }) {
       </button>
 
       {/* Progress bar */}
-      <div className="flex-1 relative h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden cursor-pointer"
+      <div className="flex-1 relative h-1.5 bg-surface-3 rounded-full overflow-hidden cursor-pointer"
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect()
           const ratio = (e.clientX - rect.left) / rect.width
@@ -140,13 +140,13 @@ function AudioPlayer({ src, trackId }: { src: string; trackId: string }) {
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
         <div
-          className="h-full bg-[#00D76B] rounded-full transition-all duration-100"
+          className="h-full bg-brand rounded-full transition-all duration-100"
           style={{ width: `${progress}%` }}
         />
       </div>
 
       {/* Time */}
-      <span className="text-[10px] text-[#555555] tabular-nums whitespace-nowrap flex-shrink-0">
+      <span className="text-[10px] text-faint tabular-nums whitespace-nowrap flex-shrink-0">
         {formatTime(currentTime)} / {formatTime(duration)}
       </span>
     </div>
@@ -190,7 +190,7 @@ function AdminCommentPanel({
   }
 
   return (
-    <div className="px-3 pb-3 pt-2.5 border-t border-[#1a1a1a] space-y-2.5">
+    <div className="px-3 pb-3 pt-2.5 border-t border-line space-y-2.5">
       {blockComments.length > 0 && (
         <div className="space-y-2">
           {blockComments.map((c) => {
@@ -198,25 +198,25 @@ function AdminCommentPanel({
             const initials = authorName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
             return (
               <div key={c.id} className={`flex gap-2 transition-opacity ${c.is_resolved ? 'opacity-40' : ''}`}>
-                <div className="w-5 h-5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
+                <div className="w-5 h-5 rounded-full bg-surface-3 border border-line flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
                   {c.author?.avatar_url
                     // eslint-disable-next-line @next/next/no-img-element
                     ? <img src={c.author.avatar_url} alt={authorName} className="w-full h-full object-cover" />
-                    : <span className="text-[8px] text-[#666666] font-medium">{initials}</span>}
+                    : <span className="text-[8px] text-faint font-medium">{initials}</span>}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                    <span className="text-[10px] font-medium text-white">{authorName}</span>
-                    <span className="text-[9px] text-[#444444]">{formatRelative(c.created_at)}</span>
+                    <span className="text-[10px] font-medium text-ink">{authorName}</span>
+                    <span className="text-[9px] text-faint">{formatRelative(c.created_at)}</span>
                     {c.is_resolved && (
-                      <span className="text-[9px] text-[#00D76B] bg-[#00D76B]/10 px-1 py-0.5 rounded-full border border-[#00D76B]/20">Résolu</span>
+                      <span className="text-[9px] text-brand bg-brand/10 px-1 py-0.5 rounded-full border border-brand/20">Résolu</span>
                     )}
                   </div>
-                  <p className="text-[11px] text-[#999999] leading-relaxed">{c.content}</p>
+                  <p className="text-[11px] text-dim leading-relaxed">{c.content}</p>
                 </div>
                 {!c.is_resolved && (
                   <button type="button" onClick={() => handleResolve(c.id)}
-                    className="text-[#333333] hover:text-[#00D76B] transition-colors flex-shrink-0 mt-0.5">
+                    className="text-faint hover:text-brand transition-colors flex-shrink-0 mt-0.5">
                     <CheckCircle className="h-3 w-3" />
                   </button>
                 )}
@@ -228,8 +228,8 @@ function AdminCommentPanel({
 
       {!open ? (
         <button type="button" onClick={() => setOpen(true)}
-          className="flex items-center gap-1.5 text-[10px] text-[#444444] hover:text-[#888888] transition-colors group">
-          <MessageSquare className="h-3 w-3 group-hover:text-[#00D76B] transition-colors" />
+          className="flex items-center gap-1.5 text-[10px] text-faint hover:text-dim transition-colors group">
+          <MessageSquare className="h-3 w-3 group-hover:text-brand transition-colors" />
           {blockComments.length === 0
             ? 'Commenter'
             : `${unresolvedCount > 0 ? `${unresolvedCount} non résolu${unresolvedCount > 1 ? 's' : ''}` : `${blockComments.length} commentaire${blockComments.length > 1 ? 's' : ''}`}`}
@@ -243,16 +243,16 @@ function AdminCommentPanel({
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit() }}
             placeholder="Note interne… (Ctrl+Entrée)"
             rows={2}
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-[11px] text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+            className="w-full bg-surface border border-line rounded-lg px-2.5 py-1.5 text-[11px] text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
           />
           <div className="flex items-center gap-2">
             <button type="button" onClick={handleSubmit} disabled={!text.trim() || sending}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-[10px] font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40">
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-medium hover:bg-brand/20 transition-colors disabled:opacity-40">
               {sending ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Send className="h-2.5 w-2.5" />}
               Envoyer
             </button>
             <button type="button" onClick={() => { setOpen(false); setText('') }}
-              className="text-[10px] text-[#444444] hover:text-white transition-colors">
+              className="text-[10px] text-faint hover:text-ink transition-colors">
               Annuler
             </button>
           </div>
@@ -317,10 +317,10 @@ function TrackCard({
   const KindIcon = track.content.kind === 'vo' ? Mic : Music
 
   return (
-    <div className="group bg-[#111111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl overflow-hidden transition-all duration-200 hover:shadow-lg hover:shadow-black/30">
+    <div className="group bg-surface border border-line hover:border-line rounded-xl overflow-hidden transition-all duration-200 hover:shadow-lg hover:shadow-black/30">
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-3 py-2.5 border-b border-[#1a1a1a]">
+      <div className="flex items-center gap-3 px-3 py-2.5 border-b border-line">
         {/* Kind badge */}
         <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium flex-shrink-0 ${
           track.content.kind === 'vo'
@@ -339,15 +339,15 @@ function TrackCard({
             onChange={(e) => setTitle(e.target.value)}
             onBlur={handleTitleBlur}
             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-            className="flex-1 min-w-0 bg-transparent text-sm font-medium text-white placeholder-[#444444] focus:outline-none border-b border-transparent hover:border-[#2a2a2a] focus:border-[#444444] transition-colors py-0.5"
+            className="flex-1 min-w-0 bg-transparent text-sm font-medium text-ink placeholder-faint focus:outline-none border-b border-transparent hover:border-line focus:border-line-strong transition-colors py-0.5"
           />
         ) : (
-          <span className="flex-1 min-w-0 text-sm font-medium text-white truncate">{title}</span>
+          <span className="flex-1 min-w-0 text-sm font-medium text-ink truncate">{title}</span>
         )}
 
         {/* Selected badge */}
         {isSelected && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-[10px] font-medium flex-shrink-0">
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[10px] font-medium flex-shrink-0">
             <CheckCircle className="h-2.5 w-2.5" />
             Sélectionné
           </div>
@@ -362,7 +362,7 @@ function TrackCard({
             className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium border transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 ${
               confirmDelete
                 ? 'bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30'
-                : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#555555] hover:text-white hover:border-[#444444]'
+                : 'bg-surface-2 border-line text-faint hover:text-ink hover:border-line-strong'
             }`}
           >
             {deleting ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Trash2 className="h-2.5 w-2.5" />}
@@ -385,11 +385,11 @@ function TrackCard({
             onBlur={handleDescriptionBlur}
             placeholder="Description, notes, retours…"
             rows={2}
-            className="w-full bg-transparent text-[11px] text-[#888888] placeholder-[#444444] focus:outline-none resize-none leading-relaxed focus:text-[#aaaaaa] transition-colors"
+            className="w-full bg-transparent text-[11px] text-dim placeholder-faint focus:outline-none resize-none leading-relaxed focus:text-dim transition-colors"
           />
         ) : (
           description && (
-            <p className="text-[11px] text-[#888888] leading-relaxed">{description}</p>
+            <p className="text-[11px] text-dim leading-relaxed">{description}</p>
           )
         )}
       </div>
@@ -537,7 +537,7 @@ function AddTrackForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 w-full px-4 py-3 rounded-xl border-2 border-dashed border-[#2a2a2a] hover:border-[#3a3a3a] text-[#555555] hover:text-[#888888] transition-colors text-sm"
+        className="flex items-center gap-2 w-full px-4 py-3 rounded-xl border-2 border-dashed border-line hover:border-line-strong text-faint hover:text-dim transition-colors text-sm"
       >
         <Upload className="h-4 w-4" />
         Ajouter une piste
@@ -546,16 +546,16 @@ function AddTrackForm({
   }
 
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
-      <p className="text-xs font-medium text-[#888888] uppercase tracking-widest">Nouvelle piste</p>
+    <div className="bg-surface border border-line rounded-xl p-4 space-y-3">
+      <p className="text-xs font-medium text-dim uppercase tracking-widest">Nouvelle piste</p>
 
       {/* File drop zone */}
       {!selectedFile ? (
         <div
           className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
             dragOver
-              ? 'border-[#00D76B]/50 bg-[#00D76B]/5'
-              : 'border-[#2a2a2a] hover:border-[#3a3a3a]'
+              ? 'border-brand/50 bg-brand/5'
+              : 'border-line hover:border-line-strong'
           }`}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
@@ -569,20 +569,20 @@ function AddTrackForm({
             onChange={handleInputChange}
             className="hidden"
           />
-          <Upload className="h-6 w-6 text-[#333333] mx-auto mb-2" />
-          <p className="text-sm text-[#555555]">
-            Glissez un fichier ou <span className="text-[#00D76B]">parcourir</span>
+          <Upload className="h-6 w-6 text-faint mx-auto mb-2" />
+          <p className="text-sm text-faint">
+            Glissez un fichier ou <span className="text-brand">parcourir</span>
           </p>
-          <p className="text-[10px] text-[#3a3a3a] mt-1">MP3, WAV, OGG, M4A, AAC — max 50 MB</p>
+          <p className="text-[10px] text-faint mt-1">MP3, WAV, OGG, M4A, AAC — max 50 MB</p>
         </div>
       ) : (
-        <div className="flex items-center gap-2 px-3 py-2 bg-[#0a0a0a] rounded-xl border border-[#1e1e1e]">
-          <Music className="h-4 w-4 text-[#555555] flex-shrink-0" />
-          <span className="flex-1 min-w-0 text-xs text-[#888888] truncate">{selectedFile.name}</span>
+        <div className="flex items-center gap-2 px-3 py-2 bg-canvas rounded-xl border border-line">
+          <Music className="h-4 w-4 text-faint flex-shrink-0" />
+          <span className="flex-1 min-w-0 text-xs text-dim truncate">{selectedFile.name}</span>
           <button
             type="button"
             onClick={() => setSelectedFile(null)}
-            className="text-[#444444] hover:text-white transition-colors flex-shrink-0"
+            className="text-faint hover:text-ink transition-colors flex-shrink-0"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -595,7 +595,7 @@ function AddTrackForm({
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Titre de la piste *"
-        className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2 text-sm text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] transition-colors"
+        className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-sm text-ink placeholder-faint focus:outline-none focus:border-line-strong transition-colors"
       />
 
       {/* Description */}
@@ -604,7 +604,7 @@ function AddTrackForm({
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Description ou notes (optionnel)"
         rows={2}
-        className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2 text-sm text-[#888888] placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none transition-colors leading-relaxed"
+        className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-sm text-dim placeholder-faint focus:outline-none focus:border-line-strong resize-none transition-colors leading-relaxed"
       />
 
       {/* Actions */}
@@ -613,7 +613,7 @@ function AddTrackForm({
           type="button"
           onClick={handleSubmit}
           disabled={uploading || !selectedFile || !title.trim()}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-xs font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand/10 border border-brand/20 text-brand text-xs font-medium hover:bg-brand/20 transition-colors disabled:opacity-40"
         >
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
           {uploading ? (progress ?? 'Import…') : 'Importer'}
@@ -621,7 +621,7 @@ function AddTrackForm({
         <button
           type="button"
           onClick={() => { setOpen(false); setTitle(''); setDescription(''); setSelectedFile(null) }}
-          className="text-xs text-[#444444] hover:text-white transition-colors"
+          className="text-xs text-faint hover:text-ink transition-colors"
         >
           Annuler
         </button>
@@ -709,11 +709,11 @@ export default function AudioEditor({
     <div className="space-y-5">
 
       {/* ── Actions panel ── */}
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-2xl p-4 flex items-center gap-3 flex-wrap">
-        <KindIcon className="h-4 w-4 text-[#555555] flex-shrink-0" />
+      <div className="bg-surface border border-line rounded-2xl p-4 flex items-center gap-3 flex-wrap">
+        <KindIcon className="h-4 w-4 text-faint flex-shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-[#555555] uppercase tracking-widest">{kindLabel}</p>
-          <p className="text-sm text-[#888888] mt-0.5">
+          <p className="text-xs text-faint uppercase tracking-widest">{kindLabel}</p>
+          <p className="text-sm text-dim mt-0.5">
             {tracks.length === 0
               ? 'Aucune piste — importez vos fichiers audio'
               : `${tracks.length} piste${tracks.length > 1 ? 's' : ''}`}
@@ -750,7 +750,7 @@ export default function AudioEditor({
               type="button"
               onClick={() => handleAction('approve')}
               disabled={!!loadingAction}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-xs font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand/10 border border-brand/20 text-brand text-xs font-medium hover:bg-brand/20 transition-colors disabled:opacity-40"
             >
               {loadingAction === 'approve' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
               Approuver
@@ -768,7 +768,7 @@ export default function AudioEditor({
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors disabled:opacity-40 ${
                 confirmUnapprove
                   ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
-                  : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444]'
+                  : 'bg-surface-2 border-line text-faint hover:text-ink hover:border-line-strong'
               }`}
             >
               {loadingAction === 'unapprove' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
@@ -809,12 +809,12 @@ export default function AudioEditor({
       {/* ── Empty state (read-only, no tracks) ── */}
       {tracks.length === 0 && !canEdit && (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#111111] border border-[#1e1e1e] flex items-center justify-center">
-            <KindIcon className="h-7 w-7 text-[#333333]" />
+          <div className="w-16 h-16 rounded-2xl bg-surface border border-line flex items-center justify-center">
+            <KindIcon className="h-7 w-7 text-faint" />
           </div>
           <div>
-            <p className="text-sm font-medium text-[#555555]">Aucune piste audio</p>
-            <p className="text-xs text-[#444444] mt-1">Les pistes apparaîtront ici une fois ajoutées</p>
+            <p className="text-sm font-medium text-faint">Aucune piste audio</p>
+            <p className="text-xs text-faint mt-1">Les pistes apparaîtront ici une fois ajoutées</p>
           </div>
         </div>
       )}

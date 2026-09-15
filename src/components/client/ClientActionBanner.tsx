@@ -129,7 +129,7 @@ function computeAction(
 const VARIANTS: Record<Action['variant'], { bg: string; border: string; accent: string; pillBg: string }> = {
   urgent:   { bg: 'bg-[#F59E0B]/10', border: 'border-[#F59E0B]/30', accent: 'text-[#F59E0B]', pillBg: 'bg-[#F59E0B]/15' },
   progress: { bg: 'bg-[#3B82F6]/10', border: 'border-[#3B82F6]/30', accent: 'text-[#3B82F6]', pillBg: 'bg-[#3B82F6]/15' },
-  pending:  { bg: 'bg-[#1a1a1a]',    border: 'border-[#2a2a2a]',    accent: 'text-[#a0a0a0]', pillBg: 'bg-[#222222]'    },
+  pending:  { bg: 'bg-surface-2',    border: 'border-line',    accent: 'text-dim', pillBg: 'bg-surface-3'    },
   done:     { bg: 'bg-[#22C55E]/10', border: 'border-[#22C55E]/30', accent: 'text-[#22C55E]', pillBg: 'bg-[#22C55E]/15' },
 }
 
@@ -157,11 +157,11 @@ export default function ClientActionBanner({
           <p className={`text-[10px] sm:text-xs font-semibold ${v.accent} uppercase tracking-widest`}>
             {action.eyebrow}
           </p>
-          <h2 className="text-xl sm:text-2xl font-bold text-white leading-tight">
+          <h2 className="text-xl sm:text-2xl font-bold text-ink leading-tight">
             {action.title}
           </h2>
           {action.description && (
-            <p className="text-sm text-[#a0a0a0] leading-relaxed">
+            <p className="text-sm text-dim leading-relaxed">
               {action.description}
             </p>
           )}

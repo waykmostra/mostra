@@ -43,7 +43,7 @@ export default async function EditFormTemplatePage({ params }: EditFormTemplateP
       <div className="flex items-center gap-3">
         <Link
           href="/settings/forms"
-          className="inline-flex items-center gap-1 text-xs text-[#555555] hover:text-white transition-colors"
+          className="inline-flex items-center gap-1 text-xs text-faint hover:text-ink transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Retour aux templates
@@ -52,8 +52,8 @@ export default async function EditFormTemplatePage({ params }: EditFormTemplateP
 
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-sm font-semibold text-white">{tpl.name}</h2>
-          <p className="text-xs text-[#555555] mt-0.5">
+          <h2 className="text-sm font-semibold text-ink">{tpl.name}</h2>
+          <p className="text-xs text-faint mt-0.5">
             Modifiez les questions et les paramètres de ce template.
           </p>
         </div>
@@ -73,8 +73,8 @@ export default async function EditFormTemplatePage({ params }: EditFormTemplateP
         </p>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-white">Supprimer ce template</p>
-            <p className="text-xs text-[#555555] mt-0.5">
+            <p className="text-sm text-ink">Supprimer ce template</p>
+            <p className="text-xs text-faint mt-0.5">
               Cette action est irréversible. Le template sera définitivement supprimé.
             </p>
           </div>

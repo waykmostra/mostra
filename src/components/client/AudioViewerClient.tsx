@@ -93,7 +93,7 @@ function AudioPlayer({ src, trackId }: { src: string; trackId: string }) {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a]">
+    <div className="flex items-center gap-3 px-3 py-2.5 bg-canvas rounded-xl border border-line">
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio
         ref={audioRef}
@@ -112,7 +112,7 @@ function AudioPlayer({ src, trackId }: { src: string; trackId: string }) {
         type="button"
         onClick={toggle}
         disabled={!src || buffering}
-        className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[#888888] hover:text-white hover:border-[#444444] transition-colors disabled:opacity-30 flex-shrink-0"
+        className="w-8 h-8 rounded-full bg-surface-2 border border-line flex items-center justify-center text-dim hover:text-ink hover:border-line-strong transition-colors disabled:opacity-30 flex-shrink-0"
       >
         {buffering
           ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -121,7 +121,7 @@ function AudioPlayer({ src, trackId }: { src: string; trackId: string }) {
             : <Play className="h-3.5 w-3.5 ml-0.5" />}
       </button>
 
-      <div className="flex-1 relative h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden cursor-pointer"
+      <div className="flex-1 relative h-1.5 bg-surface-3 rounded-full overflow-hidden cursor-pointer"
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect()
           const ratio = (e.clientX - rect.left) / rect.width
@@ -144,12 +144,12 @@ function AudioPlayer({ src, trackId }: { src: string; trackId: string }) {
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
         <div
-          className="h-full bg-[#00D76B] rounded-full transition-all duration-100"
+          className="h-full bg-brand rounded-full transition-all duration-100"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      <span className="text-[10px] text-[#555555] tabular-nums whitespace-nowrap flex-shrink-0">
+      <span className="text-[10px] text-faint tabular-nums whitespace-nowrap flex-shrink-0">
         {formatTime(currentTime)} / {formatTime(duration)}
       </span>
     </div>
@@ -172,31 +172,31 @@ function CommentItem({
 
   return (
     <div className={`flex gap-2 transition-opacity ${comment.is_resolved ? 'opacity-40' : ''}`}>
-      <div className="w-5 h-5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
+      <div className="w-5 h-5 rounded-full bg-surface-3 border border-line flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
         {comment.author?.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={comment.author.avatar_url} alt={authorName} className="w-full h-full object-cover" />
         ) : (
-          <span className="text-[8px] text-[#666666] font-medium">{initials}</span>
+          <span className="text-[8px] text-faint font-medium">{initials}</span>
         )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-          <span className="text-[10px] font-medium text-white">{authorName}</span>
-          <span className="text-[9px] text-[#444444]">{formatRelative(comment.created_at)}</span>
+          <span className="text-[10px] font-medium text-ink">{authorName}</span>
+          <span className="text-[9px] text-faint">{formatRelative(comment.created_at)}</span>
           {comment.is_resolved && (
-            <span className="inline-flex items-center gap-0.5 text-[9px] text-[#00D76B] bg-[#00D76B]/10 px-1 py-0.5 rounded-full border border-[#00D76B]/20">
+            <span className="inline-flex items-center gap-0.5 text-[9px] text-brand bg-brand/10 px-1 py-0.5 rounded-full border border-brand/20">
               <CheckCircle className="h-2 w-2" />Résolu
             </span>
           )}
         </div>
-        <p className="text-[11px] text-[#999999] leading-relaxed">{comment.content}</p>
+        <p className="text-[11px] text-dim leading-relaxed">{comment.content}</p>
       </div>
       {canResolve && !comment.is_resolved && (
         <button
           type="button"
           onClick={() => onResolve(comment.id)}
-          className="text-[#333333] hover:text-[#00D76B] transition-colors flex-shrink-0 mt-0.5"
+          className="text-faint hover:text-brand transition-colors flex-shrink-0 mt-0.5"
         >
           <CheckCircle className="h-3 w-3" />
         </button>
@@ -239,7 +239,7 @@ function BlockComments({
   }
 
   return (
-    <div className="px-3 pb-3 pt-2.5 border-t border-[#1e1e1e] space-y-2.5">
+    <div className="px-3 pb-3 pt-2.5 border-t border-line space-y-2.5">
       {blockComments.length > 0 && (
         <div className="space-y-2">
           {blockComments.map((c) => (
@@ -255,7 +255,7 @@ function BlockComments({
 
       {!canComment ? (
         blockComments.length > 0 ? (
-          <p className="text-[10px] text-[#444444]">
+          <p className="text-[10px] text-faint">
             {blockComments.length} commentaire{blockComments.length > 1 ? 's' : ''}
           </p>
         ) : null
@@ -263,9 +263,9 @@ function BlockComments({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex items-center gap-1.5 text-[10px] text-[#444444] hover:text-[#888888] transition-colors group"
+          className="flex items-center gap-1.5 text-[10px] text-faint hover:text-dim transition-colors group"
         >
-          <MessageSquare className="h-3 w-3 group-hover:text-[#00D76B] transition-colors" />
+          <MessageSquare className="h-3 w-3 group-hover:text-brand transition-colors" />
           {blockComments.length === 0
             ? 'Commenter cette piste'
             : `${unresolvedCount > 0 ? `${unresolvedCount} non résolu${unresolvedCount > 1 ? 's' : ''}` : `${blockComments.length} commentaire${blockComments.length > 1 ? 's' : ''}`}`}
@@ -279,14 +279,14 @@ function BlockComments({
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit() }}
             placeholder="Votre retour sur cette piste… (Ctrl+Entrée)"
             rows={2}
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+            className="w-full bg-surface border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
           />
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleSubmit}
               disabled={!text.trim() || sending}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-[10px] font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[10px] font-medium hover:bg-brand/20 transition-colors disabled:opacity-40"
             >
               {sending ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Send className="h-2.5 w-2.5" />}
               Envoyer
@@ -294,7 +294,7 @@ function BlockComments({
             <button
               type="button"
               onClick={() => { setOpen(false); setText('') }}
-              className="text-[10px] text-[#444444] hover:text-white transition-colors"
+              className="text-[10px] text-faint hover:text-ink transition-colors"
             >
               Annuler
             </button>
@@ -436,12 +436,12 @@ export default function AudioViewerClient({
 
       {/* ── Approved banner ── */}
       {isApproved && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#00D76B]/10 border border-[#00D76B]/20">
-          <CheckCircle className="h-4 w-4 text-[#00D76B] flex-shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-brand/10 border border-brand/20">
+          <CheckCircle className="h-4 w-4 text-brand flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-[#00D76B]">{kindLabel} validée</p>
+            <p className="text-sm font-semibold text-brand">{kindLabel} validée</p>
             {tracks.find((t) => t.content.is_selected) && (
-              <p className="text-[11px] text-[#00D76B]/60">
+              <p className="text-[11px] text-brand/60">
                 Piste sélectionnée : {tracks.find((t) => t.content.is_selected)?.content.title}
               </p>
             )}
@@ -455,8 +455,8 @@ export default function AudioViewerClient({
           <div className="flex items-start gap-3">
             <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-white">Connectez-vous pour valider</p>
-              <p className="text-xs text-[#666666] mt-0.5">Vous devez être connecté pour valider, commenter ou modifier cette phase.</p>
+              <p className="text-sm font-semibold text-ink">Connectez-vous pour valider</p>
+              <p className="text-xs text-faint mt-0.5">Vous devez être connecté pour valider, commenter ou modifier cette phase.</p>
             </div>
           </div>
           <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 transition-colors">
@@ -468,14 +468,14 @@ export default function AudioViewerClient({
 
       {/* ── Approval panel ── */}
       {!isApproved && status === 'in_review' && isAuthenticated && (
-        <div className="bg-[#111111] border border-[#F59E0B]/25 rounded-2xl p-5 space-y-4">
+        <div className="bg-surface border border-[#F59E0B]/25 rounded-2xl p-5 space-y-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center flex-shrink-0">
               <ThumbsUp className="h-4 w-4 text-[#F59E0B]" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">Choisissez votre {kindLabel.toLowerCase()}</p>
-              <p className="text-xs text-[#666666] mt-0.5 leading-relaxed">
+              <p className="text-sm font-semibold text-ink">Choisissez votre {kindLabel.toLowerCase()}</p>
+              <p className="text-xs text-faint mt-0.5 leading-relaxed">
                 Écoutez les propositions ci-dessous, sélectionnez celle que vous préférez, puis validez votre choix.
               </p>
             </div>
@@ -487,18 +487,18 @@ export default function AudioViewerClient({
                 type="button"
                 onClick={handleApprove}
                 disabled={approving || !hasSelection}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00D76B]/10 border border-[#00D76B]/25 text-[#00D76B] text-sm font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand/10 border border-brand/25 text-brand text-sm font-medium hover:bg-brand/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {approving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                 Valider ma sélection
               </button>
               {!hasSelection && (
-                <p className="text-xs text-[#555555]">← Sélectionnez d&apos;abord une piste</p>
+                <p className="text-xs text-faint">← Sélectionnez d&apos;abord une piste</p>
               )}
               <button
                 type="button"
                 onClick={() => setShowRevisionForm(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#2a2a2a] text-[#888888] text-sm hover:text-white hover:border-[#444444] transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-line text-dim text-sm hover:text-ink hover:border-line-strong transition-colors"
               >
                 <RotateCcw className="h-4 w-4" />
                 Demander d&apos;autres propositions
@@ -506,14 +506,14 @@ export default function AudioViewerClient({
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs text-[#666666]">Décrivez ce que vous souhaitez comme ajustements.</p>
+              <p className="text-xs text-faint">Décrivez ce que vous souhaitez comme ajustements.</p>
               <textarea
                 autoFocus
                 value={revisionText}
                 onChange={(e) => setRevisionText(e.target.value)}
                 placeholder="Ex: Le tempo de la piste 2 est trop rapide, et la voix de la piste 1 manque de chaleur…"
                 rows={4}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+                className="w-full bg-surface border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
               />
               <div className="flex items-center gap-2">
                 <button
@@ -528,7 +528,7 @@ export default function AudioViewerClient({
                 <button
                   type="button"
                   onClick={() => { setShowRevisionForm(false); setRevisionText('') }}
-                  className="text-xs text-[#444444] hover:text-white transition-colors"
+                  className="text-xs text-faint hover:text-ink transition-colors"
                 >
                   Annuler
                 </button>
@@ -548,14 +548,14 @@ export default function AudioViewerClient({
             return (
               <div
                 key={track.id}
-                className={`bg-[#111111] border rounded-xl overflow-hidden transition-all duration-200 ${
+                className={`bg-surface border rounded-xl overflow-hidden transition-all duration-200 ${
                   isSelected
-                    ? 'border-[#00D76B]/30 shadow-md shadow-[#00D76B]/5'
-                    : 'border-[#1e1e1e] hover:border-[#2a2a2a]'
+                    ? 'border-brand/30 shadow-md shadow-[rgb(var(--c-brand))]/5'
+                    : 'border-line hover:border-line'
                 }`}
               >
                 {/* Track header */}
-                <div className="flex items-center gap-3 px-3 py-2.5 border-b border-[#1a1a1a]">
+                <div className="flex items-center gap-3 px-3 py-2.5 border-b border-line">
                   {/* Kind icon */}
                   <div className={`flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0 ${
                     kind === 'vo'
@@ -566,15 +566,15 @@ export default function AudioViewerClient({
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{track.content.title}</p>
+                    <p className="text-sm font-medium text-ink truncate">{track.content.title}</p>
                     {track.content.description && (
-                      <p className="text-[10px] text-[#555555] truncate mt-0.5">{track.content.description}</p>
+                      <p className="text-[10px] text-faint truncate mt-0.5">{track.content.description}</p>
                     )}
                   </div>
 
                   {/* Selected badge */}
                   {isSelected && (
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-[10px] font-medium flex-shrink-0">
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-[10px] font-medium flex-shrink-0">
                       <CheckCircle className="h-2.5 w-2.5" />
                       Sélectionné
                     </div>
@@ -588,8 +588,8 @@ export default function AudioViewerClient({
                       disabled={!!selectingId}
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium border transition-colors disabled:opacity-40 flex-shrink-0 ${
                         isSelected
-                          ? 'bg-[#00D76B]/10 border-[#00D76B]/20 text-[#00D76B] hover:bg-[#00D76B]/20'
-                          : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444]'
+                          ? 'bg-brand/10 border-brand/20 text-brand hover:bg-brand/20'
+                          : 'bg-surface-2 border-line text-faint hover:text-ink hover:border-line-strong'
                       }`}
                     >
                       {isSelecting
@@ -622,10 +622,10 @@ export default function AudioViewerClient({
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#111111] border border-[#1e1e1e] flex items-center justify-center">
-            <KindIcon className="h-7 w-7 text-[#333333]" />
+          <div className="w-16 h-16 rounded-2xl bg-surface border border-line flex items-center justify-center">
+            <KindIcon className="h-7 w-7 text-faint" />
           </div>
-          <p className="text-sm text-[#555555]">Aucune piste disponible pour le moment</p>
+          <p className="text-sm text-faint">Aucune piste disponible pour le moment</p>
         </div>
       )}
 

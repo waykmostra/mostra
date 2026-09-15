@@ -16,7 +16,7 @@ export default async function NewFormTemplatePage() {
       <div className="flex items-center gap-3">
         <Link
           href="/settings/forms"
-          className="inline-flex items-center gap-1 text-xs text-[#555555] hover:text-white transition-colors"
+          className="inline-flex items-center gap-1 text-xs text-faint hover:text-ink transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Retour aux templates
@@ -24,8 +24,8 @@ export default async function NewFormTemplatePage() {
       </div>
 
       <div>
-        <h2 className="text-sm font-semibold text-white">Nouveau template de formulaire</h2>
-        <p className="text-xs text-[#555555] mt-0.5">
+        <h2 className="text-sm font-semibold text-ink">Nouveau template de formulaire</h2>
+        <p className="text-xs text-faint mt-0.5">
           Définissez les questions qui seront posées au client lors du brief.
         </p>
       </div>

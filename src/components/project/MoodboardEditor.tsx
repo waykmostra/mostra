@@ -87,7 +87,7 @@ function AdminCommentPanel({
   }
 
   return (
-    <div className="px-4 pb-4 pt-3 border-t border-[#1e1e1e] space-y-3">
+    <div className="px-4 pb-4 pt-3 border-t border-line space-y-3">
       {blockComments.length > 0 && (
         <div className="space-y-2.5">
           {blockComments.map((c) => {
@@ -95,25 +95,25 @@ function AdminCommentPanel({
             const initials = authorName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
             return (
               <div key={c.id} className={`flex gap-2.5 transition-opacity ${c.is_resolved ? 'opacity-40' : ''}`}>
-                <div className="w-6 h-6 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
+                <div className="w-6 h-6 rounded-full bg-surface-3 border border-line flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
                   {c.author?.avatar_url
                     // eslint-disable-next-line @next/next/no-img-element
                     ? <img src={c.author.avatar_url} alt={authorName} className="w-full h-full object-cover" />
-                    : <span className="text-[9px] text-[#666666] font-medium">{initials}</span>}
+                    : <span className="text-[9px] text-faint font-medium">{initials}</span>}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <span className="text-[11px] font-medium text-white">{authorName}</span>
-                    <span className="text-[10px] text-[#444444]">{formatRelative(c.created_at)}</span>
+                    <span className="text-[11px] font-medium text-ink">{authorName}</span>
+                    <span className="text-[10px] text-faint">{formatRelative(c.created_at)}</span>
                     {c.is_resolved && (
-                      <span className="text-[10px] text-[#00D76B] bg-[#00D76B]/10 px-1.5 py-0.5 rounded-full border border-[#00D76B]/20">Résolu</span>
+                      <span className="text-[10px] text-brand bg-brand/10 px-1.5 py-0.5 rounded-full border border-brand/20">Résolu</span>
                     )}
                   </div>
-                  <p className="text-xs text-[#999999] leading-relaxed">{c.content}</p>
+                  <p className="text-xs text-dim leading-relaxed">{c.content}</p>
                 </div>
                 {!c.is_resolved && (
                   <button type="button" onClick={() => handleResolve(c.id)}
-                    className="text-[#333333] hover:text-[#00D76B] transition-colors flex-shrink-0 mt-0.5">
+                    className="text-faint hover:text-brand transition-colors flex-shrink-0 mt-0.5">
                     <CheckCircle className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -125,8 +125,8 @@ function AdminCommentPanel({
 
       {!open ? (
         <button type="button" onClick={() => setOpen(true)}
-          className="flex items-center gap-1.5 text-[11px] text-[#444444] hover:text-[#888888] transition-colors group">
-          <MessageSquare className="h-3.5 w-3.5 group-hover:text-[#00D76B] transition-colors" />
+          className="flex items-center gap-1.5 text-[11px] text-faint hover:text-dim transition-colors group">
+          <MessageSquare className="h-3.5 w-3.5 group-hover:text-brand transition-colors" />
           {blockComments.length === 0
             ? 'Ajouter un commentaire'
             : `${unresolvedCount > 0 ? `${unresolvedCount} non résolu${unresolvedCount > 1 ? 's' : ''}` : `${blockComments.length} commentaire${blockComments.length > 1 ? 's' : ''}`}`}
@@ -140,16 +140,16 @@ function AdminCommentPanel({
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit() }}
             placeholder="Commentaire interne… (Ctrl+Entrée)"
             rows={2}
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+            className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
           />
           <div className="flex items-center gap-2">
             <button type="button" onClick={handleSubmit} disabled={!text.trim() || sending}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-[11px] font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40">
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[11px] font-medium hover:bg-brand/20 transition-colors disabled:opacity-40">
               {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
               Envoyer
             </button>
             <button type="button" onClick={() => { setOpen(false); setText('') }}
-              className="text-[11px] text-[#444444] hover:text-white transition-colors">
+              className="text-[11px] text-faint hover:text-ink transition-colors">
               Annuler
             </button>
           </div>
@@ -224,27 +224,27 @@ function AddMoodboardForm({
   }
 
   return (
-    <div className="bg-[#111111] border-2 border-dashed border-[#2a2a2a] rounded-2xl p-5 space-y-4">
+    <div className="bg-surface border-2 border-dashed border-line rounded-2xl p-5 space-y-4">
       {/* Drop zone / preview */}
       {!preview ? (
         <div
           className={`
             relative aspect-[4/3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-3
             cursor-pointer transition-colors
-            ${dragging ? 'border-[#00D76B] bg-[#00D76B]/5' : 'border-[#2a2a2a] hover:border-[#3a3a3a]'}
+            ${dragging ? 'border-brand bg-brand/5' : 'border-line hover:border-line-strong'}
           `}
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
         >
-          <div className="w-12 h-12 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
-            <Upload className="h-5 w-5 text-[#555555]" />
+          <div className="w-12 h-12 rounded-xl bg-surface-2 border border-line flex items-center justify-center">
+            <Upload className="h-5 w-5 text-faint" />
           </div>
           <div className="text-center">
-            <p className="text-sm text-[#666666]">Glissez une image ici</p>
-            <p className="text-xs text-[#444444] mt-0.5">ou cliquez pour parcourir</p>
-            <p className="text-[10px] text-[#333333] mt-2">PNG, JPG, WEBP — max 10 MB</p>
+            <p className="text-sm text-faint">Glissez une image ici</p>
+            <p className="text-xs text-faint mt-0.5">ou cliquez pour parcourir</p>
+            <p className="text-[10px] text-faint mt-2">PNG, JPG, WEBP — max 10 MB</p>
           </div>
           <input
             ref={inputRef}
@@ -263,7 +263,7 @@ function AddMoodboardForm({
             onClick={() => { setFile(null); setPreview(null) }}
             className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/60 hover:bg-black/80 flex items-center justify-center transition-colors"
           >
-            <Trash2 className="h-3.5 w-3.5 text-white" />
+            <Trash2 className="h-3.5 w-3.5 text-ink" />
           </button>
         </div>
       )}
@@ -274,14 +274,14 @@ function AddMoodboardForm({
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Titre du style (ex: Minimaliste japonais)"
-        className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2 text-sm text-white placeholder-[#444444] focus:outline-none focus:border-[#444444]"
+        className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-sm text-ink placeholder-faint focus:outline-none focus:border-line-strong"
       />
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Pourquoi ce style ? Références, ambiance, palette…"
         rows={3}
-        className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2 text-sm text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+        className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-sm text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
       />
 
       {/* Actions */}
@@ -290,7 +290,7 @@ function AddMoodboardForm({
           type="button"
           onClick={handleSubmit}
           disabled={!file || uploading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-sm font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand/10 border border-brand/20 text-brand text-sm font-medium hover:bg-brand/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           {uploading ? 'Upload en cours…' : 'Ajouter'}
@@ -298,7 +298,7 @@ function AddMoodboardForm({
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs text-[#444444] hover:text-white transition-colors"
+          className="text-xs text-faint hover:text-ink transition-colors"
         >
           Annuler
         </button>
@@ -344,16 +344,16 @@ function MoodboardCard({
   }
 
   return (
-    <div className="group bg-[#111111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-2xl overflow-hidden transition-all duration-200 hover:shadow-xl hover:shadow-black/40">
+    <div className="group bg-surface border border-line hover:border-line rounded-2xl overflow-hidden transition-all duration-200 hover:shadow-xl hover:shadow-black/40">
 
       {/* Image */}
       <div
-        className="relative aspect-[4/3] bg-[#0d0d0d] cursor-zoom-in overflow-hidden"
+        className="relative aspect-[4/3] bg-surface cursor-zoom-in overflow-hidden"
         onClick={() => onOpenLightbox(index)}
       >
         {!imageLoaded && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <ImageIcon className="h-8 w-8 text-[#2a2a2a]" />
+            <ImageIcon className="h-8 w-8 text-[rgb(var(--c-border))]" />
           </div>
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -368,7 +368,7 @@ function MoodboardCard({
         {/* Overlay on hover */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
           <div className="w-10 h-10 rounded-xl bg-black/60 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <Maximize2 className="h-4 w-4 text-white" />
+            <Maximize2 className="h-4 w-4 text-ink" />
           </div>
         </div>
 
@@ -382,7 +382,7 @@ function MoodboardCard({
               inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium border transition-colors
               ${confirmDelete
                 ? 'bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30'
-                : 'bg-black/60 border-white/10 text-white/70 hover:text-white hover:bg-black/80'}
+                : 'bg-black/60 border-white/10 text-ink/70 hover:text-ink hover:bg-black/80'}
             `}
           >
             {deleting ? (
@@ -403,7 +403,7 @@ function MoodboardCard({
           onChange={(e) => setTitle(e.target.value)}
           onBlur={() => { if (title !== block.content.title) onUpdate(block.id, { title }) }}
           placeholder="Titre du style"
-          className="w-full bg-transparent text-sm font-semibold text-white placeholder-[#444444] focus:outline-none border-b border-transparent focus:border-[#2a2a2a] pb-0.5 transition-colors"
+          className="w-full bg-transparent text-sm font-semibold text-ink placeholder-faint focus:outline-none border-b border-transparent focus:border-line pb-0.5 transition-colors"
         />
         <textarea
           value={description}
@@ -411,7 +411,7 @@ function MoodboardCard({
           onBlur={() => { if (description !== (block.content.description ?? '')) onUpdate(block.id, { description }) }}
           placeholder="Description, ambiance, références…"
           rows={2}
-          className="w-full bg-transparent text-xs text-[#888888] placeholder-[#444444] focus:outline-none resize-none leading-relaxed focus:text-[#aaaaaa] transition-colors"
+          className="w-full bg-transparent text-xs text-dim placeholder-faint focus:outline-none resize-none leading-relaxed focus:text-dim transition-colors"
         />
       </div>
 
@@ -526,10 +526,10 @@ export default function MoodboardEditor({
     <div className="space-y-5">
 
       {/* ── Actions panel ── */}
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-2xl p-4 flex items-center gap-3 flex-wrap">
+      <div className="bg-surface border border-line rounded-2xl p-4 flex items-center gap-3 flex-wrap">
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-[#555555] uppercase tracking-widest">Moodboard / Style</p>
-          <p className="text-sm text-[#888888] mt-0.5">
+          <p className="text-xs text-faint uppercase tracking-widest">Moodboard / Style</p>
+          <p className="text-sm text-dim mt-0.5">
             {blocks.length === 0
               ? 'Aucune image — ajoutez des références visuelles'
               : `${blocks.length} image${blocks.length > 1 ? 's' : ''}`}
@@ -566,7 +566,7 @@ export default function MoodboardEditor({
               type="button"
               onClick={() => handleAction('approve')}
               disabled={!!loadingAction}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-xs font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand/10 border border-brand/20 text-brand text-xs font-medium hover:bg-brand/20 transition-colors disabled:opacity-40"
             >
               {loadingAction === 'approve' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
               Approuver
@@ -584,7 +584,7 @@ export default function MoodboardEditor({
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors disabled:opacity-40 ${
                 confirmUnapprove
                   ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
-                  : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444]'
+                  : 'bg-surface-2 border-line text-faint hover:text-ink hover:border-line-strong'
               }`}
             >
               {loadingAction === 'unapprove' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
@@ -599,9 +599,9 @@ export default function MoodboardEditor({
         const selected = blocks.find((b) => b.content.is_selected)
         if (!selected) return null
         return (
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#00D76B]/8 border border-[#00D76B]/20">
-            <Star className="h-3.5 w-3.5 text-[#00D76B] flex-shrink-0" />
-            <span className="text-xs text-[#00D76B]">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand/8 border border-brand/20">
+            <Star className="h-3.5 w-3.5 text-brand flex-shrink-0" />
+            <span className="text-xs text-brand">
               Style sélectionné par le client : <strong>{selected.content.title}</strong>
             </span>
           </div>
@@ -623,7 +623,7 @@ export default function MoodboardEditor({
         <button
           type="button"
           onClick={() => setShowAddForm(true)}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-[#2a2a2a] hover:border-[#00D76B]/40 hover:bg-[#00D76B]/5 text-[#555555] hover:text-[#00D76B] text-sm transition-all duration-200 group"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-line hover:border-brand/40 hover:bg-brand/5 text-faint hover:text-brand text-sm transition-all duration-200 group"
         >
           <Plus className="h-4 w-4 group-hover:scale-110 transition-transform" />
           Ajouter une image
@@ -650,12 +650,12 @@ export default function MoodboardEditor({
         </div>
       ) : !showAddForm ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#111111] border border-[#1e1e1e] flex items-center justify-center">
-            <ImageIcon className="h-7 w-7 text-[#333333]" />
+          <div className="w-16 h-16 rounded-2xl bg-surface border border-line flex items-center justify-center">
+            <ImageIcon className="h-7 w-7 text-faint" />
           </div>
           <div>
-            <p className="text-sm font-medium text-[#555555]">Aucun moodboard</p>
-            <p className="text-xs text-[#444444] mt-1">
+            <p className="text-sm font-medium text-faint">Aucun moodboard</p>
+            <p className="text-xs text-faint mt-1">
               {canEdit
                 ? 'Cliquez sur "Ajouter une image" pour commencer'
                 : 'Les images apparaîtront ici une fois ajoutées'}
@@ -666,7 +666,7 @@ export default function MoodboardEditor({
 
       {/* ── Pending indicator ── */}
       {isPending && (
-        <p className="text-[10px] text-[#555555] flex items-center gap-1.5">
+        <p className="text-[10px] text-faint flex items-center gap-1.5">
           <Loader2 className="h-3 w-3 animate-spin" />
           Sauvegarde…
         </p>

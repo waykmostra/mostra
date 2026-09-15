@@ -139,24 +139,24 @@ function SortableQuestionItem({
 
   return (
     <div ref={setNodeRef} style={style} className="group">
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-line rounded-xl overflow-hidden">
         {/* ── Row header ── */}
         <div className="flex items-center gap-2 px-3 py-2.5">
           <button
             type="button"
-            className="text-[#333333] hover:text-[#555555] cursor-grab active:cursor-grabbing touch-none flex-shrink-0"
+            className="text-faint hover:text-faint cursor-grab active:cursor-grabbing touch-none flex-shrink-0"
             {...attributes}
             {...listeners}
           >
             <GripVertical className="h-4 w-4" />
           </button>
 
-          <span className="text-[10px] text-[#444444] font-mono w-5 flex-shrink-0">{index + 1}</span>
+          <span className="text-[10px] text-faint font-mono w-5 flex-shrink-0">{index + 1}</span>
 
-          <TypeIcon className="h-3.5 w-3.5 text-[#555555] flex-shrink-0" />
+          <TypeIcon className="h-3.5 w-3.5 text-faint flex-shrink-0" />
 
-          <span className="flex-1 text-sm text-white truncate min-w-0">
-            {row.label || <span className="text-[#444444] italic">Sans titre</span>}
+          <span className="flex-1 text-sm text-ink truncate min-w-0">
+            {row.label || <span className="text-faint italic">Sans titre</span>}
           </span>
 
           {row.required && (
@@ -169,7 +169,7 @@ function SortableQuestionItem({
             <button
               type="button"
               onClick={() => onDuplicate(row._key)}
-              className="p-1 text-[#444444] hover:text-white transition-colors rounded"
+              className="p-1 text-faint hover:text-ink transition-colors rounded"
               title="Dupliquer"
             >
               <Copy className="h-3.5 w-3.5" />
@@ -177,7 +177,7 @@ function SortableQuestionItem({
             <button
               type="button"
               onClick={() => onRemove(row._key)}
-              className="p-1 text-[#444444] hover:text-red-400 transition-colors rounded"
+              className="p-1 text-faint hover:text-red-400 transition-colors rounded"
               title="Supprimer"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -187,7 +187,7 @@ function SortableQuestionItem({
           <button
             type="button"
             onClick={() => onToggle(row._key)}
-            className="p-1 text-[#444444] hover:text-white transition-colors rounded flex-shrink-0"
+            className="p-1 text-faint hover:text-ink transition-colors rounded flex-shrink-0"
           >
             {row._expanded ? (
               <ChevronDown className="h-4 w-4" />
@@ -199,10 +199,10 @@ function SortableQuestionItem({
 
         {/* ── Expanded form ── */}
         {row._expanded && (
-          <div className="border-t border-[#1e1e1e] px-4 py-4 space-y-3">
+          <div className="border-t border-line px-4 py-4 space-y-3">
             {/* Label */}
             <div>
-              <label className="block text-xs text-[#666666] mb-1">
+              <label className="block text-xs text-faint mb-1">
                 Libellé <span className="text-red-400">*</span>
               </label>
               <input
@@ -210,20 +210,20 @@ function SortableQuestionItem({
                 value={row.label}
                 onChange={(e) => onUpdate(row._key, { label: e.target.value })}
                 placeholder="Ex: Quels sont les objectifs de cette vidéo ?"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333333] focus:outline-none focus:border-[#00D76B]/50 transition-colors"
+                className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder-[rgb(var(--c-border-strong))] focus:outline-none focus:border-brand/50 transition-colors"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               {/* Type */}
               <div>
-                <label className="block text-xs text-[#666666] mb-1">Type de champ</label>
+                <label className="block text-xs text-faint mb-1">Type de champ</label>
                 <select
                   value={row.type}
                   onChange={(e) =>
                     onUpdate(row._key, { type: e.target.value as QuestionType, options: [] })
                   }
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#00D76B]/50 transition-colors appearance-none"
+                  className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-brand/50 transition-colors appearance-none"
                 >
                   {QUESTION_TYPES.map((t) => (
                     <option key={t.value} value={t.value}>
@@ -235,19 +235,19 @@ function SortableQuestionItem({
 
               {/* Required toggle */}
               <div className="flex flex-col">
-                <label className="block text-xs text-[#666666] mb-1">Obligatoire</label>
+                <label className="block text-xs text-faint mb-1">Obligatoire</label>
                 <button
                   type="button"
                   onClick={() => onUpdate(row._key, { required: !row.required })}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
                     row.required
-                      ? 'bg-[#00D76B]/10 border-[#00D76B]/30 text-[#00D76B]'
-                      : 'bg-[#0d0d0d] border-[#2a2a2a] text-[#555555]'
+                      ? 'bg-brand/10 border-brand/30 text-brand'
+                      : 'bg-surface border-line text-faint'
                   }`}
                 >
                   <div
                     className={`w-3.5 h-3.5 rounded-sm border-2 flex items-center justify-center flex-shrink-0 ${
-                      row.required ? 'border-[#00D76B] bg-[#00D76B]' : 'border-[#444444]'
+                      row.required ? 'border-brand bg-brand' : 'border-line-strong'
                     }`}
                   >
                     {row.required && (
@@ -263,36 +263,36 @@ function SortableQuestionItem({
 
             {/* Placeholder */}
             <div>
-              <label className="block text-xs text-[#666666] mb-1">Placeholder (optionnel)</label>
+              <label className="block text-xs text-faint mb-1">Placeholder (optionnel)</label>
               <input
                 type="text"
                 value={row.placeholder ?? ''}
                 onChange={(e) => onUpdate(row._key, { placeholder: e.target.value })}
                 placeholder="Texte d'aide dans le champ…"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333333] focus:outline-none focus:border-[#00D76B]/50 transition-colors"
+                className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder-[rgb(var(--c-border-strong))] focus:outline-none focus:border-brand/50 transition-colors"
               />
             </div>
 
             {/* Help text */}
             <div>
-              <label className="block text-xs text-[#666666] mb-1">Texte d&apos;aide (optionnel)</label>
+              <label className="block text-xs text-faint mb-1">Texte d&apos;aide (optionnel)</label>
               <input
                 type="text"
                 value={row.helpText ?? ''}
                 onChange={(e) => onUpdate(row._key, { helpText: e.target.value })}
                 placeholder="Description supplémentaire visible sous le champ…"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333333] focus:outline-none focus:border-[#00D76B]/50 transition-colors"
+                className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder-[rgb(var(--c-border-strong))] focus:outline-none focus:border-brand/50 transition-colors"
               />
             </div>
 
             {/* Options for select / radio */}
             {hasOptions && (
               <div>
-                <label className="block text-xs text-[#666666] mb-2">Options</label>
+                <label className="block text-xs text-faint mb-2">Options</label>
                 <div className="space-y-2">
                   {(row.options ?? []).map((opt, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <div className="flex-shrink-0 text-[#333333]">
+                      <div className="flex-shrink-0 text-faint">
                         {row.type === 'radio' ? (
                           <CircleDot className="h-3.5 w-3.5" />
                         ) : row.type === 'checkbox' ? (
@@ -306,12 +306,12 @@ function SortableQuestionItem({
                         value={opt}
                         onChange={(e) => updateOption(i, e.target.value)}
                         placeholder={`Option ${i + 1}`}
-                        className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#333333] focus:outline-none focus:border-[#00D76B]/50 transition-colors"
+                        className="flex-1 bg-surface border border-line rounded-lg px-3 py-1.5 text-sm text-ink placeholder-[rgb(var(--c-border-strong))] focus:outline-none focus:border-brand/50 transition-colors"
                       />
                       <button
                         type="button"
                         onClick={() => removeOption(i)}
-                        className="p-1 text-[#444444] hover:text-red-400 transition-colors"
+                        className="p-1 text-faint hover:text-red-400 transition-colors"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -320,7 +320,7 @@ function SortableQuestionItem({
                   <button
                     type="button"
                     onClick={addOption}
-                    className="text-xs text-[#555555] hover:text-[#00D76B] transition-colors flex items-center gap-1 mt-1"
+                    className="text-xs text-faint hover:text-brand transition-colors flex items-center gap-1 mt-1"
                   >
                     <Plus className="h-3 w-3" />
                     Ajouter une option
@@ -339,32 +339,32 @@ function SortableQuestionItem({
 
 function FormPreview({ name, questions }: { name: string; questions: QuestionRow[] }) {
   return (
-    <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl p-6 space-y-5">
-      <div className="pb-3 border-b border-[#1a1a1a]">
-        <p className="text-[10px] text-[#00D76B] uppercase tracking-widest mb-1">Aperçu client</p>
-        <h3 className="text-sm font-semibold text-white">{name || 'Nom du formulaire'}</h3>
+    <div className="bg-surface border border-line rounded-2xl p-6 space-y-5">
+      <div className="pb-3 border-b border-line">
+        <p className="text-[10px] text-brand uppercase tracking-widest mb-1">Aperçu client</p>
+        <h3 className="text-sm font-semibold text-ink">{name || 'Nom du formulaire'}</h3>
       </div>
 
       {questions.length === 0 && (
-        <p className="text-xs text-[#333333] text-center py-6 italic">
+        <p className="text-xs text-faint text-center py-6 italic">
           Ajoutez des questions pour voir l&apos;aperçu
         </p>
       )}
 
       {questions.map((q, i) => (
         <div key={q._key} className="space-y-1.5">
-          <label className="block text-xs font-medium text-[#cccccc]">
-            {q.label || <span className="text-[#444444] italic">Question {i + 1}</span>}
+          <label className="block text-xs font-medium text-dim">
+            {q.label || <span className="text-faint italic">Question {i + 1}</span>}
             {q.required && <span className="text-red-400 ml-1">*</span>}
           </label>
 
-          {q.helpText && <p className="text-[11px] text-[#555555]">{q.helpText}</p>}
+          {q.helpText && <p className="text-[11px] text-faint">{q.helpText}</p>}
 
           {q.type === 'text' && (
             <input
               readOnly
               placeholder={q.placeholder || ''}
-              className="w-full bg-[#111111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-[#555555] placeholder-[#333333] cursor-default"
+              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-faint placeholder-[rgb(var(--c-border-strong))] cursor-default"
             />
           )}
 
@@ -373,7 +373,7 @@ function FormPreview({ name, questions }: { name: string; questions: QuestionRow
               readOnly
               rows={3}
               placeholder={q.placeholder || ''}
-              className="w-full bg-[#111111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-[#555555] placeholder-[#333333] cursor-default resize-none"
+              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-faint placeholder-[rgb(var(--c-border-strong))] cursor-default resize-none"
             />
           )}
 
@@ -382,7 +382,7 @@ function FormPreview({ name, questions }: { name: string; questions: QuestionRow
               readOnly
               type="number"
               placeholder={q.placeholder || '0'}
-              className="w-full bg-[#111111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-[#555555] placeholder-[#333333] cursor-default"
+              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-faint placeholder-[rgb(var(--c-border-strong))] cursor-default"
             />
           )}
 
@@ -390,14 +390,14 @@ function FormPreview({ name, questions }: { name: string; questions: QuestionRow
             <input
               readOnly
               type="date"
-              className="w-full bg-[#111111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-[#555555] cursor-default"
+              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-faint cursor-default"
             />
           )}
 
           {q.type === 'select' && (
             <select
               disabled
-              className="w-full bg-[#111111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-[#555555] cursor-default appearance-none"
+              className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-faint cursor-default appearance-none"
             >
               <option value="">{q.placeholder || 'Choisir une option…'}</option>
               {(q.options ?? []).map((opt, j) => (
@@ -411,12 +411,12 @@ function FormPreview({ name, questions }: { name: string; questions: QuestionRow
           {q.type === 'radio' && (
             <div className="space-y-1.5">
               {(q.options ?? []).length === 0 && (
-                <p className="text-[11px] text-[#333333] italic">Aucune option définie</p>
+                <p className="text-[11px] text-faint italic">Aucune option définie</p>
               )}
               {(q.options ?? []).map((opt, j) => (
                 <label key={j} className="flex items-center gap-2 cursor-default">
-                  <div className="w-3.5 h-3.5 rounded-full border border-[#2a2a2a] bg-[#111111] flex-shrink-0" />
-                  <span className="text-xs text-[#555555]">{opt}</span>
+                  <div className="w-3.5 h-3.5 rounded-full border border-line bg-surface flex-shrink-0" />
+                  <span className="text-xs text-faint">{opt}</span>
                 </label>
               ))}
             </div>
@@ -425,12 +425,12 @@ function FormPreview({ name, questions }: { name: string; questions: QuestionRow
           {q.type === 'checkbox' && (
             <div className="space-y-1.5">
               {(q.options ?? []).length === 0 && (
-                <p className="text-[11px] text-[#333333] italic">Aucune option définie</p>
+                <p className="text-[11px] text-faint italic">Aucune option définie</p>
               )}
               {(q.options ?? []).map((opt, j) => (
                 <label key={j} className="flex items-center gap-2 cursor-default">
-                  <div className="w-3.5 h-3.5 rounded-sm border border-[#2a2a2a] bg-[#111111] flex-shrink-0" />
-                  <span className="text-xs text-[#555555]">{opt}</span>
+                  <div className="w-3.5 h-3.5 rounded-sm border border-line bg-surface flex-shrink-0" />
+                  <span className="text-xs text-faint">{opt}</span>
                 </label>
               ))}
             </div>
@@ -542,8 +542,8 @@ export default function FormBuilder({
             onClick={() => setShowPreview((v) => !v)}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors ${
               showPreview
-                ? 'bg-[#00D76B]/10 border-[#00D76B]/30 text-[#00D76B]'
-                : 'bg-[#111111] border-[#2a2a2a] text-[#555555] hover:text-white'
+                ? 'bg-brand/10 border-brand/30 text-brand'
+                : 'bg-surface border-line text-faint hover:text-ink'
             }`}
           >
             <Eye className="h-3.5 w-3.5" />
@@ -555,7 +555,7 @@ export default function FormBuilder({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00D76B] text-black text-sm font-semibold hover:bg-[#00D76B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-black text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           {templateId ? 'Sauvegarder' : 'Créer le template'}
@@ -566,9 +566,9 @@ export default function FormBuilder({
         {/* ── Left: editor ── */}
         <div className="space-y-4">
           {/* Metadata */}
-          <div className="bg-[#111111] border border-[#2a2a2a] rounded-2xl p-5 space-y-4">
+          <div className="bg-surface border border-line rounded-2xl p-5 space-y-4">
             <div>
-              <label className="block text-xs text-[#666666] mb-1.5">
+              <label className="block text-xs text-faint mb-1.5">
                 Nom du template <span className="text-red-400">*</span>
               </label>
               <input
@@ -576,17 +576,17 @@ export default function FormBuilder({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Brief vidéo classique"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333333] focus:outline-none focus:border-[#00D76B]/50 transition-colors"
+                className="w-full bg-surface border border-line rounded-lg px-3 py-2.5 text-sm text-ink placeholder-[rgb(var(--c-border-strong))] focus:outline-none focus:border-brand/50 transition-colors"
               />
             </div>
             <div>
-              <label className="block text-xs text-[#666666] mb-1.5">Description (optionnelle)</label>
+              <label className="block text-xs text-faint mb-1.5">Description (optionnelle)</label>
               <textarea
                 rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="À quoi sert ce formulaire ?"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333333] focus:outline-none focus:border-[#00D76B]/50 transition-colors resize-none"
+                className="w-full bg-surface border border-line rounded-lg px-3 py-2.5 text-sm text-ink placeholder-[rgb(var(--c-border-strong))] focus:outline-none focus:border-brand/50 transition-colors resize-none"
               />
             </div>
           </div>
@@ -594,11 +594,11 @@ export default function FormBuilder({
           {/* Questions */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs text-[#666666] font-medium">
+              <p className="text-xs text-faint font-medium">
                 Questions{' '}
-                <span className="text-[#333333]">({questions.length})</span>
+                <span className="text-faint">({questions.length})</span>
               </p>
-              <p className="text-[10px] text-[#333333]">Glisser pour réordonner</p>
+              <p className="text-[10px] text-faint">Glisser pour réordonner</p>
             </div>
 
             <DndContext
@@ -629,7 +629,7 @@ export default function FormBuilder({
             <button
               type="button"
               onClick={addQuestion}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-[#2a2a2a] text-sm text-[#555555] hover:text-[#00D76B] hover:border-[#00D76B]/40 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-line text-sm text-faint hover:text-brand hover:border-brand/40 transition-colors"
             >
               <Plus className="h-4 w-4" />
               Ajouter une question

@@ -47,51 +47,51 @@ export default function UserMenuDropdown({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-[#1a1a1a] transition-colors"
+        className="flex items-center gap-2.5 rounded-sm pl-1 pr-2 py-1 hover:bg-white/[0.06] transition-colors duration-[160ms]"
         aria-label="Menu utilisateur"
       >
-        <div className="w-7 h-7 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0 overflow-hidden">
+        <div className="w-7 h-7 rounded-full bg-white/[0.08] flex items-center justify-center flex-shrink-0 overflow-hidden">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
           ) : (
-            <span className="text-[10px] font-bold text-[#777777] leading-none">{initials}</span>
+            <span className="text-[10px] font-semibold text-chrome-dim leading-none">
+              {initials}
+            </span>
           )}
         </div>
-        <span className="hidden sm:block text-xs text-[#777777] truncate max-w-[120px]">{name}</span>
+        <span className="hidden sm:block text-[13px] text-chrome-dim truncate max-w-[120px]">
+          {name}
+        </span>
       </button>
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 z-50 w-56 bg-[#111111] border border-[#2a2a2a] rounded-xl shadow-2xl shadow-black/60 overflow-hidden">
-          {/* User info — read-only */}
-          <div className="px-4 py-3 border-b border-[#1a1a1a]">
-            <p className="text-xs font-semibold text-white truncate">{name}</p>
-            <p className="text-[11px] text-[#555555] truncate mt-0.5">{email}</p>
+        <div className="absolute right-0 top-full mt-2 z-50 w-[240px] rounded-lg bg-surface p-2 shadow-[var(--hairline),var(--e3)]">
+          <div className="px-3 py-2.5">
+            <p className="text-[13px] font-semibold text-ink truncate">{name}</p>
+            <p className="text-[11.5px] text-faint truncate mt-0.5">{email}</p>
           </div>
 
-          {/* Actions */}
-          <div className="py-1">
-            <Link
-              href="/account"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#a0a0a0] hover:text-white hover:bg-[#1a1a1a] transition-colors"
-            >
-              <User className="h-3.5 w-3.5 flex-shrink-0" />
-              Mon compte
-            </Link>
+          <div className="h-px bg-line my-1" />
 
-            <div className="h-px bg-[#1a1a1a] mx-3 my-1" />
+          <Link
+            href="/account"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 rounded-md px-3 py-2.5 text-[13.5px] font-medium text-dim hover:text-ink hover:bg-surface-2 transition-colors duration-[160ms]"
+          >
+            <User className="h-4 w-4 flex-shrink-0" />
+            Mon compte
+          </Link>
 
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-[#a0a0a0] hover:text-red-400 hover:bg-[#1a1a1a] transition-colors text-left"
-            >
-              <LogOut className="h-3.5 w-3.5 flex-shrink-0" />
-              Se déconnecter
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center gap-2.5 w-full rounded-md px-3 py-2.5 text-[13.5px] font-medium text-dim hover:text-late hover:bg-surface-2 transition-colors duration-[160ms] text-left"
+          >
+            <LogOut className="h-4 w-4 flex-shrink-0" />
+            Se déconnecter
+          </button>
         </div>
       )}
     </div>

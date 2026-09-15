@@ -1,13 +1,16 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ChevronRight, Clock } from 'lucide-react'
+import { ArrowLeft, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
 import { getCurrentProfile } from '@/lib/auth'
 import StatusBadge from '@/components/shared/StatusBadge'
+import Breadcrumb from '@/components/shared/Breadcrumb'
+import PhaseStepper from '@/components/project/PhaseStepper'
 import RevisionAlert from '@/components/project/RevisionAlert'
 import SubPhaseActions from '@/components/project/SubPhaseActions'
+import CopySubPhaseLink from '@/components/project/CopySubPhaseLink'
 import FormSubPhaseAdmin from '@/components/project/FormSubPhaseAdmin'
 import ScriptEditor from '@/components/project/ScriptEditor'
 import ScriptsGrid from '@/components/project/ScriptsGrid'
@@ -97,11 +100,11 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
   // Projet
   const { data: rawProject } = await supabase
     .from('projects')
-    .select('id, name')
+    .select('id, name, share_token')
     .eq('id', params.id)
     .maybeSingle()
 
-  const project = rawProject as Pick<Project, 'id' | 'name'> | null
+  const project = rawProject as Pick<Project, 'id' | 'name' | 'share_token'> | null
   if (!project) notFound()
 
   // Phase
@@ -114,6 +117,32 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
 
   const phase = rawPhase as Pick<ProjectPhase, 'id' | 'name' | 'slug' | 'status' | 'project_id'> | null
   if (!phase) notFound()
+
+  // Toutes les étapes du projet — le stepper doit rester navigable depuis
+  // l'intérieur d'une étape.
+  const { data: rawAllPhases } = await supabase
+    .from('project_phases')
+    .select('id, name, slug, status, sort_order')
+    .eq('project_id', params.id)
+    .order('sort_order', { ascending: true })
+
+  const allPhases =
+    (rawAllPhases as Pick<ProjectPhase, 'id' | 'name' | 'slug' | 'status' | 'sort_order'>[] | null) ??
+    []
+
+  // Première sous-phase de chaque étape, pour que le stepper pointe au bon endroit.
+  const { data: rawAllSubs } = await supabase
+    .from('sub_phases')
+    .select('id, phase_id, status, sort_order')
+    .in('phase_id', allPhases.map((p) => p.id))
+    .order('sort_order', { ascending: true })
+
+  const subsByPhase: Record<string, Pick<SubPhase, 'id' | 'status'>[]> = {}
+  for (const s of (rawAllSubs as (Pick<SubPhase, 'id' | 'status' | 'sort_order'> & {
+    phase_id: string
+  })[] | null) ?? []) {
+    ;(subsByPhase[s.phase_id] ??= []).push({ id: s.id, status: s.status })
+  }
 
   // Sous-phase
   const { data: rawSubPhase } = await supabase
@@ -169,7 +198,6 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
   const isDesignSubPhase = DESIGN_SLUGS.includes(subPhase.slug)
   const isAudioSubPhase = AUDIO_SLUGS.includes(subPhase.slug)
   // Éditeurs en grille (images) → pleine largeur pour s'adapter à l'écran
-  const isWideLayout = isMoodboardSubPhase || isStoryboardSubPhase || isDesignSubPhase
 
   // Data spécifique formulaire
   let formBlocks: { id: string; content: FormQuestionContent; sort_order: number }[] = []
@@ -433,41 +461,39 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
   const scriptModel = activeScript ? ensureTableModel(activeScript, scriptBlocks) : null
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] px-4 sm:px-6 py-6 sm:py-8">
-      <div className={`${isWideLayout ? 'max-w-none' : 'max-w-3xl'} mx-auto space-y-6`}>
+    <div className="px-5 py-6 sm:px-8 lg:px-10 lg:py-8">
+      <div className="space-y-6">
+        <Breadcrumb
+          items={[
+            { label: 'Projets', href: '/projects' },
+            { label: project.name, href: `/projects/${project.id}` },
+            { label: phase.name },
+            { label: subPhase.name },
+          ]}
+        />
 
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-1.5 text-xs text-[#444444] flex-wrap">
-          <Link href="/dashboard" className="hover:text-white transition-colors">
-            Dashboard
-          </Link>
-          <ChevronRight className="h-3 w-3 flex-shrink-0" />
-          <Link href={`/projects/${project.id}`} className="hover:text-white transition-colors truncate max-w-[150px]">
-            {project.name}
-          </Link>
-          <ChevronRight className="h-3 w-3 flex-shrink-0" />
-          <span className="text-[#555555]">{phase.name}</span>
-          <ChevronRight className="h-3 w-3 flex-shrink-0" />
-          <span className="text-white font-medium">{subPhase.name}</span>
-        </nav>
+        {/* Depuis l'intérieur d'une étape, on garde la carte du projet sous les
+            yeux et on peut sauter à n'importe quelle autre étape. */}
+        <PhaseStepper
+          phases={allPhases}
+          subPhasesByPhase={subsByPhase}
+          currentPhaseId={phase.id}
+          hrefForPhase={(p) => `/projects/${project.id}/phases/${p.id}`}
+        />
 
-        {/* Retour */}
-        <Link
-          href={`/projects/${project.id}`}
-          className="inline-flex items-center gap-1.5 text-xs text-[#666666] hover:text-white transition-colors"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Retour au projet
-        </Link>
-
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs text-[#444444] uppercase tracking-widest mb-1">{phase.name}</p>
-            <h1 className="text-xl font-bold text-white">{subPhase.name}</h1>
-            {meta && <p className="text-xs text-[#555555] mt-1">{meta.label}</p>}
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <h1 className="text-[1.625rem] leading-tight text-ink">{subPhase.name}</h1>
+            {meta && <p className="mt-1.5 text-[14px] text-dim">{meta.label}</p>}
           </div>
-          <StatusBadge status={subPhase.status} className="flex-shrink-0" />
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {project.share_token && (
+              <CopySubPhaseLink
+                path={`/client/${project.share_token}/phases/${phase.id}/sub/${subPhase.id}`}
+              />
+            )}
+            <StatusBadge status={subPhase.status} />
+          </div>
         </div>
 
         {/* Alerte demande de révision — visible quand la sous-phase revient en in_progress */}
@@ -504,7 +530,7 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
             <div className="space-y-4">
               <Link
                 href={`/projects/${project.id}/phases/${phase.id}/sub/${subPhase.id}?grid=1`}
-                className="inline-flex items-center gap-1.5 text-xs text-[#666666] hover:text-white transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs text-faint hover:text-ink transition-colors"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Tous les scripts
@@ -593,25 +619,25 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
 
         {/* Placeholder pour les autres sous-phases */}
         {!isFormSubPhase && !isScriptSubPhase && !isMoodboardSubPhase && !isStoryboardSubPhase && !isDesignSubPhase && !isAudioSubPhase && (
-          <div className="bg-[#111111] border border-[#2a2a2a] rounded-2xl p-10 text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center mx-auto">
-              <Clock className="h-6 w-6 text-[#333333]" />
+          <div className="bg-surface border border-line rounded-2xl p-10 text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-surface-2 border border-line flex items-center justify-center mx-auto">
+              <Clock className="h-6 w-6 text-faint" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-white mb-1">Contenu à venir</h2>
-              <p className="text-xs text-[#555555] max-w-sm mx-auto">
+              <h2 className="text-sm font-semibold text-ink mb-1">Contenu à venir</h2>
+              <p className="text-xs text-faint max-w-sm mx-auto">
                 {meta?.description ??
                   `L'interface pour la sous-phase "${subPhase.name}" sera disponible dans un prochain sprint.`}
               </p>
             </div>
             {meta && (
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a]">
-                <span className="text-[10px] text-[#444444] uppercase tracking-widest">Développé en</span>
-                <span className="text-xs text-[#00D76B] font-medium">{meta.sprint}</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-2 border border-line">
+                <span className="text-[10px] text-faint uppercase tracking-widest">Développé en</span>
+                <span className="text-xs text-brand font-medium">{meta.sprint}</span>
               </div>
             )}
             <div className="flex items-center justify-center gap-2 mt-2">
-              <span className="text-[10px] text-[#333333] font-mono bg-[#0d0d0d] border border-[#1e1e1e] px-2 py-1 rounded">
+              <span className="text-[10px] text-faint font-mono bg-surface border border-line px-2 py-1 rounded">
                 slug: {subPhase.slug}
               </span>
             </div>

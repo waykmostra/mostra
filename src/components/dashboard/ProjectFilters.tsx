@@ -6,10 +6,10 @@ import type { ProjectStatus } from '@/lib/types'
 export type FilterTab = 'all' | ProjectStatus
 
 const TABS: { value: FilterTab; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'on_hold', label: 'On hold' },
+  { value: 'all', label: 'Tous' },
+  { value: 'active', label: 'Actifs' },
+  { value: 'completed', label: 'Terminés' },
+  { value: 'on_hold', label: 'En pause' },
 ]
 
 interface ProjectFiltersProps {
@@ -26,19 +26,19 @@ export default function ProjectFilters({
   onSearchChange,
 }: ProjectFiltersProps) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex items-center justify-between gap-4 flex-wrap">
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-[#111111] border border-[#2a2a2a] rounded-lg p-1">
+      <div className="flex items-center gap-1 bg-surface border border-line rounded-xl p-1">
         {TABS.map((tab) => (
           <button
             key={tab.value}
             onClick={() => onFilterChange(tab.value)}
             className={`
-              px-3 py-1.5 rounded-md text-sm font-medium transition-colors
+              px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors
               ${
                 activeFilter === tab.value
-                  ? 'bg-[#1a1a1a] text-white shadow-sm border border-[#2a2a2a]'
-                  : 'text-[#666666] hover:text-[#a0a0a0]'
+                  ? 'bg-surface-2 text-ink'
+                  : 'text-dim hover:text-ink'
               }
             `}
           >
@@ -49,17 +49,17 @@ export default function ProjectFilters({
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#444444]" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-faint" />
         <input
           type="text"
-          placeholder="Rechercher un projet..."
+          placeholder="Rechercher un projet…"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           className="
-            pl-9 pr-4 py-2 text-sm rounded-lg w-56
-            bg-[#111111] border border-[#2a2a2a]
-            text-white placeholder:text-[#444444]
-            outline-none focus:border-[#3a3a3a] transition-colors
+            pl-9 pr-4 py-2 text-[13px] rounded-xl w-56
+            bg-surface border border-line
+            text-ink placeholder:text-faint
+            outline-none focus:border-line-strong transition-colors
           "
         />
       </div>

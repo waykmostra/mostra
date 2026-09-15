@@ -40,7 +40,7 @@ export default function SetPasswordForm({ token }: SetPasswordFormProps) {
       <div>
         <label
           htmlFor="password"
-          className="block text-sm font-medium text-[#a0a0a0] mb-1.5"
+          className="block text-sm font-medium text-dim mb-1.5"
         >
           Nouveau mot de passe
         </label>
@@ -54,9 +54,9 @@ export default function SetPasswordForm({ token }: SetPasswordFormProps) {
           disabled={pending}
           className="
             w-full px-3 py-2.5 rounded-lg text-sm
-            bg-[#111111] border border-[#2a2a2a] text-white placeholder:text-[#444444]
+            bg-surface border border-line text-ink placeholder:text-faint
             outline-none transition-colors
-            focus:border-[#00D76B] focus:ring-1 focus:ring-[#00D76B]/30
+            focus:border-brand focus:ring-1 focus:ring-brand/30
             disabled:opacity-50
           "
         />
@@ -73,8 +73,8 @@ export default function SetPasswordForm({ token }: SetPasswordFormProps) {
         disabled={pending}
         className="
           w-full py-2.5 px-4 rounded-lg text-sm font-medium
-          bg-[#00D76B] text-white
-          hover:bg-[#00C061] active:bg-[#009E50]
+          bg-brand text-ink
+          hover:bg-brand active:bg-brand
           transition-colors disabled:opacity-60 disabled:cursor-not-allowed
           flex items-center justify-center gap-2
         "

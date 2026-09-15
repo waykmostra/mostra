@@ -8,7 +8,7 @@ export default function NotificationsLoading() {
         {[0, 1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="bg-[#111111] border border-[#1a1a1a] rounded-xl p-4 flex items-start gap-3"
+            className="bg-surface border border-line rounded-xl p-4 flex items-start gap-3"
           >
             <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
             <div className="space-y-1.5 flex-1">

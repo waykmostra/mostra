@@ -7,6 +7,27 @@ import { createNotification } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
 import type { PhaseTemplate, SubPhaseDefinition, PaymentStatus, ProjectUpdate } from '@/lib/types'
 
+// ── Liens clients courts (migration 035) ─────────────────────────────────────
+// Token de partage = slug lisible du nom du projet + suffixe court unique.
+// Ex. « Flowride — Vidéo » → « flowride-video-a3f2c1 » → /client/flowride-video-a3f2c1
+
+function slugifyName(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'projet'
+  )
+}
+
+function buildShareToken(name: string): string {
+  const code = crypto.randomUUID().replace(/-/g, '').slice(0, 6)
+  return `${slugifyName(name)}-${code}`
+}
+
 export type CreateProjectInput = {
   name: string
   description?: string
@@ -43,6 +64,7 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
       project_manager_id: input.projectManagerId || null,
       status: 'active',
       progress: 0,
+      share_token: buildShareToken(input.name.trim()),
     })
     .select('id, name')
     .single()
@@ -288,6 +310,88 @@ export async function assignClient(
   return { success: true }
 }
 
+// ── addProjectClient ─────────────────────────────────────────────
+// Ajoute un client CRM additionnel à un projet (migration 031). Tous les
+// clients d'un projet peuvent le consulter, commenter et valider.
+
+export async function addProjectClient(
+  projectId: string,
+  crmClientId: string,
+): Promise<ProjectActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
+
+  const { data: rawClient } = await supabase
+    .from('clients')
+    .select('id')
+    .eq('id', crmClientId)
+    .maybeSingle()
+  if (!rawClient) return { success: false, error: 'Client introuvable.' }
+
+  // Lien idempotent (PK composite project_id+client_id).
+  const { error } = await db(supabase)
+    .from('project_clients')
+    .upsert({ project_id: projectId, client_id: crmClientId }, { onConflict: 'project_id,client_id' })
+  if (error) return { success: false, error: error.message }
+
+  // Premier client ajouté → devient aussi le client principal (facturation/CRM).
+  const { data: rawProj } = await supabase
+    .from('projects')
+    .select('client_id')
+    .eq('id', projectId)
+    .maybeSingle()
+  const primary = (rawProj as { client_id: string | null } | null)?.client_id ?? null
+  if (!primary) {
+    await db(supabase).from('projects').update({ client_id: crmClientId }).eq('id', projectId)
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/projects/${projectId}`)
+  return { success: true }
+}
+
+// ── removeProjectClient ──────────────────────────────────────────
+// Retire un client d'un projet. Si c'était le principal, on en promeut un
+// autre (ou on détache si plus aucun).
+
+export async function removeProjectClient(
+  projectId: string,
+  crmClientId: string,
+): Promise<ProjectActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
+
+  const { error } = await db(supabase)
+    .from('project_clients')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('client_id', crmClientId)
+  if (error) return { success: false, error: error.message }
+
+  // Si c'était le client principal : promouvoir un client restant, sinon NULL.
+  const { data: rawProj } = await supabase
+    .from('projects')
+    .select('client_id')
+    .eq('id', projectId)
+    .maybeSingle()
+  const primary = (rawProj as { client_id: string | null } | null)?.client_id ?? null
+  if (primary === crmClientId) {
+    const { data: rawRemaining } = await supabase
+      .from('project_clients')
+      .select('client_id')
+      .eq('project_id', projectId)
+      .limit(1)
+    const next = ((rawRemaining as { client_id: string }[] | null) ?? [])[0]?.client_id ?? null
+    await db(supabase).from('projects').update({ client_id: next }).eq('id', projectId)
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath(`/projects/${projectId}`)
+  return { success: true }
+}
+
 // ── assignProjectManager ─────────────────────────────────────────
 
 export async function assignProjectManager(
@@ -423,10 +527,14 @@ export async function regenerateShareToken(
   if ('error' in auth) return { success: false, error: auth.error }
   const { supabase } = auth
 
-  // Génère un nouveau token via crypto.randomUUID() — pas exposé en SQL côté
-  // RLS donc on peut le générer côté Node.
-  const newToken = crypto.randomUUID().replace(/-/g, '') +
-                   crypto.randomUUID().replace(/-/g, '').slice(0, 16)
+  // Nouveau lien court, lisible : slug du nom + suffixe unique (migration 035).
+  const { data: rawProj } = await supabase
+    .from('projects')
+    .select('name')
+    .eq('id', projectId)
+    .maybeSingle()
+  const projName = (rawProj as { name: string } | null)?.name ?? 'projet'
+  const newToken = buildShareToken(projName)
 
   const { data: updated, error } = await db(supabase)
     .from('projects')

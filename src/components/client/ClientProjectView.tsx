@@ -1,6 +1,9 @@
-import ClientPhaseCard from './ClientPhaseCard'
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import ClientActionBanner from './ClientActionBanner'
-import ProjectTimeline from '@/components/project/ProjectTimeline'
+import PhaseStepper from '@/components/project/PhaseStepper'
+import Breadcrumb from '@/components/shared/Breadcrumb'
+import StatusBadge from '@/components/shared/StatusBadge'
 import type { Project, ProjectPhase, SubPhase } from '@/lib/types'
 
 interface ClientProjectViewProps {
@@ -10,18 +13,42 @@ interface ClientProjectViewProps {
   /** Sous-phases ayant des commentaires → cliquables même en révision (in_progress). */
   commentedSubPhaseIds: string[]
   token: string
+  /** Colonne de droite (interlocuteur…). */
+  aside?: React.ReactNode
 }
 
 export default function ClientProjectView({
   project,
   phases,
-  subPhasesByPhase,
-  commentedSubPhaseIds,
   token,
+  subPhasesByPhase,
+  aside,
 }: ClientProjectViewProps) {
+  const done = phases.filter((p) => p.status === 'completed' || p.status === 'approved').length
+  const current =
+    phases.find((p) => p.status === 'in_review') ??
+    phases.find((p) => p.status === 'in_progress') ??
+    null
+
   return (
-    <div className="space-y-5">
-      {/* ── Bandeau d'action principale (au-dessus de tout) ──────── */}
+    <div className="space-y-6">
+      <div>
+        <Breadcrumb items={[{ label: project.name }]} />
+
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <h1 className="text-[1.75rem] leading-tight text-ink">{project.name}</h1>
+            {project.description && (
+              <p className="mt-1.5 max-w-[70ch] text-[14px] leading-relaxed text-dim">
+                {project.description}
+              </p>
+            )}
+          </div>
+          <StatusBadge status={project.status} className="mt-1 flex-shrink-0" />
+        </div>
+      </div>
+
+      {/* Ce qui attend le client passe avant tout le reste. */}
       {phases.length > 0 && (
         <ClientActionBanner
           phases={phases}
@@ -30,76 +57,52 @@ export default function ClientProjectView({
         />
       )}
 
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">{project.name}</h1>
-        {project.description && (
-          <p className="text-sm text-[#666666] mt-1">{project.description}</p>
-        )}
-      </div>
+      {/* Les onglets du projet — c'est par là qu'on entre dans une étape. */}
+      <PhaseStepper
+        phases={phases}
+        subPhasesByPhase={subPhasesByPhase}
+        hrefForPhase={(phase) => `/client/${token}/phases/${phase.id}`}
+        lockPending
+      />
 
-      {/* ── Progression globale ─────────────────────────────────── */}
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-[10px] text-[#444444] uppercase tracking-widest font-medium">
-              Avancement global
-            </p>
-            <p className="text-xs text-[#666666] mt-0.5">
-              {phases.filter((p) => p.status === 'completed' || p.status === 'approved').length}
-              {' / '}
-              {phases.length} phases complétées
-            </p>
-          </div>
-          <span className="text-4xl font-black text-white tabular-nums">
-            {project.progress}
-            <span className="text-xl text-[#444444]">%</span>
-          </span>
-        </div>
-
-        {/* Barre de progression */}
-        <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[#00D76B] rounded-full transition-all duration-700"
-            style={{ width: `${project.progress}%` }}
-          />
-        </div>
-
-        {/* Timeline des phases — sans légende (bulles retirées) */}
-        {phases.length > 0 && (
-          <div className="mt-4">
-            <ProjectTimeline
-              phases={phases}
-              subPhasesByPhase={subPhasesByPhase}
-              showLegend={false}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* ── Pipeline ────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-sm font-semibold text-white mb-3">Étapes du projet</h2>
-        <div className="space-y-3">
-          {phases.length === 0 ? (
-            <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
-              <p className="text-xs text-[#444444] italic">Aucune phase configurée.</p>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-4">
+          <div className="surface flex flex-col divide-y divide-line sm:flex-row sm:divide-x sm:divide-y-0">
+            <div className="flex-1 px-5 py-4">
+              <p className="mono-label text-faint">Avancement</p>
+              <p className="font-display tnum mt-2.5 text-[2rem] leading-none text-ink">
+                {project.progress}
+                <span className="text-[1.125rem] text-faint">%</span>
+              </p>
             </div>
-          ) : (
-            phases.map((phase, i) => (
-              <ClientPhaseCard
-                key={phase.id}
-                phase={phase}
-                token={token}
-                isFirst={i === 0}
-                isLast={i === phases.length - 1}
-                subPhases={subPhasesByPhase[phase.id] ?? []}
-                commentedSubPhaseIds={commentedSubPhaseIds}
-              />
-            ))
+            <div className="flex-1 px-5 py-4">
+              <p className="mono-label text-faint">Étapes validées</p>
+              <p className="font-display tnum mt-2.5 text-[2rem] leading-none text-ink">
+                {done}
+                <span className="text-[1.125rem] text-faint"> / {phases.length}</span>
+              </p>
+            </div>
+          </div>
+
+          {current && (
+            <Link
+              href={`/client/${token}/phases/${current.id}`}
+              className="surface group flex items-center gap-4 px-5 py-4 transition-colors duration-[160ms] hover:bg-surface-2"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="mono-label block text-faint">Étape en cours</span>
+                <span className="mt-1.5 block truncate text-[15px] font-medium text-ink">
+                  {current.name}
+                </span>
+              </span>
+              <StatusBadge status={current.status} className="flex-shrink-0" />
+              <ArrowRight className="h-4 w-4 flex-shrink-0 text-faint transition-colors group-hover:text-ink" />
+            </Link>
           )}
         </div>
-      </section>
+
+        {aside && <div className="space-y-4 lg:sticky lg:top-[4.5rem]">{aside}</div>}
+      </div>
     </div>
   )
 }

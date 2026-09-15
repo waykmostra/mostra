@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/supabase/helpers'
 import { requireAdmin } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, createNotifications, getProjectRecipients } from '@/lib/notifications'
+import { createNotifications, getProjectRecipients } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
 import type { SubPhase, ProjectPhase } from '@/lib/types'
 
@@ -128,21 +128,25 @@ export async function sendSubPhaseToReview(subPhaseId: string): Promise<SubPhase
   // Notifier le client
   void (async () => {
     const r = await getProjectRecipients(phase.project_id)
-    if (!r.clientUserId) return
+    if (!r.projectName) return
 
     const subPhaseLink = r.shareToken
       ? `/client/${r.shareToken}/phases/${phase.id}/sub/${subPhaseId}`
       : null
     const adminLink = `/projects/${phase.project_id}/phases/${phase.id}/sub/${subPhaseId}`
 
-    await createNotification({
-      userId: r.clientUserId,
-      projectId: phase.project_id,
-      type: 'phase_ready',
-      title: `✅ ${sp.name} est prête pour votre validation`,
-      message: `Phase ${phase.name} — disponible pour révision.`,
-      link: subPhaseLink,
-    })
+    if (r.clientUserIds.length > 0) {
+      await createNotifications(
+        r.clientUserIds.map((userId) => ({
+          userId,
+          projectId: phase.project_id,
+          type: 'phase_ready' as const,
+          title: `✅ ${sp.name} est prête pour votre validation`,
+          message: `Phase ${phase.name} — disponible pour révision.`,
+          link: subPhaseLink,
+        })),
+      )
+    }
 
     await createNotifications(
       r.adminIds.filter((id) => id !== user.id).map((userId) => ({
@@ -247,16 +251,20 @@ export async function approveSubPhase(subPhaseId: string): Promise<SubPhaseActio
 
   void (async () => {
     const r = await getProjectRecipients(phase.project_id)
-    if (!r.clientUserId) return
+    if (r.clientUserIds.length === 0 && !r.clientEmail) return
 
-    await createNotification({
-      userId: r.clientUserId,
-      projectId: phase.project_id,
-      type: 'phase_approved',
-      title: `🎉 ${sp.name} a été approuvée`,
-      message: `${phase.name} — validée et terminée.`,
-      link: r.shareToken ? `/client/${r.shareToken}` : null,
-    })
+    if (r.clientUserIds.length > 0) {
+      await createNotifications(
+        r.clientUserIds.map((userId) => ({
+          userId,
+          projectId: phase.project_id,
+          type: 'phase_approved' as const,
+          title: `🎉 ${sp.name} a été approuvée`,
+          message: `${phase.name} — validée et terminée.`,
+          link: r.shareToken ? `/client/${r.shareToken}` : null,
+        })),
+      )
+    }
 
     if (r.clientEmail) {
       void sendEmail({

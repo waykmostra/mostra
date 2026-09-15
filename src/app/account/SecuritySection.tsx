@@ -36,10 +36,10 @@ export default function SecuritySection() {
   }
 
   return (
-    <section className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-6 space-y-5">
+    <section className="bg-surface border border-line rounded-xl p-6 space-y-5">
       <div>
-        <h2 className="text-sm font-semibold text-white">Sécurité</h2>
-        <p className="text-xs text-[#555555] mt-0.5">Modifier votre mot de passe</p>
+        <h2 className="text-sm font-semibold text-ink">Sécurité</h2>
+        <p className="text-xs text-faint mt-0.5">Modifier votre mot de passe</p>
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
@@ -77,7 +77,7 @@ export default function SecuritySection() {
         <button
           type="submit"
           disabled={pending}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00D76B] text-black text-sm font-semibold hover:bg-[#00c060] disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand text-black text-sm font-semibold hover:bg-brand disabled:opacity-50 transition-colors"
         >
           {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           Changer le mot de passe
@@ -106,7 +106,7 @@ function PasswordField({
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-[#a0a0a0] mb-1.5">{label}</label>
+      <label className="block text-xs font-medium text-dim mb-1.5">{label}</label>
       <div className="relative">
         <input
           name={name}
@@ -114,18 +114,18 @@ function PasswordField({
           required={required}
           autoComplete={autoComplete}
           minLength={name !== 'currentPassword' ? 8 : undefined}
-          className="w-full px-3 py-2.5 pr-10 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg text-sm text-white placeholder-[#444444] focus:outline-none focus:border-[#00D76B] focus:ring-1 focus:ring-[#00D76B] transition-colors"
+          className="w-full px-3 py-2.5 pr-10 bg-canvas border border-line rounded-lg text-sm text-ink placeholder-faint focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
         />
         <button
           type="button"
           onClick={onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555555] hover:text-[#a0a0a0] transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-faint hover:text-dim transition-colors"
           tabIndex={-1}
         >
           {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
-      {hint && <p className="text-[11px] text-[#444444] mt-1">{hint}</p>}
+      {hint && <p className="text-[11px] text-faint mt-1">{hint}</p>}
     </div>
   )
 }

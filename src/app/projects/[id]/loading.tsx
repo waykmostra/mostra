@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/shared/Skeleton'
 
 export default function ProjectLoading() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] px-6 py-8">
+    <div className="min-h-screen bg-canvas px-6 py-8">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Back + Header */}
         <div>
@@ -31,7 +31,7 @@ export default function ProjectLoading() {
             {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="bg-[#111111] border border-[#1a1a1a] rounded-xl p-5 space-y-3"
+                className="bg-surface border border-line rounded-xl p-5 space-y-3"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1">
@@ -56,7 +56,7 @@ export default function ProjectLoading() {
           {/* Right: sidebar */}
           <div className="space-y-4">
             {/* Info card */}
-            <div className="bg-[#111111] border border-[#1a1a1a] rounded-xl p-5 space-y-4">
+            <div className="bg-surface border border-line rounded-xl p-5 space-y-4">
               <Skeleton className="h-3 w-20" />
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center justify-between">
@@ -66,7 +66,7 @@ export default function ProjectLoading() {
               ))}
             </div>
             {/* Comments */}
-            <div className="bg-[#111111] border border-[#1a1a1a] rounded-xl p-5 space-y-3">
+            <div className="bg-surface border border-line rounded-xl p-5 space-y-3">
               <Skeleton className="h-3 w-24" />
               {[0, 1, 2].map((i) => (
                 <div key={i} className="flex gap-2.5">

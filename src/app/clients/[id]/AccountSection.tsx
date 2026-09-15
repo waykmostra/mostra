@@ -60,11 +60,11 @@ export default function AccountSection({ clientId, hasAccount, hasEmail, access 
   // Pas de compte ET pas d'email
   if (!account && !hasEmail) {
     return (
-      <div className="bg-[#1a1206] border border-[#F59E0B]/20 rounded-xl p-4 flex items-start gap-3">
+      <div className="bg-[#F59E0B]/5 border border-[#F59E0B]/20 rounded-xl p-4 flex items-start gap-3">
         <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
         <div>
-          <p className="text-sm font-semibold text-white">Compte client indisponible</p>
-          <p className="text-xs text-[#888888] mt-0.5">
+          <p className="text-sm font-semibold text-ink">Compte client indisponible</p>
+          <p className="text-xs text-dim mt-0.5">
             Ajoute un email à la fiche pour pouvoir créer un compte connectable.
           </p>
         </div>
@@ -75,13 +75,13 @@ export default function AccountSection({ clientId, hasAccount, hasEmail, access 
   // Pas de compte — propose la création
   if (!account) {
     return (
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
+      <div className="bg-surface border border-line rounded-xl p-4 space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-[#00D76B]" />
+          <h3 className="text-sm font-semibold text-ink flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-brand" />
             Compte client
           </h3>
-          <p className="text-xs text-[#666666] mt-1">
+          <p className="text-xs text-faint mt-1">
             Crée le compte auth pour générer un lien set-password à transmettre au client.
           </p>
         </div>
@@ -89,7 +89,7 @@ export default function AccountSection({ clientId, hasAccount, hasEmail, access 
           type="button"
           onClick={handleCreateAccount}
           disabled={isPending}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#00D76B] text-white hover:bg-[#00C061] transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-brand text-ink hover:bg-brand transition-colors disabled:opacity-50"
         >
           {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
           Créer le compte
@@ -100,14 +100,14 @@ export default function AccountSection({ clientId, hasAccount, hasEmail, access 
 
   // Compte existe — tracker + régénération (toujours disponible)
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 space-y-4">
+    <div className="bg-surface border border-line rounded-xl p-4 space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-[#00D76B]" />
+          <h3 className="text-sm font-semibold text-ink flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-brand" />
             Compte client
           </h3>
-          <p className="text-xs text-[#666666] mt-1">
+          <p className="text-xs text-faint mt-1">
             Suivi de l&apos;accès du client. Régénère un lien quand tu veux (valide 30 jours, à usage unique).
           </p>
         </div>
@@ -116,7 +116,7 @@ export default function AccountSection({ clientId, hasAccount, hasEmail, access 
           type="button"
           onClick={handleRegenerate}
           disabled={isPending}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#00D76B]/10 border border-[#00D76B]/30 text-[#00D76B] hover:bg-[#00D76B]/20 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand/10 border border-brand/30 text-brand hover:bg-brand/20 transition-colors disabled:opacity-50"
         >
           {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
           {setupUrl ? 'Régénérer' : 'Générer un lien'}
@@ -132,12 +132,12 @@ export default function AccountSection({ clientId, hasAccount, hasEmail, access 
       {/* Lien fraîchement généré */}
       {setupUrl && (
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2 bg-[#0d0d0d] border border-[#222222] rounded-lg px-3 py-2">
-            <code className="text-xs text-[#00D76B] flex-1 truncate font-mono">{setupUrl}</code>
+          <div className="flex items-center gap-2 bg-surface border border-[rgb(var(--c-surface-3))] rounded-lg px-3 py-2">
+            <code className="text-xs text-brand flex-1 truncate font-mono">{setupUrl}</code>
             <button
               type="button"
               onClick={handleCopy}
-              className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#222222] transition-colors"
+              className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium bg-surface-2 border border-line text-ink hover:bg-surface-3 transition-colors"
             >
               {copied ? (
                 <><Check className="h-3.5 w-3.5 text-[#22C55E]" />Copié</>
@@ -146,7 +146,7 @@ export default function AccountSection({ clientId, hasAccount, hasEmail, access 
               )}
             </button>
           </div>
-          <p className="text-[11px] text-[#555555]">
+          <p className="text-[11px] text-faint">
             Envoie ce lien au client. Il pourra définir son mot de passe et se connecter.
           </p>
         </div>
@@ -171,13 +171,13 @@ function StatBox({
   sub?: string
 }) {
   return (
-    <div className="rounded-lg border border-[#1f1f1f] bg-[#0e0e0e] px-3 py-2.5">
+    <div className="rounded-lg border border-line bg-surface px-3 py-2.5">
       <div className="flex items-center gap-1.5 mb-1">
         <Icon className="h-3.5 w-3.5" style={{ color }} />
-        <span className="text-[10px] uppercase tracking-wider text-[#666666]">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-faint">{label}</span>
       </div>
       <p className="text-sm font-medium" style={{ color }}>{value}</p>
-      {sub && <p className="text-[11px] text-[#555555] mt-0.5">{sub}</p>}
+      {sub && <p className="text-[11px] text-faint mt-0.5">{sub}</p>}
     </div>
   )
 }
@@ -195,7 +195,7 @@ function ConnectionStat({ lastSignInAt }: { lastSignInAt: string | null }) {
     )
   }
   return (
-    <StatBox color="#888888" icon={LogIn} label="Connexion" value="Jamais connecté" sub="Le client ne s'est pas encore connecté." />
+    <StatBox color="rgb(var(--c-text-dim))" icon={LogIn} label="Connexion" value="Jamais connecté" sub="Le client ne s'est pas encore connecté." />
   )
 }
 
@@ -237,6 +237,6 @@ function LinkStat({ link, justGenerated }: { link: ClientAccess['link']; justGen
     )
   }
   return (
-    <StatBox color="#888888" icon={Clock} label="Lien set-password" value="Aucun lien" sub="Génère un lien à envoyer au client." />
+    <StatBox color="rgb(var(--c-text-dim))" icon={Clock} label="Lien set-password" value="Aucun lien" sub="Génère un lien à envoyer au client." />
   )
 }

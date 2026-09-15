@@ -15,18 +15,18 @@ export default async function SettingsPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-white">Paramètres généraux</h2>
-        <p className="text-xs text-[#555555] mt-0.5">
+        <h2 className="text-sm font-semibold text-ink">Paramètres généraux</h2>
+        <p className="text-xs text-faint mt-0.5">
           App privée Mostra — aucune configuration globale à régler ici pour le moment.
         </p>
       </div>
 
-      <div className="bg-[#111111] border border-[#1a1a1a] rounded-xl p-5 space-y-2">
-        <p className="text-xs uppercase tracking-widest text-[#666666] font-semibold">
+      <div className="bg-surface border border-line rounded-xl p-5 space-y-2">
+        <p className="text-xs uppercase tracking-widest text-faint font-semibold">
           Compte connecté
         </p>
-        <p className="text-sm text-white">{profile.full_name}</p>
-        <p className="text-xs text-[#555555]">{profile.email}</p>
+        <p className="text-sm text-ink">{profile.full_name}</p>
+        <p className="text-xs text-faint">{profile.email}</p>
       </div>
     </div>
   )

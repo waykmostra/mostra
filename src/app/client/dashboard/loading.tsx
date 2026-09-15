@@ -4,7 +4,7 @@ export default function ClientDashboardLoading() {
   return (
     <div className="space-y-6">
       {/* Tab bar */}
-      <div className="flex items-center gap-1 border-b border-[#1a1a1a] pb-0">
+      <div className="flex items-center gap-1 border-b border-line pb-0">
         <Skeleton className="h-9 w-28 mb-[-1px]" />
         <Skeleton className="h-9 w-28 mb-[-1px]" />
       </div>
@@ -14,7 +14,7 @@ export default function ClientDashboardLoading() {
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5 space-y-3"
+            className="bg-surface-2 border border-line rounded-xl p-5 space-y-3"
           >
             <div className="flex items-start justify-between">
               <Skeleton className="h-4 w-32" />

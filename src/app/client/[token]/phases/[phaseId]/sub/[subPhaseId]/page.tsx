@@ -110,6 +110,37 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
   }
   const revisionInProgress = subPhase.status === 'in_progress' && hasComments
 
+  // ── Accès phase-only (partage d'une sous-phase) ─────────────────────────────
+  // Un viewer RELIÉ au projet (admin, ou compte client du projet) garde la
+  // navigation complète. Sinon (anonyme, ou connecté mais non-relié : ex. une
+  // voix off) → il ne voit QUE cette sous-phase, sans retour vers le projet.
+  let isLinkedViewer = false
+  if (currentProfile) {
+    if (currentProfile.is_admin) {
+      isLinkedViewer = true
+    } else {
+      const { data: myClients } = await admin
+        .from('clients')
+        .select('id')
+        .eq('profile_id', currentProfile.id)
+      const myClientIds = ((myClients as { id: string }[] | null) ?? []).map((c) => c.id)
+      if (myClientIds.length > 0) {
+        if (project.client_id && myClientIds.includes(project.client_id)) {
+          isLinkedViewer = true
+        } else {
+          const { data: rawLink } = await admin
+            .from('project_clients')
+            .select('client_id')
+            .eq('project_id', project.id)
+            .in('client_id', myClientIds)
+            .limit(1)
+          if (((rawLink as unknown[] | null) ?? []).length > 0) isLinkedViewer = true
+        }
+      }
+    }
+  }
+  const restricted = !isLinkedViewer
+
   if (isReviewGated && (subPhase.status === 'pending' || (subPhase.status === 'in_progress' && !hasComments))) {
     redirect(`/client/${params.token}`)
   }
@@ -217,6 +248,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
         subtitle="Découvrez les directions artistiques et choisissez votre style préféré."
         wide
         revisionInProgress={revisionInProgress}
+        restricted={restricted}
       >
         <MoodboardViewerClient
           token={params.token}
@@ -293,6 +325,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
         subtitle="Parcourez chaque scène du storyboard et partagez vos retours."
         wide
         revisionInProgress={revisionInProgress}
+        restricted={restricted}
       >
         <StoryboardViewerClient
           token={params.token}
@@ -369,6 +402,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
         subtitle="Consultez les maquettes finales et partagez vos retours."
         wide
         revisionInProgress={revisionInProgress}
+        restricted={restricted}
       >
         <DesignViewerClient
           token={params.token}
@@ -446,6 +480,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
         subtitle={audioKind === 'vo' ? 'Écoutez les propositions de voix off et choisissez votre préférée.' : 'Écoutez les propositions musicales et choisissez votre préférée.'}
         wide
         revisionInProgress={revisionInProgress}
+        restricted={restricted}
       >
         <AudioViewerClient
           token={params.token}
@@ -501,6 +536,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
         subtitle="Plusieurs propositions de script — parcourez-les et choisissez votre préférée."
         wide
         revisionInProgress={revisionInProgress}
+        restricted={restricted}
       >
         <ClientScriptsGrid scripts={allScripts} sectionCounts={counts} basePath={scriptBasePath} />
       </PageShell>
@@ -574,6 +610,7 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
       subtitle="Relisez le script (tableau ou résumé) et commentez ligne par ligne."
       wide
       revisionInProgress={revisionInProgress}
+      restricted={restricted}
     >
       <ScriptViewerClient
         token={params.token}
@@ -607,6 +644,7 @@ function PageShell({
   subtitle,
   wide = false,
   revisionInProgress = false,
+  restricted = false,
   children,
 }: {
   token: string
@@ -617,36 +655,47 @@ function PageShell({
   wide?: boolean
   /** Affiche une bannière « révision en cours de traitement » au-dessus du contenu. */
   revisionInProgress?: boolean
+  /** Mode « sous-phase partagée seule » : masque la nav (breadcrumb + retour projet). */
+  restricted?: boolean
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] px-4 py-8">
+    <div className="min-h-screen bg-canvas px-4 py-8">
       <div className={`${wide ? 'max-w-3xl' : 'max-w-2xl'} mx-auto space-y-6`}>
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-1.5 text-xs text-[#444444] flex-wrap">
-          <Link href={`/client/${token}`} className="hover:text-white transition-colors">
-            {projectName}
-          </Link>
-          <ChevronRight className="h-3 w-3 flex-shrink-0" />
-          <span className="text-[#555555]">{phaseName}</span>
-          <ChevronRight className="h-3 w-3 flex-shrink-0" />
-          <span className="text-white font-medium">{subPhaseName}</span>
-        </nav>
+        {restricted ? (
+          /* Sous-phase partagée seule : aucune navigation vers le reste du projet. */
+          <p className="text-[10px] text-faint uppercase tracking-widest">
+            Partagé via Mostra
+          </p>
+        ) : (
+          <>
+            {/* Breadcrumb */}
+            <nav className="flex items-center gap-1.5 text-xs text-faint flex-wrap">
+              <Link href={`/client/${token}`} className="hover:text-ink transition-colors">
+                {projectName}
+              </Link>
+              <ChevronRight className="h-3 w-3 flex-shrink-0" />
+              <span className="text-faint">{phaseName}</span>
+              <ChevronRight className="h-3 w-3 flex-shrink-0" />
+              <span className="text-ink font-medium">{subPhaseName}</span>
+            </nav>
 
-        {/* Back */}
-        <Link
-          href={`/client/${token}`}
-          className="inline-flex items-center gap-1.5 text-xs text-[#666666] hover:text-white transition-colors"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Retour au projet
-        </Link>
+            {/* Back */}
+            <Link
+              href={`/client/${token}`}
+              className="inline-flex items-center gap-1.5 text-xs text-faint hover:text-ink transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Retour au projet
+            </Link>
+          </>
+        )}
 
         {/* Header */}
         <div>
-          <p className="text-xs text-[#444444] uppercase tracking-widest mb-1">{phaseName}</p>
-          <h1 className="text-xl font-bold text-white">{subPhaseName}</h1>
-          {subtitle && <p className="text-xs text-[#555555] mt-1">{subtitle}</p>}
+          <p className="text-xs text-faint uppercase tracking-widest mb-1">{phaseName}</p>
+          <h1 className="text-xl font-bold text-ink">{subPhaseName}</h1>
+          {subtitle && <p className="text-xs text-faint mt-1">{subtitle}</p>}
         </div>
 
         {/* Révision demandée : la phase est de nouveau travaillée par l'équipe */}

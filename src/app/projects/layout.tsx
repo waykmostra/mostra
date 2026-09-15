@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import Sidebar from '@/components/dashboard/Sidebar'
-import AdminHeader from '@/components/dashboard/AdminHeader'
+import AppSidebar from '@/components/dashboard/AppSidebar'
+import AppTopbar from '@/components/dashboard/AppTopbar'
 import { Toaster } from 'sonner'
 
 export default async function ProjectsLayout({ children }: { children: React.ReactNode }) {
@@ -14,24 +14,24 @@ export default async function ProjectsLayout({ children }: { children: React.Rea
     redirect('/login')
   }
 
+  // Shell clair (refonte). Le contenu gère son propre padding/fond : la liste
+  // est claire ; les écrans détail/édition gardent leur fond sombre (transitoire)
+  // et remplissent toute la zone jusqu'à leur migration.
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      <Sidebar />
-      <AdminHeader />
+    <div className="min-h-screen bg-canvas text-ink">
+      <AppSidebar />
+      <AppTopbar />
 
-      {/* Main content — offset par la sidebar + header fixe */}
-      <main className="md:ml-[180px] min-h-screen pt-14">
-        <div className="px-4 md:px-8 py-8">{children}</div>
-      </main>
+      <main className="md:ml-[var(--rail-w)] min-h-screen pt-14">{children}</main>
 
       <Toaster
-        theme="dark"
+        theme="light"
         position="top-right"
         toastOptions={{
           style: {
-            background: '#111111',
-            border: '1px solid #2a2a2a',
-            color: '#ffffff',
+            background: '#ffffff',
+            border: '1px solid #d4d4d9',
+            color: '#171718',
           },
         }}
       />

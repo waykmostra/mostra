@@ -22,7 +22,7 @@ export default function FileVersionHistory({ files }: FileVersionHistoryProps) {
 
   return (
     <div className="mt-3 space-y-1.5">
-      <p className="text-[10px] font-semibold text-[#444444] uppercase tracking-widest mb-2">
+      <p className="text-[10px] font-semibold text-faint uppercase tracking-widest mb-2">
         Fichiers
       </p>
       {sorted.map((file) => (
@@ -60,29 +60,29 @@ function FileRow({ file }: { file: PhaseFile }) {
 
   const busy = loadingAction !== null
   const btnClass =
-    'inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] border border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444] transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+    'inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] border border-line text-faint hover:text-ink hover:border-line-strong transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
 
   return (
-    <div className="flex items-center gap-2 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2">
+    <div className="flex items-center gap-2 bg-surface border border-line rounded-lg px-3 py-2">
       {/* Icône */}
-      <FileText className="h-3.5 w-3.5 text-[#444444] flex-shrink-0" />
+      <FileText className="h-3.5 w-3.5 text-faint flex-shrink-0" />
 
       {/* Infos */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs text-white truncate max-w-[180px]">{file.file_name}</span>
+          <span className="text-xs text-ink truncate max-w-[180px]">{file.file_name}</span>
           {file.is_current && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#00D76B]/10 text-[#00D76B] border border-[#00D76B]/20">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand/10 text-brand border border-brand/20">
               Current
             </span>
           )}
-          <span className="text-[10px] text-[#444444]">v{file.version}</span>
+          <span className="text-[10px] text-faint">v{file.version}</span>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           {file.file_size && (
-            <span className="text-[10px] text-[#444444]">{formatFileSize(file.file_size)}</span>
+            <span className="text-[10px] text-faint">{formatFileSize(file.file_size)}</span>
           )}
-          <span className="text-[10px] text-[#444444]">{formatDate(file.created_at)}</span>
+          <span className="text-[10px] text-faint">{formatDate(file.created_at)}</span>
         </div>
       </div>
 

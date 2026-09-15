@@ -75,30 +75,34 @@ export async function addComment(input: {
         })),
       )
     } else {
-      // Admin a commenté → notifier le client
-      if (r.clientUserId && r.clientUserId !== user.id) {
-        await createNotifications([{
-          userId: r.clientUserId,
-          projectId: input.projectId,
-          type: 'comment_added' as const,
-          title,
-          message,
-          link: r.shareToken ? `/client/${r.shareToken}` : null,
-        }])
+      // Admin a commenté → notifier TOUS les clients du projet (in-app)
+      const clientRecipients = r.clientUserIds.filter((id) => id !== user.id)
+      if (clientRecipients.length > 0) {
+        await createNotifications(
+          clientRecipients.map((userId) => ({
+            userId,
+            projectId: input.projectId,
+            type: 'comment_added' as const,
+            title,
+            message,
+            link: r.shareToken ? `/client/${r.shareToken}` : null,
+          })),
+        )
+      }
 
-        if (r.clientEmail) {
-          void sendEmail({
-            to: r.clientEmail,
-            template: 'comment_added',
-            data: {
-              projectName: r.projectName,
-              agencyName: 'Mostra',
-              authorName: profile.full_name,
-              preview,
-            },
-            link: r.shareToken ? `/client/${r.shareToken}` : undefined,
-          })
-        }
+      // Email au contact principal (si renseigné)
+      if (r.clientEmail) {
+        void sendEmail({
+          to: r.clientEmail,
+          template: 'comment_added',
+          data: {
+            projectName: r.projectName,
+            agencyName: 'Mostra',
+            authorName: profile.full_name,
+            preview,
+          },
+          link: r.shareToken ? `/client/${r.shareToken}` : undefined,
+        })
       }
     }
   })()

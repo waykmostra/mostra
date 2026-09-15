@@ -24,6 +24,8 @@ import {
   CheckCircle2,
   ChevronDown,
   LogIn,
+  Download,
+  ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { PhaseStatus } from '@/lib/types'
@@ -110,9 +112,9 @@ function VideoTimeline({
       <div
         ref={barRef}
         onMouseDown={handleMouseDown}
-        className="relative w-full h-1 bg-[#2a2a2a] rounded-full cursor-pointer group-hover:h-1.5 transition-all"
+        className="relative w-full h-1 bg-[rgb(var(--c-border))] rounded-full cursor-pointer group-hover:h-1.5 transition-all"
       >
-        <div className="absolute inset-y-0 left-0 bg-white rounded-full" style={{ width: `${progress}%` }} />
+        <div className="absolute inset-y-0 left-0 bg-brand rounded-full" style={{ width: `${progress}%` }} />
 
         {filteredComments.map((c) => {
           const pos = duration > 0 && c.timecode_seconds !== null ? (c.timecode_seconds / duration) * 100 : 0
@@ -129,17 +131,17 @@ function VideoTimeline({
               style={{ left: `${pos}%`, borderColor: color }}
               className="
                 absolute top-1/2 -translate-y-1/2 -translate-x-1/2
-                w-2.5 h-2.5 rounded-full border-2 bg-[#111111] cursor-pointer
+                w-2.5 h-2.5 rounded-full border-2 bg-surface cursor-pointer
                 hover:scale-150 transition-transform z-10
               "
             >
               {hoveredMarker === c.id && (
                 <div className="
                   absolute bottom-5 left-1/2 -translate-x-1/2
-                  bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1
-                  text-xs text-white whitespace-nowrap z-20 pointer-events-none
+                  bg-surface-2 border border-line rounded px-2 py-1
+                  text-xs text-ink whitespace-nowrap z-20 pointer-events-none
                 ">
-                  <span className="text-[#888888]">{formatTime(c.timecode_seconds ?? 0)}</span>
+                  <span className="text-dim">{formatTime(c.timecode_seconds ?? 0)}</span>
                   {' · '}
                   {c.author?.full_name ?? 'Inconnu'}
                 </div>
@@ -149,7 +151,7 @@ function VideoTimeline({
         })}
 
         <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-ink opacity-0 group-hover:opacity-100 transition-opacity"
           style={{ left: `${progress}%` }}
         />
       </div>
@@ -166,6 +168,10 @@ interface VideoApprovalPanelProps {
   isAuthenticated: boolean
   loginHref?: string
   onStatusChange: (s: PhaseStatus) => void
+  /** Nb de remarques laissées par le client sur cette version. */
+  commentCount: number
+  /** Met le focus sur la zone de commentaire (et scrolle jusqu'à elle). */
+  onComment: () => void
 }
 
 function VideoApprovalPanel({
@@ -175,6 +181,8 @@ function VideoApprovalPanel({
   isAuthenticated,
   loginHref = '/login',
   onStatusChange,
+  commentCount,
+  onComment,
 }: VideoApprovalPanelProps) {
   const [mode, setMode] = useState<'idle' | 'revision'>('idle')
   const [message, setMessage] = useState('')
@@ -198,10 +206,10 @@ function VideoApprovalPanel({
         <div className="flex items-start gap-3">
           <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-white">
+            <p className="text-sm font-semibold text-ink">
               Cette vidéo est en attente de votre approbation
             </p>
-            <p className="text-xs text-[#666666] mt-0.5">
+            <p className="text-xs text-faint mt-0.5">
               Connectez-vous pour approuver ou laisser des commentaires.
             </p>
           </div>
@@ -233,14 +241,14 @@ function VideoApprovalPanel({
   }
 
   function handleRevision() {
-    if (!message.trim()) {
-      toast.error('Décrivez les modifications souhaitées.')
+    if (!message.trim() && commentCount === 0) {
+      toast.error('Ajoutez au moins une remarque sur la vidéo, ou décrivez les modifications.')
       return
     }
     startTransition(async () => {
       const result = await requestAnimationRevisions(projectId, phaseId, message)
       if (result.success) {
-        toast.success('Demande de modifications envoyée.')
+        toast.success('Demande envoyée à Mostra.')
         setMode('idle')
         setMessage('')
         onStatusChange('in_progress')
@@ -255,29 +263,61 @@ function VideoApprovalPanel({
       <div className="flex items-start gap-3">
         <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
         <div>
-          <p className="text-sm font-semibold text-white">
-            Cette vidéo est en attente de votre approbation
-          </p>
-          <p className="text-xs text-[#666666] mt-0.5">
-            Visionnez la vidéo ci-dessous, laissez des commentaires si nécessaire, puis approuvez ou demandez des modifications.
+          <p className="text-sm font-semibold text-ink">Cette vidéo attend votre retour</p>
+          <p className="text-xs text-faint mt-0.5">
+            Le plus efficace : cliquez sur un moment précis de la vidéo et commentez-le. Mostra saura
+            exactement quoi corriger. Puis approuvez, ou demandez une nouvelle version.
           </p>
         </div>
       </div>
 
+      {/* Action principale : commenter */}
+      {mode === 'idle' && (
+        <button
+          type="button"
+          onClick={onComment}
+          className="
+            w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
+            text-sm font-semibold bg-white text-black hover:bg-white/90 transition-colors
+          "
+        >
+          <MessageSquare className="h-4 w-4" />
+          {commentCount > 0 ? 'Ajouter un commentaire' : 'Commenter la vidéo'}
+          {commentCount > 0 && (
+            <span className="ml-0.5 text-xs bg-black/10 px-1.5 py-0.5 rounded-full tabular-nums">
+              {commentCount}
+            </span>
+          )}
+        </button>
+      )}
+
       {mode === 'revision' && (
         <div className="space-y-2">
-          <label className="text-xs font-medium text-[#a0a0a0]">
-            Décrivez les modifications souhaitées
-          </label>
+          {commentCount > 0 ? (
+            <p className="text-xs text-dim">
+              Vos <span className="text-ink font-medium tabular-nums">{commentCount}</span>{' '}
+              remarque{commentCount > 1 ? 's' : ''} sur la vidéo seront transmises à Mostra.
+              <span className="text-faint"> Ajoutez un résumé si besoin (optionnel) :</span>
+            </p>
+          ) : (
+            <p className="text-xs text-[#F59E0B]">
+              Astuce : pour des corrections précises, annulez et cliquez sur un moment de la vidéo
+              pour le commenter. Sinon, décrivez globalement les modifications :
+            </p>
+          )}
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Ex : Modifier la couleur du texte, ajuster la durée de l'intro…"
+            placeholder={
+              commentCount > 0
+                ? 'Résumé (optionnel)…'
+                : "Ex : Modifier la couleur du texte, ajuster la durée de l'intro…"
+            }
             rows={3}
             disabled={isPending}
             className="
-              w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2
-              text-xs text-white placeholder-[#3a3a3a] resize-none
+              w-full bg-surface border border-line rounded-lg px-3 py-2
+              text-xs text-ink placeholder-faint resize-none
               focus:outline-none focus:border-[#F59E0B]/40 transition-colors
               disabled:opacity-50
             "
@@ -285,7 +325,8 @@ function VideoApprovalPanel({
         </div>
       )}
 
-      <div className="flex items-center gap-3 flex-wrap">
+      {/* Décision : approuver / demander une nouvelle version */}
+      <div className="flex items-center gap-3 flex-wrap pt-1">
         <button
           type="button"
           onClick={handleApprove}
@@ -312,20 +353,20 @@ function VideoApprovalPanel({
             disabled={isPending}
             className="
               inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
-              bg-[#F59E0B]/10 border border-[#F59E0B]/25 text-[#F59E0B]
-              hover:bg-[#F59E0B]/20 transition-colors
+              bg-transparent border border-line text-dim
+              hover:text-ink hover:border-line-strong transition-colors
               disabled:opacity-40 disabled:cursor-not-allowed
             "
           >
             <RotateCcw className="h-4 w-4" />
-            Demander des modifications
+            Demander une nouvelle version
           </button>
         ) : (
           <>
             <button
               type="button"
               onClick={handleRevision}
-              disabled={isPending || !message.trim()}
+              disabled={isPending || (!message.trim() && commentCount === 0)}
               className="
                 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
                 bg-[#F59E0B]/10 border border-[#F59E0B]/25 text-[#F59E0B]
@@ -334,13 +375,13 @@ function VideoApprovalPanel({
               "
             >
               {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-              Envoyer
+              {commentCount > 0 ? 'Envoyer mes remarques' : 'Envoyer'}
             </button>
             <button
               type="button"
               onClick={() => { setMode('idle'); setMessage('') }}
               disabled={isPending}
-              className="text-xs text-[#555555] hover:text-white transition-colors"
+              className="text-xs text-faint hover:text-ink transition-colors"
             >
               Annuler
             </button>
@@ -411,6 +452,7 @@ function ClientCommentForm({
     <form onSubmit={handleSubmit} className="space-y-2">
       <div className="relative">
         <textarea
+          id="client-video-comment"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onFocus={handleFocus}
@@ -418,9 +460,9 @@ function ClientCommentForm({
           rows={2}
           disabled={isPending}
           className="
-            w-full bg-[#111111] border border-[#2a2a2a] rounded-lg px-3 py-2 pr-24
-            text-sm text-white placeholder-[#3a3a3a] resize-none
-            focus:outline-none focus:border-[#444444] transition-colors
+            w-full bg-surface border border-line rounded-lg px-3 py-2 pr-24
+            text-sm text-ink placeholder-faint resize-none
+            focus:outline-none focus:border-line-strong transition-colors
             disabled:opacity-50
           "
         />
@@ -432,20 +474,20 @@ function ClientCommentForm({
       </div>
       <div className="flex items-center justify-between">
         {capturedTime !== null ? (
-          <p className="text-xs text-[#555555]">
+          <p className="text-xs text-faint">
             À{' '}
             <span className="font-mono text-[#F59E0B]">{formatTime(capturedTime)}</span>
             {' · '}
             <button
               type="button"
               onClick={() => setCapturedTime(null)}
-              className="text-[#555555] hover:text-[#888888] transition-colors"
+              className="text-faint hover:text-dim transition-colors"
             >
               retirer
             </button>
           </p>
         ) : (
-          <p className="text-xs text-[#444444]">Focalisez le champ pour capturer le timecode</p>
+          <p className="text-xs text-faint">Focalisez le champ pour capturer le timecode</p>
         )}
         <button
           type="submit"
@@ -497,16 +539,16 @@ function ClientCommentCard({ comment, clientId, projectId, onSeek, onResolved }:
         rounded-lg border p-3 transition-colors
         ${comment.is_resolved
           ? 'bg-[#22C55E]/5 border-[#22C55E]/15'
-          : 'bg-[#111111] border-[#2a2a2a]'}
+          : 'bg-surface border-line'}
       `}
     >
       <div className="flex items-start gap-2">
-        <div className="h-6 w-6 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[9px] font-bold text-[#666666] flex-shrink-0 mt-0.5">
+        <div className="h-6 w-6 rounded-full bg-surface-2 border border-line flex items-center justify-center text-[9px] font-bold text-faint flex-shrink-0 mt-0.5">
           {initials(comment.author?.full_name)}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-medium text-white">
+            <span className="text-xs font-medium text-ink">
               {comment.author?.full_name ?? (isOwn ? 'Vous' : 'Inconnu')}
             </span>
             {comment.timecode_seconds !== null && (
@@ -529,7 +571,7 @@ function ClientCommentCard({ comment, clientId, projectId, onSeek, onResolved }:
               </span>
             )}
           </div>
-          <p className="text-xs text-[#a0a0a0] mt-1 leading-relaxed">{comment.content}</p>
+          <p className="text-xs text-dim mt-1 leading-relaxed">{comment.content}</p>
         </div>
         {isOwn && (
           <button
@@ -537,7 +579,7 @@ function ClientCommentCard({ comment, clientId, projectId, onSeek, onResolved }:
             onClick={handleResolve}
             disabled={isPending}
             title={comment.is_resolved ? 'Ré-ouvrir' : 'Marquer résolu'}
-            className="p-1 rounded text-[#444444] hover:text-[#22C55E] transition-colors flex-shrink-0 disabled:opacity-40"
+            className="p-1 rounded text-faint hover:text-[#22C55E] transition-colors flex-shrink-0 disabled:opacity-40"
           >
             <Check className="h-3.5 w-3.5" />
           </button>
@@ -591,10 +633,18 @@ export default function VideoViewerClient({
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [videoError, setVideoError] = useState(false)
 
   const displayedComments = comments.filter(
     (c) => selectedVersion === null || c.video_version === selectedVersion,
   )
+  const myCommentCount = displayedComments.filter((c) => c.user_id === clientId).length
+
+  function focusCommentBox() {
+    const el = document.getElementById('client-video-comment') as HTMLTextAreaElement | null
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.setTimeout(() => el?.focus(), 350)
+  }
 
   // Video events
   useEffect(() => {
@@ -649,6 +699,7 @@ export default function VideoViewerClient({
     setIsVersionDropOpen(false)
     setCurrentTime(0)
     setIsPlaying(false)
+    setVideoError(false)
     if (videoRef.current) {
       videoRef.current.src = v.file_url
       videoRef.current.load()
@@ -734,6 +785,8 @@ export default function VideoViewerClient({
         isAuthenticated={isAuthenticated}
         loginHref="/login"
         onStatusChange={setStatus}
+        commentCount={myCommentCount}
+        onComment={focusCommentBox}
       />
 
       {/* Player + comments */}
@@ -749,8 +802,8 @@ export default function VideoViewerClient({
                   onClick={() => setIsVersionDropOpen((v) => !v)}
                   className="
                     inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs
-                    bg-[#1a1a1a] border border-[#2a2a2a] text-[#a0a0a0]
-                    hover:border-[#3a3a3a] hover:text-white transition-colors
+                    bg-surface-2 border border-line text-dim
+                    hover:border-line-strong hover:text-ink transition-colors
                   "
                 >
                   <Film className="h-3.5 w-3.5" />
@@ -758,15 +811,15 @@ export default function VideoViewerClient({
                   <ChevronDown className="h-3 w-3" />
                 </button>
                 {isVersionDropOpen && (
-                  <div className="absolute right-0 top-full mt-1 bg-[#111111] border border-[#2a2a2a] rounded-lg overflow-hidden z-20 w-44">
+                  <div className="absolute right-0 top-full mt-1 bg-surface border border-line rounded-lg overflow-hidden z-20 w-44">
                     {allVersions.map((v) => (
                       <button
                         key={v.id}
                         type="button"
                         onClick={() => switchVersion(v)}
-                        className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-[#1a1a1a] transition-colors text-left"
+                        className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-surface-2 transition-colors text-left"
                       >
-                        <span className={v.version === selectedVersion ? 'text-white font-medium' : 'text-[#a0a0a0]'}>
+                        <span className={v.version === selectedVersion ? 'text-ink font-medium' : 'text-dim'}>
                           Version {v.version}
                         </span>
                         {v.is_current && (
@@ -784,62 +837,102 @@ export default function VideoViewerClient({
 
           {/* Video */}
           {currentVideo ? (
-            <div ref={containerRef} className="relative bg-black rounded-xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <video
-                ref={videoRef}
-                src={currentVideo.file_url}
-                className="w-full h-full object-contain"
-                onClick={togglePlay}
-                preload="metadata"
-              />
-              {/* Play overlay */}
-              <div className="absolute inset-0 flex items-center justify-center cursor-pointer" onClick={togglePlay}>
-                {!isPlaying && (
-                  <div className="bg-black/50 rounded-full p-4">
-                    <Play className="h-8 w-8 text-white fill-white" />
+            <div ref={containerRef} className="group rounded-xl overflow-hidden border border-line bg-surface">
+              {/* Vidéo — seul le bouton play/stop par-dessus */}
+              <div className="relative bg-black" style={{ aspectRatio: '16/9' }}>
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                <video
+                  ref={videoRef}
+                  src={currentVideo.file_url}
+                  className="w-full h-full object-contain"
+                  onClick={togglePlay}
+                  onError={() => setVideoError(true)}
+                  preload="metadata"
+                  playsInline
+                />
+
+                {/* Fallback si format illisible (ex. .MOV sur Android) */}
+                {videoError ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/90 px-6 text-center">
+                    <AlertCircle className="h-8 w-8 text-[#F59E0B]" />
+                    <p className="text-sm text-white font-medium">Lecture impossible sur cet appareil</p>
+                    <p className="text-xs text-white/60 max-w-xs">
+                      Le format de cette vidéo n&apos;est peut-être pas supporté par votre navigateur
+                      (ex. .MOV sur Android). Ouvrez-la ou téléchargez-la pour la visionner.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={currentVideo.file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-black hover:bg-white/90 transition-colors"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Ouvrir
+                      </a>
+                      <a
+                        href={currentVideo.file_url}
+                        download
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-2 border border-line text-ink hover:bg-surface-3 transition-colors"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Télécharger
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  /* Play overlay — seul élément par-dessus la vidéo */
+                  <div className="absolute inset-0 flex items-center justify-center cursor-pointer" onClick={togglePlay}>
+                    {!isPlaying && (
+                      <div className="bg-black/50 rounded-full p-4">
+                        <Play className="h-8 w-8 text-white fill-white" />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-              {/* Controls */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 pb-3 pt-8 opacity-0 hover:opacity-100 transition-opacity">
-                <VideoTimeline
-                  currentTime={currentTime}
-                  duration={duration}
-                  comments={displayedComments}
-                  selectedVersion={selectedVersion}
-                  onSeek={seekTo}
-                  onMarkerClick={handleMarkerClick}
-                />
-                <div className="flex items-center gap-3 mt-2">
-                  <button type="button" onClick={togglePlay} className="text-white hover:text-white/80 transition-colors">
-                    {isPlaying ? <Pause className="h-4 w-4 fill-white" /> : <Play className="h-4 w-4 fill-white" />}
-                  </button>
-                  <span className="text-xs text-white/70 font-mono tabular-nums">
-                    {formatTime(currentTime)} / {formatTime(duration)}
-                  </span>
-                  <div className="flex-1" />
-                  <div className="flex items-center gap-1.5">
-                    <button type="button" onClick={toggleMute} className="text-white/70 hover:text-white transition-colors">
-                      {isMuted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+
+              {/* Contrôles SOUS la vidéo (toujours sur mobile, au survol sur desktop) */}
+              {!videoError && (
+                <div className="bg-surface border-t border-line px-3 sm:px-4 py-2.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                  <VideoTimeline
+                    currentTime={currentTime}
+                    duration={duration}
+                    comments={displayedComments}
+                    selectedVersion={selectedVersion}
+                    onSeek={seekTo}
+                    onMarkerClick={handleMarkerClick}
+                  />
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <button type="button" onClick={togglePlay} className="text-ink hover:text-ink/80 transition-colors">
+                      {isPlaying ? <Pause className="h-4 w-4 fill-ink" /> : <Play className="h-4 w-4 fill-ink" />}
                     </button>
-                    <input
-                      type="range" min={0} max={1} step={0.05}
-                      value={isMuted ? 0 : volume}
-                      onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                      className="w-16 h-1 accent-white cursor-pointer"
-                    />
+                    <span className="text-xs text-ink/70 font-mono tabular-nums">
+                      {formatTime(currentTime)} / {formatTime(duration)}
+                    </span>
+                    <div className="flex-1" />
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" onClick={toggleMute} className="text-ink/70 hover:text-ink transition-colors">
+                        {isMuted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      </button>
+                      <input
+                        type="range" min={0} max={1} step={0.05}
+                        value={isMuted ? 0 : volume}
+                        onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                        className="w-16 h-1 accent-[rgb(var(--c-brand))] cursor-pointer"
+                      />
+                    </div>
+                    <button type="button" onClick={toggleFullscreen} className="text-ink/70 hover:text-ink transition-colors">
+                      {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                    </button>
                   </div>
-                  <button type="button" onClick={toggleFullscreen} className="text-white/70 hover:text-white transition-colors">
-                    {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                  </button>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
-            <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-12 text-center" style={{ aspectRatio: '16/9' }}>
-              <Film className="h-12 w-12 text-[#333333] mx-auto mb-4" />
-              <p className="text-sm text-[#444444] italic">Aucune vidéo disponible.</p>
+            <div className="bg-surface border border-line rounded-xl p-12 text-center" style={{ aspectRatio: '16/9' }}>
+              <Film className="h-12 w-12 text-faint mx-auto mb-4" />
+              <p className="text-sm text-faint italic">Aucune vidéo disponible.</p>
             </div>
           )}
         </div>
@@ -848,8 +941,8 @@ export default function VideoViewerClient({
         <div className="flex flex-col gap-4 lg:w-80 xl:w-96 flex-shrink-0">
           {/* Comment form (only authenticated + in review) */}
           {status === 'in_review' && currentVideo && isAuthenticated && (
-            <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
-              <h3 className="text-xs font-semibold text-[#666666] uppercase tracking-wider">
+            <div className="bg-surface border border-line rounded-xl p-4 space-y-3">
+              <h3 className="text-xs font-semibold text-faint uppercase tracking-wider">
                 Laisser un commentaire
               </h3>
               <ClientCommentForm
@@ -865,15 +958,15 @@ export default function VideoViewerClient({
           )}
 
           {/* Comments */}
-          <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-[#666666] uppercase tracking-wider">Commentaires</h3>
-              <span className="text-xs text-[#444444]">{displayedComments.length}</span>
+          <div className="bg-surface border border-line rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-line flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-faint uppercase tracking-wider">Commentaires</h3>
+              <span className="text-xs text-faint">{displayedComments.length}</span>
             </div>
             {displayedComments.length === 0 ? (
               <div className="px-4 py-8 text-center">
-                <MessageSquare className="h-8 w-8 text-[#2a2a2a] mx-auto mb-2" />
-                <p className="text-xs text-[#444444]">Aucun commentaire sur cette version</p>
+                <MessageSquare className="h-8 w-8 text-[rgb(var(--c-border))] mx-auto mb-2" />
+                <p className="text-xs text-faint">Aucun commentaire sur cette version</p>
               </div>
             ) : (
               <div className="p-3 space-y-2 max-h-[500px] overflow-y-auto">

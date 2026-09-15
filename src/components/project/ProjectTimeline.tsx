@@ -11,11 +11,11 @@ interface ProjectTimelineProps {
 }
 
 const STATUS_COLOR: Record<PhaseStatus, string> = {
-  pending:     '#2a2a2a',
+  pending:     'rgb(var(--c-border))',
   in_progress: '#3B82F6',
   in_review:   '#F59E0B',
-  completed:   '#00D76B',
-  approved:    '#00D76B',
+  completed:   'rgb(var(--c-brand))',
+  approved:    'rgb(var(--c-brand))',
 }
 
 const STATUS_LABEL: Record<PhaseStatus, string> = {
@@ -62,19 +62,19 @@ function PhaseSegment({
       {/* Tooltip */}
       {hovering && !mini && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-10 pointer-events-none">
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
-            <p className="text-xs font-medium text-white">{phase.name}</p>
+          <div className="bg-surface-2 border border-line rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
+            <p className="text-xs font-medium text-ink">{phase.name}</p>
             <p className="text-[10px] mt-0.5" style={{ color }}>
               {STATUS_LABEL[status]}
             </p>
             {subPhases.length > 0 && (
-              <p className="text-[10px] text-[#555555] mt-0.5">
+              <p className="text-[10px] text-faint mt-0.5">
                 {doneCount}/{subPhases.length} sous-phases
               </p>
             )}
           </div>
           {/* Arrow */}
-          <div className="w-2 h-2 bg-[#1a1a1a] border-b border-r border-[#2a2a2a] rotate-45 mx-auto -mt-1" />
+          <div className="w-2 h-2 bg-surface-2 border-b border-r border-line rotate-45 mx-auto -mt-1" />
         </div>
       )}
 
@@ -118,7 +118,7 @@ export default function ProjectTimeline({
         <div className="flex gap-0.5 mb-1.5">
           {sorted.map((phase) => (
             <div key={phase.id} className="flex-1 min-w-0">
-              <p className="text-[9px] text-[#444444] truncate text-center px-0.5">
+              <p className="text-[9px] text-faint truncate text-center px-0.5">
                 {phase.name}
               </p>
             </div>
@@ -157,7 +157,7 @@ export default function ProjectTimeline({
                 className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                 style={{ backgroundColor: STATUS_COLOR[status] }}
               />
-              <span className="text-[10px] text-[#555555]">{label}</span>
+              <span className="text-[10px] text-faint">{label}</span>
             </div>
           ))}
         </div>

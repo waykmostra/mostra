@@ -6,19 +6,28 @@ import FinanceChart, { type FinanceChartPoint } from '@/components/finance/Finan
 import ExpensesPanel from '@/components/finance/ExpensesPanel'
 import SubscriptionsPanel from '@/components/finance/SubscriptionsPanel'
 import RevenuesPanel from '@/components/finance/RevenuesPanel'
+import ManualRevenuesPanel from '@/components/finance/ManualRevenuesPanel'
+import RecentMovements from '@/components/finance/RecentMovements'
 import { monthlyBurn } from '@/components/finance/financeMeta'
-import type { ExpenseWithProject, RevenueEntry, Subscription } from '@/lib/types'
+import type { ExpenseWithProject, RevenueEntry, RevenueWithClient, Subscription } from '@/lib/types'
 
 interface ProjectOption {
   id: string
   name: string
 }
 
+interface ClientOption {
+  id: string
+  name: string
+}
+
 interface Props {
   revenues: RevenueEntry[]
+  manualRevenues: RevenueWithClient[]
   expenses: ExpenseWithProject[]
   subscriptions: Subscription[]
   projects: ProjectOption[]
+  clients: ClientOption[]
 }
 
 const MONTH_LABELS = [
@@ -26,15 +35,26 @@ const MONTH_LABELS = [
   'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
 ]
 
-export default function FinanceClient({ revenues, expenses, subscriptions, projects }: Props) {
+export default function FinanceClient({
+  revenues,
+  manualRevenues,
+  expenses,
+  subscriptions,
+  projects,
+  clients,
+}: Props) {
   const { kpis, chart, monthLabel } = useMemo(() => {
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
     // ── KPIs du mois courant ──────────────────────────────────────
-    const revenueMonth = revenues
+    const revenueMonthProjects = revenues
       .filter((r) => r.payment_status === 'paid' && r.paid_at && new Date(r.paid_at) >= monthStart)
       .reduce((s, r) => s + r.value_eur, 0)
+    const revenueMonthManual = manualRevenues
+      .filter((r) => new Date(r.received_on) >= monthStart)
+      .reduce((s, r) => s + r.amount_eur, 0)
+    const revenueMonth = revenueMonthProjects + revenueMonthManual
 
     const expensesMonth = expenses
       .filter((e) => new Date(e.incurred_on) >= monthStart)
@@ -65,6 +85,10 @@ export default function FinanceClient({ revenues, expenses, subscriptions, proje
       if (r.payment_status !== 'paid' || !r.paid_at) continue
       const b = inBucket(new Date(r.paid_at))
       if (b) b.revenue += r.value_eur
+    }
+    for (const r of manualRevenues) {
+      const b = inBucket(new Date(r.received_on))
+      if (b) b.revenue += r.amount_eur
     }
     for (const e of expenses) {
       const b = inBucket(new Date(e.incurred_on))
@@ -98,14 +122,14 @@ export default function FinanceClient({ revenues, expenses, subscriptions, proje
       chart,
       monthLabel,
     }
-  }, [revenues, expenses, subscriptions])
+  }, [revenues, manualRevenues, expenses, subscriptions])
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-white">Finance</h1>
-        <p className="text-sm text-[#666666] mt-0.5 capitalize">Cashflow — {monthLabel}</p>
+        <h1 className="text-xl font-semibold text-ink">Finance</h1>
+        <p className="text-sm text-faint mt-0.5 capitalize">Cashflow — {monthLabel}</p>
       </div>
 
       {/* KPIs */}
@@ -114,13 +138,23 @@ export default function FinanceClient({ revenues, expenses, subscriptions, proje
       {/* Graphe 6 mois */}
       <FinanceChart data={chart} />
 
+      {/* Historique — 5 derniers mouvements */}
+      <RecentMovements
+        expenses={expenses}
+        revenues={revenues}
+        manualRevenues={manualRevenues}
+      />
+
       {/* Dépenses + Abonnements */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
         <ExpensesPanel expenses={expenses} projects={projects} />
         <SubscriptionsPanel subscriptions={subscriptions} />
       </div>
 
-      {/* Revenus (lecture seule) */}
+      {/* Revenus libres (éditable) */}
+      <ManualRevenuesPanel revenues={manualRevenues} clients={clients} />
+
+      {/* Revenus dérivés des projets (lecture seule) */}
       <RevenuesPanel revenues={revenues} />
     </div>
   )

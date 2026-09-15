@@ -15,5 +15,11 @@ export default async function NewProjectPage() {
     getAllAdmins(supabase),
   ])
 
-  return <NewProjectForm clients={clients} admins={admins} />
+  // Formulaire encore en sombre (non migré) : on l'enveloppe pour qu'il reste
+  // cohérent sous le shell clair, en attendant son passage en thème clair.
+  return (
+    <div className="min-h-screen bg-canvas px-4 sm:px-6 py-8">
+      <NewProjectForm clients={clients} admins={admins} />
+    </div>
+  )
 }

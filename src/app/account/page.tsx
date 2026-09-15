@@ -33,8 +33,8 @@ export default async function AccountPage() {
     <div className="max-w-[680px] mx-auto space-y-6">
       {/* Page title */}
       <div>
-        <h1 className="text-lg font-bold text-white">Mon compte</h1>
-        <p className="text-xs text-[#555555] mt-0.5">Gérez votre profil, sécurité et préférences</p>
+        <h1 className="text-lg font-bold text-ink">Mon compte</h1>
+        <p className="text-xs text-faint mt-0.5">Gérez votre profil, sécurité et préférences</p>
       </div>
 
       <ProfileSection name={name} email={email} avatarUrl={avatarUrl} />

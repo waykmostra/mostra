@@ -4,52 +4,36 @@ interface Props {
   icon: LucideIcon
   label: string
   value: number | string
-  color: string
-  /** Icon size class — defaults to "h-4 w-4" */
-  iconSize?: string
 }
 
-export function StatCard({ icon: Icon, label, value, color, iconSize = 'h-4 w-4' }: Props) {
+/**
+ * Une cellule de chiffre. Elle ne porte pas son propre cadre : plusieurs
+ * cellules se posent côte à côte dans une seule feuille (voir StatRow), pour
+ * lire comme un objet unique et non comme trois cartes identiques.
+ *
+ * La hiérarchie tient au seul contraste d'échelle — chiffre énorme contre
+ * micro-label mono. Pas de pastille colorée : le vert reste réservé à ce qui
+ * appelle une action.
+ */
+export function StatCard({ icon: Icon, label, value }: Props) {
   const displayValue = typeof value === 'number' ? value.toLocaleString('fr-FR') : value
 
   return (
-    <div
-      className="rounded-xl p-5 flex items-center gap-4"
-      style={{ backgroundColor: '#111111', border: '1px solid #1a1a1a' }}
-    >
-      <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: `${color}18`, border: `1px solid ${color}30`, color }}
-      >
-        <Icon className={iconSize} />
+    <div className="flex-1 px-5 py-4">
+      <div className="mono-label flex items-center gap-1.5 text-faint">
+        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+        {label}
       </div>
-      <div>
-        <p className="text-2xl font-bold text-white tabular-nums">{displayValue}</p>
-        <p className="text-[11px] text-[#555555] mt-0.5">{label}</p>
-      </div>
+      <p className="font-display tnum mt-2.5 text-[2rem] leading-none text-ink">{displayValue}</p>
     </div>
   )
 }
 
-/** Variant for the admin space (dark background) */
-export function AdminStatCard({ icon: Icon, label, value, color, iconSize = 'h-4 w-4' }: Props) {
-  const displayValue = typeof value === 'number' ? value.toLocaleString('fr-FR') : value
-
+/** Regroupe des StatCard en une seule feuille, séparées par un filet. */
+export function StatRow({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="rounded-xl p-5 flex items-center gap-4"
-      style={{ backgroundColor: '#0d0d1a', border: '1px solid #1e1e3a' }}
-    >
-      <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: `${color}20`, border: `1px solid ${color}30`, color }}
-      >
-        <Icon className={iconSize} />
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-white tabular-nums">{displayValue}</p>
-        <p className="text-[11px] text-[#555577] mt-0.5">{label}</p>
-      </div>
+    <div className="surface flex flex-col divide-y divide-line sm:flex-row sm:divide-x sm:divide-y-0">
+      {children}
     </div>
   )
 }

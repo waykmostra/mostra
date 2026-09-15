@@ -46,28 +46,28 @@ export default function ProfileSection({ name, email, avatarUrl }: ProfileSectio
   }
 
   return (
-    <section className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-6 space-y-5">
+    <section className="bg-surface border border-line rounded-xl p-6 space-y-5">
       <div>
-        <h2 className="text-sm font-semibold text-white">Profil</h2>
-        <p className="text-xs text-[#555555] mt-0.5">Nom affiché et photo de profil</p>
+        <h2 className="text-sm font-semibold text-ink">Profil</h2>
+        <p className="text-xs text-faint mt-0.5">Nom affiché et photo de profil</p>
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
         {/* Avatar */}
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="w-16 h-16 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center overflow-hidden flex-shrink-0">
+            <div className="w-16 h-16 rounded-full bg-surface-2 border border-line flex items-center justify-center overflow-hidden flex-shrink-0">
               {preview ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={preview} alt={name} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-lg font-bold text-[#555555]">{initials}</span>
+                <span className="text-lg font-bold text-faint">{initials}</span>
               )}
             </div>
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#00D76B] flex items-center justify-center hover:bg-[#00c060] transition-colors"
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-brand flex items-center justify-center hover:bg-brand transition-colors"
               aria-label="Changer l'avatar"
             >
               <Camera className="h-3 w-3 text-black" />
@@ -75,12 +75,12 @@ export default function ProfileSection({ name, email, avatarUrl }: ProfileSectio
           </div>
 
           <div>
-            <p className="text-xs text-[#a0a0a0]">Photo de profil</p>
-            <p className="text-[11px] text-[#555555] mt-0.5">JPG, PNG · max 2 Mo</p>
+            <p className="text-xs text-dim">Photo de profil</p>
+            <p className="text-[11px] text-faint mt-0.5">JPG, PNG · max 2 Mo</p>
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="mt-1.5 text-[11px] text-[#00D76B] hover:text-[#00c060] transition-colors"
+              className="mt-1.5 text-[11px] text-brand hover:text-brand transition-colors"
             >
               Changer la photo
             </button>
@@ -98,7 +98,7 @@ export default function ProfileSection({ name, email, avatarUrl }: ProfileSectio
 
         {/* Name */}
         <div>
-          <label className="block text-xs font-medium text-[#a0a0a0] mb-1.5">
+          <label className="block text-xs font-medium text-dim mb-1.5">
             Nom complet
           </label>
           <input
@@ -107,22 +107,22 @@ export default function ProfileSection({ name, email, avatarUrl }: ProfileSectio
             defaultValue={name}
             required
             placeholder="Prénom Nom"
-            className="w-full px-3 py-2.5 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg text-sm text-white placeholder-[#444444] focus:outline-none focus:border-[#00D76B] focus:ring-1 focus:ring-[#00D76B] transition-colors"
+            className="w-full px-3 py-2.5 bg-canvas border border-line rounded-lg text-sm text-ink placeholder-faint focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
           />
         </div>
 
         {/* Email — read-only */}
         <div>
-          <label className="block text-xs font-medium text-[#a0a0a0] mb-1.5">
+          <label className="block text-xs font-medium text-dim mb-1.5">
             Email
           </label>
           <input
             type="email"
             value={email}
             disabled
-            className="w-full px-3 py-2.5 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg text-sm text-[#555555] cursor-not-allowed"
+            className="w-full px-3 py-2.5 bg-canvas border border-line rounded-lg text-sm text-faint cursor-not-allowed"
           />
-          <p className="text-[11px] text-[#444444] mt-1">
+          <p className="text-[11px] text-faint mt-1">
             L&apos;email ne peut pas être modifié
           </p>
         </div>
@@ -130,7 +130,7 @@ export default function ProfileSection({ name, email, avatarUrl }: ProfileSectio
         <button
           type="submit"
           disabled={pending}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00D76B] text-black text-sm font-semibold hover:bg-[#00c060] disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand text-black text-sm font-semibold hover:bg-brand disabled:opacity-50 transition-colors"
         >
           {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           Sauvegarder le profil

@@ -92,8 +92,8 @@ export default function IconPicker({ value, onChange, disabled }: Props) {
           w-9 h-9 rounded-lg border flex items-center justify-center transition-colors
           ${
             open
-              ? 'border-[#00D76B]/40 bg-[#00D76B]/10 text-[#00D76B]'
-              : 'border-[#2a2a2a] bg-[#111111] text-[#666666] hover:border-[#444444] hover:text-white'
+              ? 'border-brand/40 bg-brand/10 text-brand'
+              : 'border-line bg-surface text-faint hover:border-line-strong hover:text-ink'
           }
           disabled:opacity-40 disabled:cursor-not-allowed
         `}
@@ -105,7 +105,7 @@ export default function IconPicker({ value, onChange, disabled }: Props) {
       {open && (
         <div
           className="absolute left-0 top-full mt-1 z-30
-          bg-[#111111] border border-[#2a2a2a] rounded-xl shadow-2xl p-2
+          bg-surface border border-line rounded-xl shadow-2xl p-2
           grid grid-cols-5 gap-1 w-[196px]"
         >
           {ICON_CATALOG.map(({ name, label, Component }) => (
@@ -121,8 +121,8 @@ export default function IconPicker({ value, onChange, disabled }: Props) {
                 w-8 h-8 rounded-lg flex items-center justify-center transition-colors
                 ${
                   value === name
-                    ? 'bg-[#00D76B]/20 text-[#00D76B] border border-[#00D76B]/30'
-                    : 'text-[#555555] hover:text-white hover:bg-[#1a1a1a] border border-transparent'
+                    ? 'bg-brand/20 text-brand border border-brand/30'
+                    : 'text-faint hover:text-ink hover:bg-surface-2 border border-transparent'
                 }
               `}
             >

@@ -87,9 +87,9 @@ export default function FileViewer({
               value={activeVersion}
               onChange={(e) => changeVersion(Number(e.target.value))}
               className="
-                appearance-none bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg
-                pl-3 pr-7 py-1.5 text-xs text-white
-                hover:border-[#3a3a3a] focus:outline-none focus:border-[#00D76B]/50
+                appearance-none bg-surface-2 border border-line rounded-lg
+                pl-3 pr-7 py-1.5 text-xs text-ink
+                hover:border-line-strong focus:outline-none focus:border-brand/50
                 cursor-pointer
               "
             >
@@ -100,15 +100,15 @@ export default function FileViewer({
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-2 h-3 w-3 text-[#666666] pointer-events-none" />
+            <ChevronDown className="absolute right-2 h-3 w-3 text-faint pointer-events-none" />
           </div>
 
-          <span className="text-xs text-[#444444] truncate max-w-xs">{activeFile.file_name}</span>
+          <span className="text-xs text-faint truncate max-w-xs">{activeFile.file_name}</span>
 
           <button
             type="button"
             onClick={handleDownload}
-            className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-xs text-[#a0a0a0] hover:text-white hover:border-[#444444] transition-colors"
+            className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-xs text-dim hover:text-ink hover:border-line-strong transition-colors"
           >
             <Download className="h-3.5 w-3.5" />
             Télécharger
@@ -117,7 +117,7 @@ export default function FileViewer({
 
         {/* Visionneuse */}
         <div
-          className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl overflow-hidden"
+          className="flex-1 bg-surface border border-line rounded-xl overflow-hidden"
           style={{ minHeight: '480px' }}
         >
           <FilePreview
@@ -132,8 +132,8 @@ export default function FileViewer({
       {/* ── Sidebar droite ────────────────────────────────────────── */}
       <div className="w-full lg:w-64 flex-shrink-0 space-y-4">
         {/* Infos fichier actif */}
-        <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
-          <p className="text-[10px] font-semibold text-[#444444] uppercase tracking-widest">
+        <div className="bg-surface border border-line rounded-xl p-4 space-y-3">
+          <p className="text-[10px] font-semibold text-faint uppercase tracking-widest">
             Fichier
           </p>
 
@@ -151,8 +151,8 @@ export default function FileViewer({
         </div>
 
         {/* Historique des versions */}
-        <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-4">
-          <p className="text-[10px] font-semibold text-[#444444] uppercase tracking-widest mb-3">
+        <div className="bg-surface border border-line rounded-xl p-4">
+          <p className="text-[10px] font-semibold text-faint uppercase tracking-widest mb-3">
             Versions
           </p>
           <div className="space-y-1.5">
@@ -165,21 +165,21 @@ export default function FileViewer({
                   w-full text-left px-3 py-2 rounded-lg border transition-colors
                   ${
                     f.version === activeVersion
-                      ? 'bg-[#1a1a1a] border-[#00D76B]/30 text-white'
-                      : 'border-[#1e1e1e] text-[#666666] hover:text-white hover:border-[#2a2a2a]'
+                      ? 'bg-surface-2 border-brand/30 text-ink'
+                      : 'border-line text-faint hover:text-ink hover:border-line'
                   }
                 `}
               >
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-medium">v{f.version}</span>
                   {f.is_current && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#00D76B]/10 text-[#00D76B] border border-[#00D76B]/20">
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand/10 text-brand border border-brand/20">
                       Current
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-[#444444] mt-0.5 truncate">{f.file_name}</p>
-                <p className="text-[10px] text-[#444444]">{formatDate(f.created_at)}</p>
+                <p className="text-[10px] text-faint mt-0.5 truncate">{f.file_name}</p>
+                <p className="text-[10px] text-faint">{formatDate(f.created_at)}</p>
               </button>
             ))}
           </div>
@@ -248,15 +248,15 @@ function FilePreview({
   // Autre format
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-center p-8">
-      <FileX className="h-12 w-12 text-[#333333]" />
+      <FileX className="h-12 w-12 text-faint" />
       <div>
-        <p className="text-sm text-[#666666]">Aperçu non disponible</p>
-        <p className="text-xs text-[#444444] mt-1">{file.file_name}</p>
+        <p className="text-sm text-faint">Aperçu non disponible</p>
+        <p className="text-xs text-faint mt-1">{file.file_name}</p>
       </div>
       <button
         type="button"
         onClick={onDownload}
-        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20 text-sm text-[#00D76B] hover:bg-[#00D76B]/20 transition-colors"
+        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand/10 border border-brand/20 text-sm text-brand hover:bg-brand/20 transition-colors"
       >
         <Download className="h-4 w-4" />
         Télécharger
@@ -269,8 +269,8 @@ function FilePreview({
 
 function InfoRow({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-[#666666]">
-      <span className="text-[#444444] flex-shrink-0">{icon}</span>
+    <div className="flex items-center gap-2 text-xs text-faint">
+      <span className="text-faint flex-shrink-0">{icon}</span>
       <span className="truncate">{children}</span>
     </div>
   )

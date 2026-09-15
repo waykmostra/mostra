@@ -80,33 +80,33 @@ export default function PushNotificationsSection() {
   }
 
   return (
-    <section className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-6 space-y-5">
+    <section className="bg-surface border border-line rounded-xl p-6 space-y-5">
       <div>
-        <h2 className="text-sm font-semibold text-white">Notifications push</h2>
-        <p className="text-xs text-[#555555] mt-0.5">
+        <h2 className="text-sm font-semibold text-ink">Notifications push</h2>
+        <p className="text-xs text-faint mt-0.5">
           Recevez les alertes directement sur cet appareil, même l&apos;application fermée
         </p>
       </div>
 
       {status === 'loading' && (
-        <div className="flex items-center gap-2 text-xs text-[#555555]">
+        <div className="flex items-center gap-2 text-xs text-faint">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           Vérification…
         </div>
       )}
 
       {status === 'unsupported' && (
-        <p className="text-xs text-[#888888] bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg p-3">
+        <p className="text-xs text-dim bg-canvas border border-line rounded-lg p-3">
           Votre navigateur ne supporte pas les notifications push.
         </p>
       )}
 
       {status === 'ios-needs-install' && (
-        <div className="text-xs text-[#a0a0a0] bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg p-3 space-y-2">
-          <p className="text-white font-medium">Sur iPhone / iPad, une étape est nécessaire :</p>
-          <ol className="list-decimal list-inside space-y-1 text-[#888888]">
+        <div className="text-xs text-dim bg-canvas border border-line rounded-lg p-3 space-y-2">
+          <p className="text-ink font-medium">Sur iPhone / iPad, une étape est nécessaire :</p>
+          <ol className="list-decimal list-inside space-y-1 text-dim">
             <li className="flex items-center gap-1.5">
-              Appuyez sur <Share className="h-3.5 w-3.5 inline text-[#00D76B]" /> Partager
+              Appuyez sur <Share className="h-3.5 w-3.5 inline text-brand" /> Partager
             </li>
             <li>Choisissez « Sur l&apos;écran d&apos;accueil »</li>
             <li>Ouvrez Mostra depuis l&apos;icône, puis revenez ici</li>
@@ -115,7 +115,7 @@ export default function PushNotificationsSection() {
       )}
 
       {status === 'denied' && (
-        <p className="text-xs text-[#888888] bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg p-3">
+        <p className="text-xs text-dim bg-canvas border border-line rounded-lg p-3">
           Les notifications sont bloquées. Autorisez-les dans les réglages de votre navigateur pour
           ce site, puis rechargez la page.
         </p>
@@ -126,7 +126,7 @@ export default function PushNotificationsSection() {
           type="button"
           onClick={handleEnable}
           disabled={pending}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00D76B] text-black text-sm font-semibold hover:bg-[#00c060] disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand text-black text-sm font-semibold hover:bg-brand disabled:opacity-50 transition-colors"
         >
           {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bell className="h-3.5 w-3.5" />}
           Activer les notifications
@@ -135,7 +135,7 @@ export default function PushNotificationsSection() {
 
       {status === 'on' && (
         <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2 text-xs text-[#00D76B] font-medium">
+          <span className="flex items-center gap-2 text-xs text-brand font-medium">
             <Bell className="h-3.5 w-3.5" />
             Activées sur cet appareil
           </span>
@@ -143,7 +143,7 @@ export default function PushNotificationsSection() {
             type="button"
             onClick={handleDisable}
             disabled={pending}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[#888888] text-xs hover:text-white hover:border-[#3a3a3a] disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-line text-dim text-xs hover:text-ink hover:border-line-strong disabled:opacity-50 transition-colors"
           >
             {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <BellOff className="h-3 w-3" />}
             Désactiver

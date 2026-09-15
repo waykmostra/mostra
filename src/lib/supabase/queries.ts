@@ -6,6 +6,8 @@ import type {
   ClientInteraction,
   ClientWithStats,
   Comment,
+  Company,
+  CompanyWithStats,
   Expense,
   ExpenseWithProject,
   PaymentStatus,
@@ -15,7 +17,9 @@ import type {
   Project,
   ProjectPhase,
   ProjectSummary,
+  Revenue,
   RevenueEntry,
+  RevenueWithClient,
   SubPhase,
   Subscription,
 } from '@/lib/types'
@@ -203,8 +207,10 @@ export interface ActivityWithUser extends ActivityLog {
 
 export interface ProjectDetailData {
   project: Project
-  /** Client CRM (table clients) ; NULL si projet non rattaché à un client. */
+  /** Client CRM PRINCIPAL (projects.client_id) ; NULL si non rattaché. */
   client: Client | null
+  /** Tous les clients du projet (principal + additionnels, migration 031). */
+  clients: Client[]
   /** Profile auth du client si un compte a été créé (clients.profile_id). */
   clientProfile: Profile | null
   projectManager: Profile | null
@@ -232,15 +238,13 @@ export async function getProjectDetail(
   // 2. Phases + Client CRM + PM + Commentaires + Activity en parallèle
   const pmIds = project.project_manager_id ? [project.project_manager_id] : []
 
-  const [phasesRes, clientRes, pmRes, commentsRes, activityRes] = await Promise.all([
+  const [phasesRes, projectClientsRes, pmRes, commentsRes, activityRes] = await Promise.all([
     supabase
       .from('project_phases')
       .select('*')
       .eq('project_id', projectId)
       .order('sort_order', { ascending: true }),
-    project.client_id
-      ? supabase.from('clients').select('*').eq('id', project.client_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+    supabase.from('project_clients').select('client_id').eq('project_id', projectId),
     pmIds.length > 0
       ? supabase.from('profiles').select('*').in('id', pmIds)
       : Promise.resolve({ data: [] }),
@@ -289,8 +293,19 @@ export async function getProjectDetail(
     })
   }
 
-  // 3. Client CRM + PM + Profile auth du client (si compte créé)
-  const client = (clientRes.data as Client | null) ?? null
+  // 3. Clients CRM (principal + additionnels) + PM + Profile auth du principal
+  const linkIds = ((projectClientsRes.data as { client_id: string }[] | null) ?? []).map(
+    (l) => l.client_id,
+  )
+  const clientIds = Array.from(
+    new Set([...(project.client_id ? [project.client_id] : []), ...linkIds]),
+  )
+  let clients: Client[] = []
+  if (clientIds.length > 0) {
+    const { data: rawClients } = await supabase.from('clients').select('*').in('id', clientIds)
+    clients = (rawClients as Client[] | null) ?? []
+  }
+  const client = clients.find((c) => c.id === project.client_id) ?? null
   const pmList = (pmRes.data as Profile[] | null) ?? []
   const projectManager = project.project_manager_id
     ? (pmList.find((p) => p.id === project.project_manager_id) ?? null)
@@ -354,6 +369,7 @@ export async function getProjectDetail(
   return {
     project,
     client,
+    clients,
     clientProfile,
     projectManager,
     phases,
@@ -419,24 +435,6 @@ export async function getClientsWithStats(supabase: Sb): Promise<ClientWithStats
       last_project_name: stats?.lastName ?? null,
     }
   })
-}
-
-/**
- * Prospects de la zone "froide" (vue Prospection) : pipeline_stage ∈
- * froid / contacte / a_relancer. Triés par date de relance (la plus proche
- * d'abord, NULL en dernier), puis par dernière activité.
- * Renvoie [] si la migration 021 n'est pas encore appliquée (dégradation douce).
- */
-export async function getProspects(supabase: Sb): Promise<Client[]> {
-  const { data, error } = await supabase
-    .from('clients')
-    .select('*')
-    .in('pipeline_stage', ['froid', 'contacte', 'a_relancer'])
-    .order('next_follow_up_on', { ascending: true, nullsFirst: false })
-    .order('updated_at', { ascending: false })
-
-  if (error) return []
-  return (data as Client[] | null) ?? []
 }
 
 /** Détail d'un client CRM + projets liés + interactions. */
@@ -534,6 +532,34 @@ export async function getSubscriptions(supabase: Sb): Promise<Subscription[]> {
   return (data as Subscription[] | null) ?? []
 }
 
+/** Revenus libres (table `revenues`, migration 032) + nom du client rattaché. */
+export async function getManualRevenues(supabase: Sb): Promise<RevenueWithClient[]> {
+  const { data: rawRevenues } = await supabase
+    .from('revenues')
+    .select('*')
+    .order('received_on', { ascending: false })
+
+  const revenues = (rawRevenues as Revenue[] | null) ?? []
+  if (revenues.length === 0) return []
+
+  const clientIds = [...new Set(revenues.map((r) => r.client_id).filter(Boolean) as string[])]
+  const nameMap = new Map<string, string>()
+  if (clientIds.length > 0) {
+    const { data: rawClients } = await supabase
+      .from('clients')
+      .select('id, contact_name, company_name')
+      .in('id', clientIds)
+    ;(rawClients as Pick<Client, 'id' | 'contact_name' | 'company_name'>[] | null)?.forEach((c) =>
+      nameMap.set(c.id, c.company_name || c.contact_name),
+    )
+  }
+
+  return revenues.map((r) => ({
+    ...r,
+    client_name: r.client_id ? (nameMap.get(r.client_id) ?? null) : null,
+  }))
+}
+
 /** Revenus dérivés des projets valorisés (lecture seule, pas de table dédiée). */
 export async function getRevenueEntries(supabase: Sb): Promise<RevenueEntry[]> {
   const { data: rawProjects } = await supabase
@@ -588,14 +614,149 @@ export async function getRevenueEntries(supabase: Sb): Promise<RevenueEntry[]> {
 export interface FinanceData {
   expenses: ExpenseWithProject[]
   subscriptions: Subscription[]
+  /** Revenus dérivés des projets valorisés (lecture seule). */
   revenues: RevenueEntry[]
+  /** Revenus libres saisis à la main (migration 032). */
+  manualRevenues: RevenueWithClient[]
 }
 
 export async function getFinanceData(supabase: Sb): Promise<FinanceData> {
-  const [expenses, subscriptions, revenues] = await Promise.all([
+  const [expenses, subscriptions, revenues, manualRevenues] = await Promise.all([
     getExpenses(supabase),
     getSubscriptions(supabase),
     getRevenueEntries(supabase),
+    getManualRevenues(supabase),
   ])
-  return { expenses, subscriptions, revenues }
+  return { expenses, subscriptions, revenues, manualRevenues }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Sociétés (migration 033) — regroupement de clients
+// ─────────────────────────────────────────────────────────────────
+
+/** Liste légère des sociétés (pour les sélecteurs). */
+export async function getAllCompanies(supabase: Sb): Promise<Company[]> {
+  const { data } = await supabase.from('companies').select('*').order('name', { ascending: true })
+  return (data as Company[] | null) ?? []
+}
+
+/** Sociétés + stats (contacts, projets, CA encaissé cumulé) pour la liste. */
+export async function getCompaniesWithStats(supabase: Sb): Promise<CompanyWithStats[]> {
+  const { data: rawCompanies } = await supabase
+    .from('companies')
+    .select('*')
+    .order('name', { ascending: true })
+  const companies = (rawCompanies as Company[] | null) ?? []
+  if (companies.length === 0) return []
+
+  const { data: rawClients } = await supabase.from('clients').select('id, company_id')
+  const clients = (rawClients as { id: string; company_id: string | null }[] | null) ?? []
+
+  const clientCountByCompany = new Map<string, number>()
+  const companyByClient = new Map<string, string>()
+  for (const c of clients) {
+    if (!c.company_id) continue
+    clientCountByCompany.set(c.company_id, (clientCountByCompany.get(c.company_id) ?? 0) + 1)
+    companyByClient.set(c.id, c.company_id)
+  }
+
+  const allClientIds = [...companyByClient.keys()]
+  const projectCountByCompany = new Map<string, number>()
+  const revenueByCompany = new Map<string, number>()
+
+  if (allClientIds.length > 0) {
+    const { data: rawProjects } = await supabase
+      .from('projects')
+      .select('client_id, value_eur, payment_status')
+      .in('client_id', allClientIds)
+    for (const p of (rawProjects as {
+      client_id: string | null
+      value_eur: number | null
+      payment_status: PaymentStatus
+    }[] | null) ?? []) {
+      if (!p.client_id) continue
+      const companyId = companyByClient.get(p.client_id)
+      if (!companyId) continue
+      projectCountByCompany.set(companyId, (projectCountByCompany.get(companyId) ?? 0) + 1)
+      if (p.payment_status === 'paid' && p.value_eur) {
+        revenueByCompany.set(companyId, (revenueByCompany.get(companyId) ?? 0) + p.value_eur)
+      }
+    }
+  }
+
+  return companies.map((co) => ({
+    ...co,
+    client_count: clientCountByCompany.get(co.id) ?? 0,
+    project_count: projectCountByCompany.get(co.id) ?? 0,
+    total_revenue: revenueByCompany.get(co.id) ?? 0,
+  }))
+}
+
+export interface CompanyProjectRow {
+  id: string
+  name: string
+  status: string
+  value_eur: number | null
+  payment_status: PaymentStatus
+  client_id: string | null
+  updated_at: string
+}
+
+export interface CompanyDetailData {
+  company: Company
+  clients: ClientWithStats[]
+  projects: CompanyProjectRow[]
+  totalRevenue: number
+}
+
+export async function getCompanyDetail(supabase: Sb, id: string): Promise<CompanyDetailData | null> {
+  const { data: rawCompany } = await supabase
+    .from('companies')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  const company = rawCompany as Company | null
+  if (!company) return null
+
+  const { data: rawClients } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('company_id', id)
+    .order('contact_name', { ascending: true })
+  const clientRows = (rawClients as Client[] | null) ?? []
+  const clientIds = clientRows.map((c) => c.id)
+
+  let projects: CompanyProjectRow[] = []
+  const activeByClient = new Map<string, number>()
+  const totalByClient = new Map<string, number>()
+  const lastNameByClient = new Map<string, string>()
+  let totalRevenue = 0
+
+  if (clientIds.length > 0) {
+    const { data: rawProjects } = await supabase
+      .from('projects')
+      .select('id, name, status, value_eur, payment_status, client_id, updated_at')
+      .in('client_id', clientIds)
+      .order('updated_at', { ascending: false })
+    projects = (rawProjects as CompanyProjectRow[] | null) ?? []
+    for (const p of projects) {
+      if (p.client_id) {
+        totalByClient.set(p.client_id, (totalByClient.get(p.client_id) ?? 0) + 1)
+        if (p.status === 'active') {
+          activeByClient.set(p.client_id, (activeByClient.get(p.client_id) ?? 0) + 1)
+        }
+        if (!lastNameByClient.has(p.client_id)) lastNameByClient.set(p.client_id, p.name)
+      }
+      if (p.payment_status === 'paid' && p.value_eur) totalRevenue += p.value_eur
+    }
+  }
+
+  const clients: ClientWithStats[] = clientRows.map((c) => ({
+    ...c,
+    active_projects: activeByClient.get(c.id) ?? 0,
+    total_projects: totalByClient.get(c.id) ?? 0,
+    last_project_name: lastNameByClient.get(c.id) ?? null,
+  }))
+
+  return { company, clients, projects, totalRevenue }
 }

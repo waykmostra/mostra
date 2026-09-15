@@ -1,6 +1,6 @@
 import { Mail, Phone, MessageCircle, Calendar, Building2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils/dates'
-import AssignClientButton from './AssignClientButton'
+import ProjectClientsManager from './ProjectClientsManager'
 import AssignPMButton from './AssignPMButton'
 import type { Client, ContactMethod, Profile, Project, UserRole } from '@/lib/types'
 
@@ -33,7 +33,7 @@ const CONTACT_LABELS: Record<ContactMethod, string> = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-semibold tracking-widest text-[#444444] uppercase mb-1.5">
+    <p className="text-[10px] font-semibold tracking-widest text-faint uppercase mb-1.5">
       {children}
     </p>
   )
@@ -41,8 +41,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 interface ProjectInfoProps {
   project: Project
-  /** Fiche CRM (table clients) ; NULL si projet non rattaché à un client. */
+  /** Fiche CRM PRINCIPALE (projects.client_id) ; NULL si non rattaché. */
   client: Client | null
+  /** Tous les clients du projet (principal + additionnels, migration 031). */
+  clients?: Client[]
   projectManager: Profile | null
   isAdmin?: boolean
   availableClients?: ClientOption[]
@@ -52,6 +54,7 @@ interface ProjectInfoProps {
 export default function ProjectInfo({
   project,
   client,
+  clients = [],
   projectManager,
   isAdmin = false,
   availableClients = [],
@@ -65,23 +68,23 @@ export default function ProjectInfo({
         : 'text-[#EF4444]'
 
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5 space-y-5">
+    <div className="bg-surface border border-line rounded-xl p-5 space-y-5">
       {/* Progression */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs text-[#666666]">Progression</p>
+          <p className="text-xs text-faint">Progression</p>
           <p className={`text-2xl font-bold tabular-nums ${progressColor}`}>{project.progress}%</p>
         </div>
         {/* Mini arc visuel */}
         <div className="relative w-12 h-12 flex-shrink-0">
           <svg viewBox="0 0 48 48" className="w-full h-full -rotate-90">
-            <circle cx="24" cy="24" r="19" fill="none" stroke="#2a2a2a" strokeWidth="4" />
+            <circle cx="24" cy="24" r="19" fill="none" stroke="rgb(var(--c-border))" strokeWidth="4" />
             <circle
               cx="24"
               cy="24"
               r="19"
               fill="none"
-              stroke="#00D76B"
+              stroke="rgb(var(--c-brand))"
               strokeWidth="4"
               strokeLinecap="round"
               strokeDasharray={`${2 * Math.PI * 19}`}
@@ -92,53 +95,60 @@ export default function ProjectInfo({
         </div>
       </div>
 
-      <div className="h-px bg-[#1a1a1a]" />
+      <div className="h-px bg-surface-2" />
 
-      {/* Client */}
+      {/* Client(s) */}
       <div>
-        <SectionLabel>Client</SectionLabel>
-        {client ? (
+        <SectionLabel>{clients.length > 1 ? 'Clients' : 'Client'}</SectionLabel>
+        {isAdmin ? (
+          <ProjectClientsManager
+            projectId={project.id}
+            clients={clients
+              .map((c) => ({
+                id: c.id,
+                displayName: c.company_name || c.contact_name,
+                subtitle: c.company_name ? c.contact_name : c.email,
+                isPrimary: c.id === project.client_id,
+                hasAccount: !!c.profile_id,
+              }))
+              .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))}
+            availableClients={availableClients}
+          />
+        ) : client ? (
           <>
-            <p className="text-sm text-white font-medium">
+            <p className="text-sm text-ink font-medium">
               {client.company_name || client.contact_name}
             </p>
             {client.company_name && (
-              <p className="text-xs text-[#a0a0a0] mt-0.5 flex items-center gap-1">
+              <p className="text-xs text-dim mt-0.5 flex items-center gap-1">
                 <Building2 className="h-3 w-3" />
                 {client.contact_name}
               </p>
             )}
             {client.email && (
-              <p className="text-xs text-[#666666] mt-0.5">{client.email}</p>
+              <p className="text-xs text-faint mt-0.5">{client.email}</p>
             )}
           </>
         ) : (
-          <p className="text-sm text-[#444444] italic">Aucun client assigné</p>
-        )}
-        {isAdmin && (
-          <AssignClientButton
-            projectId={project.id}
-            currentClientId={project.client_id}
-            clients={availableClients}
-          />
+          <p className="text-sm text-faint italic">Aucun client assigné</p>
         )}
       </div>
 
-      <div className="h-px bg-[#1a1a1a]" />
+      <div className="h-px bg-surface-2" />
 
       {/* Project Manager */}
       <div>
         <SectionLabel>Project Manager</SectionLabel>
         {projectManager ? (
           <div>
-            <p className="text-sm text-white font-medium">{projectManager.full_name}</p>
+            <p className="text-sm text-ink font-medium">{projectManager.full_name}</p>
             <div className="flex items-center gap-1.5 mt-1">
               {(() => {
                 const Icon = CONTACT_ICONS[projectManager.contact_method]
                 return (
                   <>
-                    <Icon className="h-3 w-3 text-[#444444]" />
-                    <span className="text-xs text-[#666666]">
+                    <Icon className="h-3 w-3 text-faint" />
+                    <span className="text-xs text-faint">
                       {CONTACT_LABELS[projectManager.contact_method]}
                     </span>
                   </>
@@ -147,7 +157,7 @@ export default function ProjectInfo({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-[#444444] italic">Non assigné</p>
+          <p className="text-sm text-faint italic">Non assigné</p>
         )}
         {isAdmin && (
           <AssignPMButton
@@ -158,24 +168,24 @@ export default function ProjectInfo({
         )}
       </div>
 
-      <div className="h-px bg-[#1a1a1a]" />
+      <div className="h-px bg-surface-2" />
 
       {/* Date de création */}
       <div>
         <SectionLabel>Créé le</SectionLabel>
         <div className="flex items-center gap-1.5">
-          <Calendar className="h-3.5 w-3.5 text-[#444444]" />
-          <p className="text-sm text-[#a0a0a0]">{formatDate(project.created_at)}</p>
+          <Calendar className="h-3.5 w-3.5 text-faint" />
+          <p className="text-sm text-dim">{formatDate(project.created_at)}</p>
         </div>
       </div>
 
       {/* Share token (lien client) */}
       {project.share_token && (
         <>
-          <div className="h-px bg-[#1a1a1a]" />
+          <div className="h-px bg-surface-2" />
           <div>
             <SectionLabel>Lien client</SectionLabel>
-            <p className="text-xs text-[#666666] font-mono break-all">
+            <p className="text-xs text-faint font-mono break-all">
               /client/{project.share_token}
             </p>
           </div>

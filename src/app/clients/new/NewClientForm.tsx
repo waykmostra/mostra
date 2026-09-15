@@ -23,7 +23,7 @@ const sourceValues = [
   'other',
 ] as const
 
-const statusValues = ['cold', 'interest', 'warm', 'active', 'former', 'lost'] as const
+const statusValues = ['active', 'former'] as const
 
 const schema = z.object({
   companyName: z.string().max(100, 'Trop long').optional(),
@@ -53,19 +53,15 @@ const SOURCE_LABELS: Record<ClientSource, string> = {
 }
 
 const STATUS_LABELS: Record<ClientStatus, string> = {
-  cold: 'Froid',
-  interest: 'Intérêt',
-  warm: 'Chaud',
   active: 'Actif',
   former: 'Ancien',
-  lost: 'Perdu',
 }
 
 // ── Helpers UI ───────────────────────────────────────────────────
 
 function Label({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
   return (
-    <label htmlFor={htmlFor} className="block text-sm font-medium text-[#a0a0a0] mb-1.5">
+    <label htmlFor={htmlFor} className="block text-sm font-medium text-dim mb-1.5">
       {children}
     </label>
   )
@@ -78,17 +74,17 @@ function FieldError({ message }: { message?: string }) {
 
 const inputClass = `
   w-full px-3 py-2.5 rounded-lg text-sm
-  bg-[#111111] border border-[#2a2a2a] text-white placeholder:text-[#444444]
+  bg-surface border border-line text-ink placeholder:text-faint
   outline-none transition-colors
-  focus:border-[#00D76B] focus:ring-1 focus:ring-[#00D76B]/30
+  focus:border-brand focus:ring-1 focus:ring-brand/30
   disabled:opacity-50
 `
 
 const selectClass = `
   w-full px-3 py-2.5 rounded-lg text-sm
-  bg-[#111111] border border-[#2a2a2a] text-white
+  bg-surface border border-line text-ink
   outline-none transition-colors
-  focus:border-[#00D76B] focus:ring-1 focus:ring-[#00D76B]/30
+  focus:border-brand focus:ring-1 focus:ring-brand/30
   disabled:opacity-50
 `
 
@@ -104,7 +100,7 @@ export default function NewClientForm() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { source: 'other', status: 'interest' },
+    defaultValues: { source: 'other', status: 'active' },
   })
 
   async function onSubmit(values: FormValues) {
@@ -137,13 +133,13 @@ export default function NewClientForm() {
       <div className="mb-8">
         <Link
           href="/clients"
-          className="inline-flex items-center gap-1.5 text-sm text-[#666666] hover:text-white transition-colors mb-4"
+          className="inline-flex items-center gap-1.5 text-sm text-faint hover:text-ink transition-colors mb-4"
         >
           <ChevronLeft className="h-4 w-4" />
           Retour aux clients
         </Link>
-        <h1 className="text-xl font-semibold text-white">Nouveau client</h1>
-        <p className="text-sm text-[#666666] mt-0.5">
+        <h1 className="text-xl font-semibold text-ink">Nouveau client</h1>
+        <p className="text-sm text-faint mt-0.5">
           Crée une fiche CRM. Le compte connectable sera généré plus tard depuis la fiche client.
         </p>
       </div>
@@ -166,7 +162,7 @@ export default function NewClientForm() {
         {/* ── Contact ── */}
         <div>
           <Label htmlFor="contactName">
-            Nom du contact <span className="text-[#00D76B]">*</span>
+            Nom du contact <span className="text-brand">*</span>
           </Label>
           <input
             id="contactName"
@@ -283,7 +279,7 @@ export default function NewClientForm() {
           <Link
             href="/clients"
             className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium text-center
-              border border-[#2a2a2a] text-[#a0a0a0] hover:text-white hover:border-[#444444]
+              border border-line text-dim hover:text-ink hover:border-line-strong
               transition-colors"
           >
             Annuler
@@ -292,7 +288,7 @@ export default function NewClientForm() {
             type="submit"
             disabled={isSubmitting}
             className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium
-              bg-[#00D76B] text-white hover:bg-[#00C061] active:bg-[#009E50]
+              bg-brand text-ink hover:bg-brand active:bg-brand
               transition-colors disabled:opacity-60 disabled:cursor-not-allowed
               flex items-center justify-center gap-2"
           >

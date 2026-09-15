@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react'
 const PALETTE = [
   { label: 'Orange', value: '#F97316' },
   { label: 'Bleu', value: '#3B82F6' },
-  { label: 'Vert MOSTRA', value: '#00D76B' },
+  { label: 'Vert MOSTRA', value: 'rgb(var(--c-brand))' },
   { label: 'Violet', value: '#A855F7' },
   { label: 'Rouge', value: '#EF4444' },
   { label: 'Jaune', value: '#EAB308' },
@@ -56,7 +56,7 @@ export default function ColorPicker({ value, onChange }: ColorPickerProps) {
 
       {/* Popover */}
       {open && (
-        <div className="absolute left-0 top-7 z-50 w-48 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-3 shadow-2xl space-y-3">
+        <div className="absolute left-0 top-7 z-50 w-48 bg-surface-2 border border-line rounded-xl p-3 shadow-2xl space-y-3">
           {/* Palette */}
           <div className="grid grid-cols-5 gap-1.5">
             {PALETTE.map((c) => (
@@ -76,7 +76,7 @@ export default function ColorPicker({ value, onChange }: ColorPickerProps) {
 
           {/* Custom hex */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-[#555555] flex-shrink-0">#</span>
+            <span className="text-[10px] text-faint flex-shrink-0">#</span>
             <input
               type="text"
               maxLength={6}
@@ -84,12 +84,12 @@ export default function ColorPicker({ value, onChange }: ColorPickerProps) {
               onChange={(e) => setCustom(e.target.value.replace(/[^0-9A-Fa-f]/g, ''))}
               onKeyDown={(e) => { if (e.key === 'Enter') handleCustomSubmit() }}
               placeholder="F97316"
-              className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded px-1.5 py-1 text-[11px] text-white placeholder-[#333333] font-mono focus:outline-none focus:border-[#555555] w-0"
+              className="flex-1 bg-surface border border-line rounded px-1.5 py-1 text-[11px] text-ink placeholder-[rgb(var(--c-border-strong))] font-mono focus:outline-none focus:border-[rgb(var(--c-text-faint))] w-0"
             />
             <button
               type="button"
               onClick={handleCustomSubmit}
-              className="text-[10px] text-[#00D76B] hover:text-white transition-colors flex-shrink-0"
+              className="text-[10px] text-brand hover:text-ink transition-colors flex-shrink-0"
             >
               OK
             </button>

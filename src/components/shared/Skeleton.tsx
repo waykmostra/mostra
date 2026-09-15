@@ -6,5 +6,5 @@ interface Props {
 }
 
 export function Skeleton({ className = '', style }: Props) {
-  return <div className={`animate-pulse rounded-lg bg-[#1a1a1a] ${className}`} style={style} />
+  return <div className={`animate-pulse rounded-lg bg-surface-2 ${className}`} style={style} />
 }

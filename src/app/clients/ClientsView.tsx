@@ -32,23 +32,17 @@ import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils/dates'
 import { updateClientStatus } from './actions'
 import DeleteClientButton from './DeleteClientButton'
-import { STAGE_META } from '@/components/founder/pipelineMeta'
 import type {
   ClientStatus,
   ClientSource,
   ClientWithStats,
-  PipelineStage,
 } from '@/lib/types'
 
 // ─── Configuration ──────────────────────────────────────────────
 
 const STATUSES: { id: ClientStatus; label: string; color: string; bg: string }[] = [
-  { id: 'cold',     label: 'Froid',    color: '#94A3B8', bg: '#94A3B815' },
-  { id: 'interest', label: 'Intérêt',  color: '#A78BFA', bg: '#A78BFA15' },
-  { id: 'warm',     label: 'Chaud',    color: '#F59E0B', bg: '#F59E0B15' },
   { id: 'active',   label: 'Actif',    color: '#22C55E', bg: '#22C55E15' },
   { id: 'former',   label: 'Ancien',   color: '#64748B', bg: '#64748B15' },
-  { id: 'lost',     label: 'Perdu',    color: '#EF4444', bg: '#EF444415' },
 ]
 
 const SOURCE_LABEL: Record<ClientSource, string> = {
@@ -60,12 +54,6 @@ const SOURCE_LABEL: Record<ClientSource, string> = {
   cold_outreach: 'Démarchage',
   other:         'Autre',
 }
-
-// Étapes du funnel commercial (migration 021) — partagé avec l'espace Founder.
-const STAGE_FILTER_OPTIONS = (Object.keys(STAGE_META) as PipelineStage[]).map((value) => ({
-  value,
-  label: STAGE_META[value].label,
-}))
 
 // ─── Props ──────────────────────────────────────────────────────
 
@@ -82,7 +70,6 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
   const [mode, setMode] = useState<ViewMode>('kanban')
   const [search, setSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState<ClientSource | 'all'>('all')
-  const [stageFilter, setStageFilter] = useState<PipelineStage | 'all'>('all')
   const [followUpOnly, setFollowUpOnly] = useState(false)
   const [, startTransition] = useTransition()
 
@@ -95,7 +82,6 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
     return clients.filter((c) => {
       if (followUpOnly && !c.follow_up_pending) return false
       if (sourceFilter !== 'all' && c.source !== sourceFilter) return false
-      if (stageFilter !== 'all' && c.pipeline_stage !== stageFilter) return false
       if (search.trim()) {
         const q = search.toLowerCase()
         const hay = [
@@ -111,7 +97,7 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
       }
       return true
     })
-  }, [clients, search, sourceFilter, stageFilter, followUpOnly])
+  }, [clients, search, sourceFilter, followUpOnly])
 
   // DnD
   function handleDragEnd(e: DragEndEvent) {
@@ -160,7 +146,6 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
 
   const activeFilters =
     (sourceFilter !== 'all' ? 1 : 0) +
-    (stageFilter !== 'all' ? 1 : 0) +
     (followUpOnly ? 1 : 0) +
     (search ? 1 : 0)
 
@@ -170,7 +155,7 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#555555]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-faint" />
           <input
             type="text"
             value={search}
@@ -178,9 +163,9 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
             placeholder="Chercher un client, une société, un email…"
             className="
               w-full pl-9 pr-3 py-2 rounded-lg text-sm
-              bg-[#111111] border border-[#2a2a2a] text-white
-              placeholder-[#3a3a3a]
-              focus:outline-none focus:border-[#444444]
+              bg-surface border border-line text-ink
+              placeholder-faint
+              focus:outline-none focus:border-line-strong
             "
           />
         </div>
@@ -191,31 +176,14 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
           onChange={(e) => setSourceFilter(e.target.value as ClientSource | 'all')}
           className="
             px-3 py-2 rounded-lg text-sm
-            bg-[#111111] border border-[#2a2a2a] text-white
-            focus:outline-none focus:border-[#444444]
+            bg-surface border border-line text-ink
+            focus:outline-none focus:border-line-strong
             cursor-pointer
           "
         >
           <option value="all">Toutes sources</option>
           {Object.entries(SOURCE_LABEL).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
-
-        {/* Pipeline stage filter (funnel commercial — relié à la Prospection) */}
-        <select
-          value={stageFilter}
-          onChange={(e) => setStageFilter(e.target.value as PipelineStage | 'all')}
-          className="
-            px-3 py-2 rounded-lg text-sm
-            bg-[#111111] border border-[#2a2a2a] text-white
-            focus:outline-none focus:border-[#444444]
-            cursor-pointer
-          "
-        >
-          <option value="all">Tout le pipeline</option>
-          {STAGE_FILTER_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
 
@@ -228,7 +196,7 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
             border
             ${followUpOnly
               ? 'bg-[#F59E0B]/10 border-[#F59E0B]/30 text-[#F59E0B]'
-              : 'bg-[#111111] border-[#2a2a2a] text-[#666666] hover:text-white'}
+              : 'bg-surface border-line text-faint hover:text-ink'}
           `}
         >
           <Bell className="h-4 w-4" />
@@ -242,12 +210,11 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
             onClick={() => {
               setSearch('')
               setSourceFilter('all')
-              setStageFilter('all')
               setFollowUpOnly(false)
             }}
             className="
               inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs
-              bg-[#1a1a1a] border border-[#2a2a2a] text-[#888888] hover:text-white
+              bg-surface-2 border border-line text-dim hover:text-ink
               transition-colors
             "
           >
@@ -260,15 +227,15 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
         <div className="flex-1" />
 
         {/* View toggle */}
-        <div className="inline-flex bg-[#111111] border border-[#2a2a2a] rounded-lg p-0.5">
+        <div className="inline-flex bg-surface border border-line rounded-lg p-0.5">
           <button
             type="button"
             onClick={() => setMode('kanban')}
             className={`
               inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
               ${mode === 'kanban'
-                ? 'bg-[#222222] text-white'
-                : 'text-[#666666] hover:text-white'}
+                ? 'bg-surface-3 text-ink'
+                : 'text-faint hover:text-ink'}
             `}
           >
             <KanbanSquare className="h-3.5 w-3.5" />
@@ -280,8 +247,8 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
             className={`
               inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
               ${mode === 'list'
-                ? 'bg-[#222222] text-white'
-                : 'text-[#666666] hover:text-white'}
+                ? 'bg-surface-3 text-ink'
+                : 'text-faint hover:text-ink'}
             `}
           >
             <List className="h-3.5 w-3.5" />
@@ -292,9 +259,9 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
 
       {/* ── Empty state ──────────────────────────────────────────── */}
       {filtered.length === 0 && (
-        <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-10 flex flex-col items-center gap-3">
-          <Filter className="h-8 w-8 text-[#2a2a2a]" />
-          <p className="text-sm text-[#666666]">
+        <div className="bg-surface border border-line rounded-xl p-10 flex flex-col items-center gap-3">
+          <Filter className="h-8 w-8 text-[rgb(var(--c-border))]" />
+          <p className="text-sm text-faint">
             {clients.length === 0
               ? 'Aucun client pour le moment.'
               : 'Aucun client ne correspond à ces filtres.'}
@@ -324,9 +291,9 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
 
       {/* ── Liste ────────────────────────────────────────────────── */}
       {mode === 'list' && filtered.length > 0 && (
-        <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl overflow-hidden">
-          <div className="divide-y divide-[#1a1a1a] overflow-x-auto">
-            <div className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-4 px-5 py-2.5 text-[10px] text-[#444444] uppercase tracking-widest font-medium min-w-[720px]">
+        <div className="bg-surface border border-line rounded-xl overflow-hidden">
+          <div className="divide-y divide-line overflow-x-auto">
+            <div className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-4 px-5 py-2.5 text-[10px] text-faint uppercase tracking-widest font-medium min-w-[720px]">
               <span>Client</span>
               <span>Source</span>
               <span>Statut</span>
@@ -340,21 +307,21 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
               return (
                 <div
                   key={client.id}
-                  className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-4 px-5 py-3.5 items-center hover:bg-[#161616] transition-colors min-w-[720px]"
+                  className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-4 px-5 py-3.5 items-center hover:bg-surface-2 transition-colors min-w-[720px]"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-[#00D76B]/10 border border-[#00D76B]/20 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-bold text-[#00D76B]">
+                    <div className="w-9 h-9 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-bold text-brand">
                         {displayName[0]?.toUpperCase() ?? '?'}
                       </span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{displayName}</p>
+                      <p className="text-sm font-medium text-ink truncate">{displayName}</p>
                       {client.company_name && (
-                        <p className="text-[11px] text-[#888888] truncate">{client.contact_name}</p>
+                        <p className="text-[11px] text-dim truncate">{client.contact_name}</p>
                       )}
                       {client.email && (
-                        <p className="text-[11px] text-[#555555] flex items-center gap-1 truncate">
+                        <p className="text-[11px] text-faint flex items-center gap-1 truncate">
                           <Mail className="h-3 w-3 flex-shrink-0" />
                           {client.email}
                         </p>
@@ -362,7 +329,7 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
                     </div>
                   </div>
 
-                  <p className="text-xs text-[#888888]">{SOURCE_LABEL[client.source]}</p>
+                  <p className="text-xs text-dim">{SOURCE_LABEL[client.source]}</p>
 
                   <div className="flex flex-col gap-1 items-start">
                     <span
@@ -375,17 +342,6 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
                     >
                       {status.label}
                     </span>
-                    {client.pipeline_stage && (
-                      <span
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium w-fit"
-                        style={{
-                          color: STAGE_META[client.pipeline_stage].color,
-                          backgroundColor: `${STAGE_META[client.pipeline_stage].color}1a`,
-                        }}
-                      >
-                        {STAGE_META[client.pipeline_stage].label}
-                      </span>
-                    )}
                   </div>
 
                   <div>
@@ -394,10 +350,10 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
                         {client.active_projects} actif{client.active_projects !== 1 ? 's' : ''}
                       </p>
                     ) : (
-                      <p className="text-xs text-[#555555]">—</p>
+                      <p className="text-xs text-faint">—</p>
                     )}
                     {client.total_projects > 0 && (
-                      <p className="text-[10px] text-[#444444]">
+                      <p className="text-[10px] text-faint">
                         {client.total_projects} au total
                       </p>
                     )}
@@ -408,7 +364,7 @@ export default function ClientsView({ initialClients }: ClientsViewProps) {
                       href={`/clients/${client.id}`}
                       className="
                         inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px]
-                        border border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444]
+                        border border-line text-faint hover:text-ink hover:border-line-strong
                         transition-colors
                       "
                     >
@@ -458,18 +414,18 @@ function KanbanColumn({
       ref={setNodeRef}
       className={`
         flex flex-col rounded-xl border transition-colors
-        ${isOver ? 'border-white/30 bg-white/[0.02]' : 'border-[#1f1f1f] bg-[#0e0e0e]'}
+        ${isOver ? 'border-white/30 bg-white/[0.02]' : 'border-line bg-surface'}
       `}
     >
       {/* Header — cliquable pour replier / déplier */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="px-3 py-3 border-b border-[#1a1a1a] flex items-center justify-between hover:bg-white/[0.02] transition-colors text-left"
+        className="px-3 py-3 border-b border-line flex items-center justify-between hover:bg-white/[0.02] transition-colors text-left"
       >
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-          <span className="text-xs font-semibold text-white">{label}</span>
+          <span className="text-xs font-semibold text-ink">{label}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span
@@ -480,7 +436,7 @@ function KanbanColumn({
           </span>
           {hasOverflow && (
             <ChevronDown
-              className={`h-3.5 w-3.5 text-[#666666] transition-transform ${expanded ? '' : '-rotate-90'}`}
+              className={`h-3.5 w-3.5 text-faint transition-transform ${expanded ? '' : '-rotate-90'}`}
             />
           )}
         </div>
@@ -489,7 +445,7 @@ function KanbanColumn({
       {/* Cards */}
       <div className="p-2 flex flex-col gap-2 min-h-[120px]">
         {clients.length === 0 ? (
-          <p className="text-[11px] text-[#3a3a3a] text-center py-6 italic">
+          <p className="text-[11px] text-faint text-center py-6 italic">
             Glissez un client ici
           </p>
         ) : (
@@ -501,7 +457,7 @@ function KanbanColumn({
               <button
                 type="button"
                 onClick={() => setExpanded(true)}
-                className="text-[11px] text-[#666666] hover:text-white py-1.5 rounded-md hover:bg-[#1a1a1a] transition-colors"
+                className="text-[11px] text-faint hover:text-ink py-1.5 rounded-md hover:bg-surface-2 transition-colors"
               >
                 voir les {hiddenCount} autres
               </button>
@@ -530,8 +486,8 @@ function KanbanCard({ client }: { client: ClientWithStats }) {
       ref={setNodeRef}
       style={{ transform: transformStyle, zIndex: isDragging ? 10 : 1 }}
       className={`
-        group rounded-lg border bg-[#141414] border-[#262626]
-        ${isDragging ? 'shadow-2xl shadow-black/50 opacity-90' : 'hover:border-[#3a3a3a]'}
+        group rounded-lg border bg-surface-2 border-line
+        ${isDragging ? 'shadow-2xl shadow-black/50 opacity-90' : 'hover:border-line-strong'}
         transition-colors
       `}
     >
@@ -542,7 +498,7 @@ function KanbanCard({ client }: { client: ClientWithStats }) {
           {...listeners}
           {...attributes}
           className="
-            mt-0.5 p-0.5 rounded text-[#444444] hover:text-[#888888] cursor-grab
+            mt-0.5 p-0.5 rounded text-faint hover:text-dim cursor-grab
             active:cursor-grabbing touch-none
           "
           aria-label="Déplacer"
@@ -553,41 +509,26 @@ function KanbanCard({ client }: { client: ClientWithStats }) {
         {/* Body — clic ouvre la fiche */}
         <Link href={`/clients/${client.id}`} className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-white truncate group-hover:text-[#00D76B] transition-colors">
+            <p className="text-sm font-medium text-ink truncate group-hover:text-brand transition-colors">
               {displayName}
             </p>
             {client.follow_up_pending && (
               <Bell className="h-3 w-3 text-[#F59E0B] flex-shrink-0" />
             )}
           </div>
-          {client.pipeline_stage && (
-            <span
-              className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[9px] font-medium"
-              style={{
-                color: STAGE_META[client.pipeline_stage].color,
-                backgroundColor: `${STAGE_META[client.pipeline_stage].color}1a`,
-              }}
-            >
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: STAGE_META[client.pipeline_stage].color }}
-              />
-              {STAGE_META[client.pipeline_stage].label}
-            </span>
-          )}
           {client.company_name && (
-            <p className="text-[10px] text-[#777777] truncate mt-0.5">
+            <p className="text-[10px] text-faint truncate mt-0.5">
               {client.contact_name}
             </p>
           )}
           {client.email && (
-            <p className="text-[10px] text-[#555555] truncate mt-0.5 flex items-center gap-1">
+            <p className="text-[10px] text-faint truncate mt-0.5 flex items-center gap-1">
               <Mail className="h-2.5 w-2.5 flex-shrink-0" />
               {client.email}
             </p>
           )}
           {client.last_project_name && (
-            <p className="text-[10px] text-[#555555] truncate mt-1 flex items-center gap-1">
+            <p className="text-[10px] text-faint truncate mt-1 flex items-center gap-1">
               <FolderOpen className="h-2.5 w-2.5 flex-shrink-0" />
               {client.last_project_name}
               {client.active_projects > 0 && (
@@ -596,7 +537,7 @@ function KanbanCard({ client }: { client: ClientWithStats }) {
             </p>
           )}
           {client.last_message_sent_at && (
-            <p className="text-[10px] text-[#444444] mt-1.5">
+            <p className="text-[10px] text-faint mt-1.5">
               Dernier message : {formatDate(client.last_message_sent_at)}
             </p>
           )}

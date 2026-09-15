@@ -363,3 +363,44 @@ export async function deleteProjectPhase(phaseId: string): Promise<PhaseActionRe
   revalidatePath(`/projects/${phase.project_id}`)
   return { success: true }
 }
+
+// ── renameProjectPhase (mode éditeur) ─────────────────────────────
+// Renomme une étape (phase) directement dans le projet.
+
+export async function renameProjectPhase(
+  phaseId: string,
+  name: string,
+): Promise<PhaseActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
+
+  const clean = name.trim()
+  if (!clean) return { success: false, error: "Le nom de l'étape est requis." }
+
+  const { data: rawPhase } = await supabase
+    .from('project_phases')
+    .select('id, project_id, name')
+    .eq('id', phaseId)
+    .maybeSingle()
+  const phase = rawPhase as Pick<ProjectPhase, 'id' | 'project_id' | 'name'> | null
+  if (!phase) return { success: false, error: 'Étape introuvable' }
+
+  if (clean === phase.name) return { success: true }
+
+  const { error } = await db(supabase)
+    .from('project_phases')
+    .update({ name: clean })
+    .eq('id', phaseId)
+  if (error) return { success: false, error: error.message }
+
+  await db(supabase).from('activity_logs').insert({
+    project_id: phase.project_id,
+    user_id: user.id,
+    action: 'status_changed',
+    details: { phase_name: clean, message: `Étape renommée (${phase.name} → ${clean})` },
+  })
+
+  revalidatePath(`/projects/${phase.project_id}`)
+  return { success: true }
+}

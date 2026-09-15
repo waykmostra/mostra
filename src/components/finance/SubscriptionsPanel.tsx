@@ -13,7 +13,7 @@ import type { BillingCycle, FinanceCategory, Subscription } from '@/lib/types'
 import { BILLING_META, CATEGORY_META, CATEGORY_OPTIONS, eur, monthlyBurn } from './financeMeta'
 
 const inputCls =
-  'w-full bg-[#1a1a1a] border border-[#333333] rounded-lg px-3 py-2 text-sm text-white placeholder-[#555555] focus:outline-none focus:border-[#555555] [color-scheme:dark]'
+  'w-full bg-surface-2 border border-line-strong rounded-lg px-3 py-2 text-sm text-ink placeholder-faint focus:outline-none focus:border-[rgb(var(--c-text-faint))] [color-scheme:dark]'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -69,7 +69,7 @@ function SubscriptionForm({
   }
 
   return (
-    <div className="bg-[#0d0d0d] border border-[#262626] rounded-lg p-3 space-y-2.5">
+    <div className="bg-surface border border-line rounded-lg p-3 space-y-2.5">
       <div className="grid grid-cols-1 sm:grid-cols-[1fr_130px] gap-2.5">
         <input
           className={inputCls}
@@ -94,8 +94,8 @@ function SubscriptionForm({
           value={billingCycle}
           onChange={(e) => setBillingCycle(e.target.value as BillingCycle)}
         >
-          <option value="monthly" className="bg-[#1a1a1a]">Mensuel</option>
-          <option value="yearly" className="bg-[#1a1a1a]">Annuel</option>
+          <option value="monthly" className="bg-surface-2">Mensuel</option>
+          <option value="yearly" className="bg-surface-2">Annuel</option>
         </select>
         <select
           className={inputCls}
@@ -103,7 +103,7 @@ function SubscriptionForm({
           onChange={(e) => setCategory(e.target.value as FinanceCategory)}
         >
           {CATEGORY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value} className="bg-[#1a1a1a]">
+            <option key={o.value} value={o.value} className="bg-surface-2">
               {o.label}
             </option>
           ))}
@@ -116,12 +116,12 @@ function SubscriptionForm({
         />
       </div>
       <div className="flex items-center gap-3">
-        <label className="flex items-center gap-2 text-xs text-[#aaaaaa] cursor-pointer select-none">
+        <label className="flex items-center gap-2 text-xs text-dim cursor-pointer select-none">
           <input
             type="checkbox"
             checked={active}
             onChange={(e) => setActive(e.target.checked)}
-            className="accent-[#00D76B] h-3.5 w-3.5"
+            className="accent-[rgb(var(--c-brand))] h-3.5 w-3.5"
           />
           Actif
         </label>
@@ -137,7 +137,7 @@ function SubscriptionForm({
           type="button"
           onClick={onCancel}
           disabled={isPending}
-          className="px-3 py-1.5 rounded-lg text-xs text-[#888888] hover:text-white hover:bg-[#1a1a1a] transition-colors"
+          className="px-3 py-1.5 rounded-lg text-xs text-dim hover:text-ink hover:bg-surface-2 transition-colors"
         >
           Annuler
         </button>
@@ -145,7 +145,7 @@ function SubscriptionForm({
           type="button"
           onClick={submit}
           disabled={isPending}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#00D76B] text-white hover:bg-[#00C061] transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand text-ink hover:bg-brand transition-colors disabled:opacity-50"
         >
           {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
           {initial ? 'Enregistrer' : 'Ajouter'}
@@ -203,11 +203,11 @@ export default function SubscriptionsPanel({ subscriptions }: { subscriptions: S
   }
 
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl overflow-hidden flex flex-col">
-      <div className="px-4 sm:px-5 py-3.5 border-b border-[#1e1e1e] flex items-center justify-between gap-3">
+    <div className="bg-surface border border-line rounded-xl overflow-hidden flex flex-col">
+      <div className="px-4 sm:px-5 py-3.5 border-b border-line flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">Abonnements</h2>
-          <p className="text-[11px] text-[#666666] mt-0.5 tabular-nums">
+          <h2 className="text-sm font-semibold text-ink">Abonnements</h2>
+          <p className="text-[11px] text-faint mt-0.5 tabular-nums">
             {eur(monthlyTotal)} / mois (actifs)
           </p>
         </div>
@@ -217,7 +217,7 @@ export default function SubscriptionsPanel({ subscriptions }: { subscriptions: S
               setEditingId(null)
               setAdding(true)
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#222222] transition-colors flex-shrink-0"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-2 border border-line text-ink hover:bg-surface-3 transition-colors flex-shrink-0"
           >
             <Plus className="h-3.5 w-3.5" />
             Ajouter
@@ -229,7 +229,7 @@ export default function SubscriptionsPanel({ subscriptions }: { subscriptions: S
         {adding && <SubscriptionForm onCancel={() => setAdding(false)} onSaved={done} />}
 
         {subscriptions.length === 0 && !adding ? (
-          <p className="text-xs text-[#555555] italic px-2 py-6 text-center">
+          <p className="text-xs text-faint italic px-2 py-6 text-center">
             Aucun abonnement enregistré.
           </p>
         ) : (
@@ -249,7 +249,7 @@ export default function SubscriptionsPanel({ subscriptions }: { subscriptions: S
             return (
               <div
                 key={s.id}
-                className={`flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-[#161616] transition-colors group ${
+                className={`flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface-2 transition-colors group ${
                   s.active ? '' : 'opacity-55'
                 }`}
               >
@@ -262,17 +262,17 @@ export default function SubscriptionsPanel({ subscriptions }: { subscriptions: S
                   className="flex-shrink-0"
                 >
                   {isPending && busyId === s.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[#666666]" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-faint" />
                   ) : (
                     <span
                       className="block h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: s.active ? '#22C55E' : '#444444' }}
+                      style={{ backgroundColor: s.active ? '#22C55E' : 'rgb(var(--c-text-faint))' }}
                     />
                   )}
                 </button>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-white truncate">{s.label}</p>
+                  <p className="text-sm text-ink truncate">{s.label}</p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span
                       className="text-[10px] font-medium px-1.5 py-0.5 rounded"
@@ -280,13 +280,13 @@ export default function SubscriptionsPanel({ subscriptions }: { subscriptions: S
                     >
                       {cat.label}
                     </span>
-                    <span className="text-[11px] text-[#555555]">{billing.label}</span>
+                    <span className="text-[11px] text-faint">{billing.label}</span>
                   </div>
                 </div>
 
                 <div className="text-right flex-shrink-0">
-                  <p className="text-sm text-white tabular-nums font-medium">{eur(s.amount_eur)}</p>
-                  <p className="text-[10px] text-[#555555]">{billing.short}</p>
+                  <p className="text-sm text-ink tabular-nums font-medium">{eur(s.amount_eur)}</p>
+                  <p className="text-[10px] text-faint">{billing.short}</p>
                 </div>
 
                 {confirmId === s.id ? (
@@ -303,7 +303,7 @@ export default function SubscriptionsPanel({ subscriptions }: { subscriptions: S
                       onClick={() => setConfirmId(null)}
                       disabled={isPending}
                       aria-label="Annuler"
-                      className="p-1.5 rounded text-[#666666] hover:bg-[#222222]"
+                      className="p-1.5 rounded text-faint hover:bg-surface-3"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -316,14 +316,14 @@ export default function SubscriptionsPanel({ subscriptions }: { subscriptions: S
                         setEditingId(s.id)
                       }}
                       aria-label="Modifier"
-                      className="p-1.5 rounded text-[#666666] hover:text-white hover:bg-[#222222]"
+                      className="p-1.5 rounded text-faint hover:text-ink hover:bg-surface-3"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => setConfirmId(s.id)}
                       aria-label="Supprimer"
-                      className="p-1.5 rounded text-[#666666] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
+                      className="p-1.5 rounded text-faint hover:text-[#EF4444] hover:bg-[#EF4444]/10"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

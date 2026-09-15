@@ -51,7 +51,7 @@ export default function SubPhaseActions({
     return (
       <button
         type="button"
-        className={`${btnBase} bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] hover:bg-[#00D76B]/20`}
+        className={`${btnBase} bg-brand/10 border border-brand/20 text-brand hover:bg-brand/20`}
         disabled={busy}
         onClick={() => handle('start')}
       >
@@ -71,7 +71,7 @@ export default function SubPhaseActions({
     return (
       <button
         type="button"
-        className={`${btnBase} bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] hover:bg-[#00D76B]/20`}
+        className={`${btnBase} bg-brand/10 border border-brand/20 text-brand hover:bg-brand/20`}
         disabled={busy}
         onClick={() => handle('review')}
       >

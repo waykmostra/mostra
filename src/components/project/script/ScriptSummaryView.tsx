@@ -147,34 +147,34 @@ export default function ScriptSummaryView({
   const filled = hasAnyContent(rows)
 
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-2xl overflow-hidden">
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[#1f1f1f]">
-        <AlignLeft className="w-4 h-4 text-[#00D76B]" />
-        <span className="text-[13px] font-semibold text-white">Résumé du script</span>
+    <div className="bg-surface border border-line rounded-2xl overflow-hidden">
+      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-line">
+        <AlignLeft className="w-4 h-4 text-brand" />
+        <span className="text-[13px] font-semibold text-ink">Résumé du script</span>
         <span
-          className="ml-auto text-[11px] font-mono text-[#888888] bg-[#1a1a1a] px-2 py-0.5 rounded-full"
+          className="ml-auto text-[11px] font-mono text-dim bg-surface-2 px-2 py-0.5 rounded-full"
           title="Mots de narration"
         >
           {total} mot{total > 1 ? 's' : ''}
         </span>
-        <span className="text-[10px] text-[#333333] hidden sm:inline">~{Math.round(total / 130)} min</span>
+        <span className="text-[10px] text-faint hidden sm:inline">~{Math.round(total / 130)} min</span>
       </div>
 
       <div className="px-3 sm:px-5 pb-5 pt-4">
         {/* Rythme & intentions — non compté */}
         {(editable || (beats && beats.length > 0)) && (
-          <div className="mb-4 rounded-xl border border-dashed border-[#2a2a2a] p-3">
+          <div className="mb-4 rounded-xl border border-dashed border-line p-3">
             <div className="flex items-center gap-2 mb-2">
-              <Wind className="w-3.5 h-3.5 text-[#555555]" />
-              <span className="text-[11px] uppercase tracking-widest text-[#555555]">
+              <Wind className="w-3.5 h-3.5 text-faint" />
+              <span className="text-[11px] uppercase tracking-widest text-faint">
                 Rythme &amp; intentions
               </span>
-              <span className="text-[10px] text-[#444444] hidden sm:inline">(non compté)</span>
+              <span className="text-[10px] text-faint hidden sm:inline">(non compté)</span>
               {editable && (
                 <button
                   type="button"
                   onClick={addBeat}
-                  className="ml-auto h-6 w-6 grid place-items-center rounded text-[#666666] hover:text-white hover:bg-[#1a1a1a]"
+                  className="ml-auto h-6 w-6 grid place-items-center rounded text-faint hover:text-ink hover:bg-surface-2"
                   title="Ajouter un repère de rythme"
                 >
                   <Plus className="w-4 h-4" />
@@ -182,7 +182,7 @@ export default function ScriptSummaryView({
               )}
             </div>
             {(beats || []).length === 0 ? (
-              <p className="text-[12px] text-[#555555]">
+              <p className="text-[12px] text-faint">
                 Ajoute des repères (Intention, Ambiance, Tempo…) pour donner le rythme de la vidéo.
               </p>
             ) : (
@@ -194,27 +194,27 @@ export default function ScriptSummaryView({
                         value={b.title}
                         onChange={(e) => updateBeat(b.id, { title: e.target.value })}
                         placeholder="Titre"
-                        className="w-20 sm:w-28 shrink-0 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-2 py-1 text-[12px] font-semibold text-white outline-none focus:border-[#00D76B]"
+                        className="w-20 sm:w-28 shrink-0 bg-surface-2 border border-line rounded-md px-2 py-1 text-[12px] font-semibold text-ink outline-none focus:border-brand"
                       />
                       <AutoGrowTextarea
                         value={b.note}
                         onChange={(e) => updateBeat(b.id, { note: e.target.value })}
                         placeholder="Note de rythme…"
                         minRows={1}
-                        className="flex-1 min-w-0 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-2 py-1 text-[13px] text-white outline-none focus:border-[#00D76B]"
+                        className="flex-1 min-w-0 bg-surface-2 border border-line rounded-md px-2 py-1 text-[13px] text-ink outline-none focus:border-brand"
                       />
                       <button
                         type="button"
                         onClick={() => removeBeat(b.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 grid place-items-center rounded text-[#555555] hover:text-red-400 hover:bg-red-500/10 shrink-0"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 grid place-items-center rounded text-faint hover:text-red-400 hover:bg-red-500/10 shrink-0"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ) : (
                     <div key={b.id} className="flex items-start gap-2 text-[13px]">
-                      <span className="w-20 sm:w-28 shrink-0 text-[12px] font-semibold text-[#888888]">{b.title}</span>
-                      <span className="flex-1 min-w-0 text-[#cccccc] whitespace-pre-wrap">{b.note}</span>
+                      <span className="w-20 sm:w-28 shrink-0 text-[12px] font-semibold text-dim">{b.title}</span>
+                      <span className="flex-1 min-w-0 text-dim whitespace-pre-wrap">{b.note}</span>
                     </div>
                   ),
                 )}
@@ -224,7 +224,7 @@ export default function ScriptSummaryView({
         )}
 
         {!filled ? (
-          <p className="text-[#555555] text-[13px] py-2">
+          <p className="text-faint text-[13px] py-2">
             Le résumé apparaîtra ici à mesure que tu remplis le tableau.
           </p>
         ) : (
@@ -244,7 +244,7 @@ export default function ScriptSummaryView({
                     >
                       {cat.name || 'Catégorie'}
                     </div>
-                    <div className="text-[10px] text-[#555555] font-mono mt-0.5">
+                    <div className="text-[10px] text-faint font-mono mt-0.5">
                       {words} mot{words > 1 ? 's' : ''}
                     </div>
                   </div>
@@ -259,14 +259,14 @@ export default function ScriptSummaryView({
                       const body = (
                         <>
                           {vo.map((v, i) => (
-                            <p key={i} className="text-white whitespace-pre-wrap">
+                            <p key={i} className="text-ink whitespace-pre-wrap">
                               {v}
                             </p>
                           ))}
                           {others.map(({ c, val }) => {
                             const t = tagInfo(c.tag)
                             return (
-                              <p key={c.id} className="text-[12px] text-[#888888]">
+                              <p key={c.id} className="text-[12px] text-dim">
                                 <span className="mr-1.5 font-medium" style={{ color: t.color }}>
                                   {c.title || t.label} :
                                 </span>

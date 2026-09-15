@@ -78,8 +78,8 @@ function CellShell({
   children: React.ReactNode
 }) {
   return (
-    <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2.5 group min-w-0">
-      <p className="text-[10px] uppercase tracking-widest text-[#444444] font-medium mb-1.5 flex items-center gap-1.5">
+    <div className="bg-surface border border-line rounded-lg px-3 py-2.5 group min-w-0">
+      <p className="text-[10px] uppercase tracking-widest text-faint font-medium mb-1.5 flex items-center gap-1.5">
         {icon}
         {label}
       </p>
@@ -141,8 +141,8 @@ function InlineEditCell({
             step={inputType === 'number' ? '0.01' : undefined}
             min={inputType === 'number' ? '0' : undefined}
             className="
-              flex-1 min-w-0 bg-[#1a1a1a] border border-[#333333] rounded px-1.5 py-1
-              text-xs text-white focus:outline-none focus:border-[#555555]
+              flex-1 min-w-0 bg-surface-2 border border-line-strong rounded px-1.5 py-1
+              text-xs text-ink focus:outline-none focus:border-[rgb(var(--c-text-faint))]
               disabled:opacity-50 [color-scheme:dark]
             "
           />
@@ -158,7 +158,7 @@ function InlineEditCell({
             type="button"
             onClick={() => setEditing(false)}
             disabled={isPending}
-            className="p-1 rounded text-[#666666] hover:bg-[#222222] transition-colors flex-shrink-0"
+            className="p-1 rounded text-faint hover:bg-surface-3 transition-colors flex-shrink-0"
           >
             <X className="h-3 w-3" />
           </button>
@@ -171,7 +171,7 @@ function InlineEditCell({
             onClick={open}
             className="
               opacity-0 group-hover:opacity-100 transition-opacity
-              p-1 rounded text-[#444444] hover:text-white hover:bg-[#222222] flex-shrink-0
+              p-1 rounded text-faint hover:text-ink hover:bg-surface-3 flex-shrink-0
             "
           >
             <Pencil className="h-3 w-3" />
@@ -226,10 +226,10 @@ export default function ProjectOverviewCard({
   }
 
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
+    <div className="bg-surface border border-line rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-white">Vue d&apos;ensemble</h2>
-        <span className="text-[10px] text-[#444444] uppercase tracking-widest">360°</span>
+        <h2 className="text-sm font-semibold text-ink">Vue d&apos;ensemble</h2>
+        <span className="text-[10px] text-faint uppercase tracking-widest">360°</span>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
@@ -238,13 +238,13 @@ export default function ProjectOverviewCard({
           {client ? (
             <Link
               href={`/clients/${client.id}`}
-              className="flex items-center gap-1 text-sm text-white hover:text-[#00D76B] transition-colors group/link"
+              className="flex items-center gap-1 text-sm text-ink hover:text-brand transition-colors group/link"
             >
               <span className="truncate">{client.company_name || client.contact_name}</span>
               <ChevronRight className="h-3 w-3 flex-shrink-0 opacity-0 group-hover/link:opacity-100 transition-opacity" />
             </Link>
           ) : (
-            <p className="text-sm text-[#555555] italic">Non rattaché</p>
+            <p className="text-sm text-faint italic">Non rattaché</p>
           )}
         </CellShell>
 
@@ -255,7 +255,7 @@ export default function ProjectOverviewCard({
               className="h-1.5 w-1.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: step.color }}
             />
-            <span className="text-sm text-white truncate">{step.label}</span>
+            <span className="text-sm text-ink truncate">{step.label}</span>
           </div>
           <p className="text-[10px] mt-0.5 tabular-nums" style={{ color: step.color }}>
             {step.sub ? `${step.sub} · ` : ''}
@@ -273,7 +273,7 @@ export default function ProjectOverviewCard({
           display={
             meta.deadline ? (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-white">{formatDate(meta.deadline)}</span>
+                <span className="text-sm text-ink">{formatDate(meta.deadline)}</span>
                 {dl && (
                   <span
                     className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border whitespace-nowrap"
@@ -288,7 +288,7 @@ export default function ProjectOverviewCard({
                 )}
               </div>
             ) : (
-              <p className="text-sm text-[#555555] italic">—</p>
+              <p className="text-sm text-faint italic">—</p>
             )
           }
         />
@@ -312,7 +312,7 @@ export default function ProjectOverviewCard({
               style={{ color: pay.color }}
             >
               {Object.entries(PAYMENT_META).map(([k, m]) => (
-                <option key={k} value={k} className="bg-[#1a1a1a] text-white">
+                <option key={k} value={k} className="bg-surface-2 text-ink">
                   {m.label}
                 </option>
               ))}
@@ -338,11 +338,11 @@ export default function ProjectOverviewCard({
           }}
           display={
             meta.value_eur != null ? (
-              <p className="text-sm text-white tabular-nums font-medium">
+              <p className="text-sm text-ink tabular-nums font-medium">
                 {meta.value_eur.toLocaleString('fr-FR')} €
               </p>
             ) : (
-              <p className="text-sm text-[#555555] italic">—</p>
+              <p className="text-sm text-faint italic">—</p>
             )
           }
         />
@@ -350,9 +350,9 @@ export default function ProjectOverviewCard({
         {/* Assigné à (PM) */}
         <CellShell icon={<UserCircle className="h-3.5 w-3.5" />} label="Assigné à">
           {projectManager ? (
-            <p className="text-sm text-white truncate">{projectManager.full_name}</p>
+            <p className="text-sm text-ink truncate">{projectManager.full_name}</p>
           ) : (
-            <p className="text-sm text-[#555555] italic">Non assigné</p>
+            <p className="text-sm text-faint italic">Non assigné</p>
           )}
         </CellShell>
 
@@ -370,13 +370,13 @@ export default function ProjectOverviewCard({
                 href={meta.quote_url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-[#00D76B] hover:underline truncate"
+                className="inline-flex items-center gap-1 text-sm text-brand hover:underline truncate"
               >
                 Voir le devis
                 <ExternalLink className="h-3 w-3 flex-shrink-0" />
               </a>
             ) : (
-              <p className="text-sm text-[#555555] italic">—</p>
+              <p className="text-sm text-faint italic">—</p>
             )
           }
         />
@@ -395,13 +395,13 @@ export default function ProjectOverviewCard({
                 href={meta.invoice_url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-[#00D76B] hover:underline truncate"
+                className="inline-flex items-center gap-1 text-sm text-brand hover:underline truncate"
               >
                 Voir la facture
                 <ExternalLink className="h-3 w-3 flex-shrink-0" />
               </a>
             ) : (
-              <p className="text-sm text-[#555555] italic">—</p>
+              <p className="text-sm text-faint italic">—</p>
             )
           }
         />

@@ -17,7 +17,7 @@ export default function DashboardLoading() {
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="bg-[#111111] border border-[#1a1a1a] rounded-xl p-5 flex items-center gap-4"
+            className="bg-surface border border-line rounded-xl p-5 flex items-center gap-4"
           >
             <Skeleton className="w-9 h-9 flex-shrink-0" />
             <div className="space-y-1.5 flex-1">
@@ -39,7 +39,7 @@ export default function DashboardLoading() {
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <div
             key={i}
-            className="bg-[#111111] border border-[#1a1a1a] rounded-xl p-5 space-y-3"
+            className="bg-surface border border-line rounded-xl p-5 space-y-3"
           >
             <div className="flex items-start justify-between">
               <Skeleton className="h-5 w-32" />

@@ -52,10 +52,10 @@ export default function ApprovalPanel({
         <div className="flex items-start gap-3">
           <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-white">
+            <p className="text-sm font-semibold text-ink">
               Cette phase est en attente de votre approbation
             </p>
-            <p className="text-xs text-[#666666] mt-0.5">
+            <p className="text-xs text-faint mt-0.5">
               Connectez-vous pour approuver ou demander des modifications.
             </p>
           </div>
@@ -126,10 +126,10 @@ function ApprovalForm({
       <div className="flex items-start gap-3">
         <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
         <div>
-          <p className="text-sm font-semibold text-white">
+          <p className="text-sm font-semibold text-ink">
             Cette phase est en attente de votre approbation
           </p>
-          <p className="text-xs text-[#666666] mt-0.5">
+          <p className="text-xs text-faint mt-0.5">
             Consultez le fichier ci-dessous, puis approuvez ou demandez des modifications.
           </p>
         </div>
@@ -138,7 +138,7 @@ function ApprovalForm({
       {/* Zone de révision (dépliable) */}
       {mode === 'revision' && (
         <div className="space-y-2">
-          <label className="text-xs font-medium text-[#a0a0a0]">
+          <label className="text-xs font-medium text-dim">
             Décrivez les modifications souhaitées
           </label>
           <textarea
@@ -148,8 +148,8 @@ function ApprovalForm({
             rows={3}
             disabled={isPending}
             className="
-              w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2
-              text-xs text-white placeholder-[#3a3a3a] resize-none
+              w-full bg-surface border border-line rounded-lg px-3 py-2
+              text-xs text-ink placeholder-faint resize-none
               focus:outline-none focus:border-[#F59E0B]/40 transition-colors
               disabled:opacity-50
             "
@@ -225,7 +225,7 @@ function ApprovalForm({
                 setMessage('')
               }}
               disabled={isPending}
-              className="text-xs text-[#555555] hover:text-white transition-colors w-full sm:w-auto text-center sm:text-left"
+              className="text-xs text-faint hover:text-ink transition-colors w-full sm:w-auto text-center sm:text-left"
             >
               Annuler
             </button>

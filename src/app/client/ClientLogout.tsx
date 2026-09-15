@@ -16,10 +16,7 @@ export default function ClientLogout() {
   return (
     <button
       onClick={handleLogout}
-      className="
-        text-xs text-[#666666] hover:text-[#00D76B] transition-colors
-        px-3 py-1.5 rounded-lg border border-[#2a2a2a] hover:border-[#00D76B]/30
-      "
+      className="whitespace-nowrap rounded-sm px-3 py-2 text-[13px] text-chrome-faint transition-colors hover:bg-white/[0.06] hover:text-chrome-text"
     >
       Déconnexion
     </button>

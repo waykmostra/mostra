@@ -16,7 +16,7 @@ interface ProjectOption {
 }
 
 const inputCls =
-  'w-full bg-[#1a1a1a] border border-[#333333] rounded-lg px-3 py-2 text-sm text-white placeholder-[#555555] focus:outline-none focus:border-[#555555] [color-scheme:dark]'
+  'w-full bg-surface-2 border border-line-strong rounded-lg px-3 py-2 text-sm text-ink placeholder-faint focus:outline-none focus:border-[rgb(var(--c-text-faint))] [color-scheme:dark]'
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -72,7 +72,7 @@ function ExpenseForm({
   }
 
   return (
-    <div className="bg-[#0d0d0d] border border-[#262626] rounded-lg p-3 space-y-2.5">
+    <div className="bg-surface border border-line rounded-lg p-3 space-y-2.5">
       <div className="grid grid-cols-1 sm:grid-cols-[1fr_130px] gap-2.5">
         <input
           className={inputCls}
@@ -98,7 +98,7 @@ function ExpenseForm({
           onChange={(e) => setCategory(e.target.value as FinanceCategory)}
         >
           {CATEGORY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value} className="bg-[#1a1a1a]">
+            <option key={o.value} value={o.value} className="bg-surface-2">
               {o.label}
             </option>
           ))}
@@ -114,11 +114,11 @@ function ExpenseForm({
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
         >
-          <option value="" className="bg-[#1a1a1a]">
+          <option value="" className="bg-surface-2">
             Aucun projet
           </option>
           {projects.map((p) => (
-            <option key={p.id} value={p.id} className="bg-[#1a1a1a]">
+            <option key={p.id} value={p.id} className="bg-surface-2">
               {p.name}
             </option>
           ))}
@@ -135,7 +135,7 @@ function ExpenseForm({
           type="button"
           onClick={onCancel}
           disabled={isPending}
-          className="px-3 py-1.5 rounded-lg text-xs text-[#888888] hover:text-white hover:bg-[#1a1a1a] transition-colors"
+          className="px-3 py-1.5 rounded-lg text-xs text-dim hover:text-ink hover:bg-surface-2 transition-colors"
         >
           Annuler
         </button>
@@ -143,7 +143,7 @@ function ExpenseForm({
           type="button"
           onClick={submit}
           disabled={isPending}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#00D76B] text-white hover:bg-[#00C061] transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand text-ink hover:bg-brand transition-colors disabled:opacity-50"
         >
           {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
           {initial ? 'Enregistrer' : 'Ajouter'}
@@ -190,11 +190,11 @@ export default function ExpensesPanel({
   }
 
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl overflow-hidden flex flex-col">
-      <div className="px-4 sm:px-5 py-3.5 border-b border-[#1e1e1e] flex items-center justify-between gap-3">
+    <div className="bg-surface border border-line rounded-xl overflow-hidden flex flex-col">
+      <div className="px-4 sm:px-5 py-3.5 border-b border-line flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">Dépenses</h2>
-          <p className="text-[11px] text-[#666666] mt-0.5 tabular-nums">{eur(total)} au total</p>
+          <h2 className="text-sm font-semibold text-ink">Dépenses</h2>
+          <p className="text-[11px] text-faint mt-0.5 tabular-nums">{eur(total)} au total</p>
         </div>
         {!adding && (
           <button
@@ -202,7 +202,7 @@ export default function ExpensesPanel({
               setEditingId(null)
               setAdding(true)
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#222222] transition-colors flex-shrink-0"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-2 border border-line text-ink hover:bg-surface-3 transition-colors flex-shrink-0"
           >
             <Plus className="h-3.5 w-3.5" />
             Ajouter
@@ -216,7 +216,7 @@ export default function ExpensesPanel({
         )}
 
         {expenses.length === 0 && !adding ? (
-          <p className="text-xs text-[#555555] italic px-2 py-6 text-center">
+          <p className="text-xs text-faint italic px-2 py-6 text-center">
             Aucune dépense enregistrée.
           </p>
         ) : (
@@ -236,10 +236,10 @@ export default function ExpensesPanel({
             return (
               <div
                 key={e.id}
-                className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-[#161616] transition-colors group"
+                className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface-2 transition-colors group"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-white truncate">{e.label}</p>
+                  <p className="text-sm text-ink truncate">{e.label}</p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span
                       className="text-[10px] font-medium px-1.5 py-0.5 rounded"
@@ -247,18 +247,18 @@ export default function ExpensesPanel({
                     >
                       {cat.label}
                     </span>
-                    <span className="text-[11px] text-[#555555]">{formatDate(e.incurred_on)}</span>
+                    <span className="text-[11px] text-faint">{formatDate(e.incurred_on)}</span>
                     {e.project_name && e.project_id && (
                       <Link
                         href={`/projects/${e.project_id}`}
-                        className="text-[11px] text-[#00D76B] hover:underline truncate max-w-[140px]"
+                        className="text-[11px] text-brand hover:underline truncate max-w-[140px]"
                       >
                         {e.project_name}
                       </Link>
                     )}
                   </div>
                 </div>
-                <span className="text-sm text-white tabular-nums font-medium flex-shrink-0">
+                <span className="text-sm text-ink tabular-nums font-medium flex-shrink-0">
                   {eur(e.amount_eur)}
                 </span>
                 {confirmId === e.id ? (
@@ -275,7 +275,7 @@ export default function ExpensesPanel({
                       onClick={() => setConfirmId(null)}
                       disabled={isPending}
                       aria-label="Annuler"
-                      className="p-1.5 rounded text-[#666666] hover:bg-[#222222]"
+                      className="p-1.5 rounded text-faint hover:bg-surface-3"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -288,14 +288,14 @@ export default function ExpensesPanel({
                         setEditingId(e.id)
                       }}
                       aria-label="Modifier"
-                      className="p-1.5 rounded text-[#666666] hover:text-white hover:bg-[#222222]"
+                      className="p-1.5 rounded text-faint hover:text-ink hover:bg-surface-3"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => setConfirmId(e.id)}
                       aria-label="Supprimer"
-                      className="p-1.5 rounded text-[#666666] hover:text-[#EF4444] hover:bg-[#EF4444]/10"
+                      className="p-1.5 rounded text-faint hover:text-[#EF4444] hover:bg-[#EF4444]/10"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

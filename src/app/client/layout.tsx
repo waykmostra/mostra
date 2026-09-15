@@ -1,76 +1,20 @@
-import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
 import { Toaster } from 'sonner'
-import ClientLogout from './ClientLogout'
-import Logo from '@/components/shared/Logo'
-import NotificationBell from '@/components/shared/NotificationBell'
 
-export default async function ClientLayout({ children }: { children: React.ReactNode }) {
-  // Auth optionnelle — cette route est publique
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+/** Enveloppe du portail client. La barre supérieure et le rail projet sont
+ *  montés par les segments : le dashboard n'a pas de rail, un projet oui. */
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      {/* ── Header ────────────────────────────────────────────────── */}
-      <header className="border-b border-[#1a1a1a] bg-[#0a0a0a]/80 backdrop-blur sticky top-0 z-30">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 select-none min-w-0">
-            <Logo variant="full" color="white" className="h-7 flex-shrink-0" />
-            <span className="text-[10px] text-[#444444] uppercase tracking-widest font-medium hidden sm:block">
-              Client
-            </span>
-          </Link>
-
-          {/* Actions droite */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            {user ? (
-              <>
-                {/* Notification bell for authenticated clients */}
-                <NotificationBell userId={user.id} />
-                <Link
-                  href="/client/dashboard"
-                  className="
-                    text-xs text-[#666666] hover:text-white transition-colors
-                    px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#2a2a2a] hover:border-[#444444]
-                    whitespace-nowrap
-                  "
-                >
-                  <span className="hidden sm:inline">Mes projets</span>
-                  <span className="sm:hidden">Projets</span>
-                </Link>
-                <ClientLogout />
-              </>
-            ) : (
-              <Link
-                href="/login"
-                className="
-                  text-xs text-[#666666] hover:text-white transition-colors
-                  px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#2a2a2a] hover:border-[#444444]
-                  whitespace-nowrap
-                "
-              >
-                Se connecter
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* ── Contenu ───────────────────────────────────────────────── */}
-      <main className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6 sm:py-8">{children}</main>
+    <div className="min-h-screen bg-canvas">
+      {children}
 
       <Toaster
-        theme="dark"
+        theme="light"
         position="top-right"
         toastOptions={{
           style: {
-            background: '#111111',
-            border: '1px solid #2a2a2a',
-            color: '#ffffff',
+            background: 'rgb(var(--c-surface))',
+            border: '1px solid rgb(var(--c-border))',
+            color: 'rgb(var(--c-text))',
           },
         }}
       />

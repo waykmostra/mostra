@@ -8,12 +8,8 @@ import { updateClient, updateClientStatus } from '../actions'
 import type { Client, ClientStatus } from '@/lib/types'
 
 const STATUSES: { id: ClientStatus; label: string; color: string; bg: string }[] = [
-  { id: 'cold',     label: 'Froid',    color: '#94A3B8', bg: '#94A3B815' },
-  { id: 'interest', label: 'Intérêt',  color: '#A78BFA', bg: '#A78BFA15' },
-  { id: 'warm',     label: 'Chaud',    color: '#F59E0B', bg: '#F59E0B15' },
   { id: 'active',   label: 'Actif',    color: '#22C55E', bg: '#22C55E15' },
   { id: 'former',   label: 'Ancien',   color: '#64748B', bg: '#64748B15' },
-  { id: 'lost',     label: 'Perdu',    color: '#EF4444', bg: '#EF444415' },
 ]
 
 interface ClientHeaderProps {
@@ -64,21 +60,21 @@ export default function ClientHeader({ client }: ClientHeaderProps) {
   }
 
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-6">
+    <div className="bg-surface border border-line rounded-xl p-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4 min-w-0">
           {/* Avatar */}
-          <div className="w-14 h-14 rounded-full bg-[#00D76B]/10 border border-[#00D76B]/20 flex items-center justify-center flex-shrink-0">
-            <span className="text-2xl font-bold text-[#00D76B]">
+          <div className="w-14 h-14 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-2xl font-bold text-brand">
               {displayName[0]?.toUpperCase() ?? '?'}
             </span>
           </div>
 
           {/* Identité + statut */}
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-white truncate">{displayName}</h1>
+            <h1 className="text-2xl font-bold text-ink truncate">{displayName}</h1>
             {client.company_name && (
-              <p className="text-sm text-[#a0a0a0] mt-0.5">{client.contact_name}</p>
+              <p className="text-sm text-dim mt-0.5">{client.contact_name}</p>
             )}
 
             {/* Édit inline du statut */}
@@ -105,7 +101,7 @@ export default function ClientHeader({ client }: ClientHeaderProps) {
               {open && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-                  <div className="absolute left-0 top-full mt-1 z-20 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden min-w-[160px] shadow-xl">
+                  <div className="absolute left-0 top-full mt-1 z-20 bg-surface-2 border border-line rounded-lg overflow-hidden min-w-[160px] shadow-xl">
                     {STATUSES.map((s) => (
                       <button
                         key={s.id}
@@ -113,12 +109,12 @@ export default function ClientHeader({ client }: ClientHeaderProps) {
                         onClick={() => changeStatus(s.id)}
                         className={`
                           flex items-center gap-2 w-full px-3 py-2 text-xs text-left
-                          hover:bg-[#222222] transition-colors
-                          ${s.id === status ? 'bg-[#181818]' : ''}
+                          hover:bg-surface-3 transition-colors
+                          ${s.id === status ? 'bg-surface-2' : ''}
                         `}
                       >
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                        <span className="text-white">{s.label}</span>
+                        <span className="text-ink">{s.label}</span>
                       </button>
                     ))}
                   </div>
@@ -138,7 +134,7 @@ export default function ClientHeader({ client }: ClientHeaderProps) {
               inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
               ${followUp
                 ? 'bg-[#F59E0B]/10 border-[#F59E0B]/30 text-[#F59E0B]'
-                : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#666666] hover:text-white'}
+                : 'bg-surface-2 border-line text-faint hover:text-ink'}
             `}
             title={followUp ? 'Marquer comme relancé' : 'Marquer comme en attente de relance'}
           >
@@ -151,7 +147,7 @@ export default function ClientHeader({ client }: ClientHeaderProps) {
             href={`/projects/new?clientId=${client.id}`}
             className="
               inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold
-              bg-[#00D76B] text-white hover:bg-[#00C061] transition-colors
+              bg-brand text-ink hover:bg-brand transition-colors
             "
           >
             <FolderPlus className="h-3.5 w-3.5" />

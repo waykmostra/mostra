@@ -120,7 +120,7 @@ function AdminRowCommentDock({
 
   return (
     <div
-      className="rounded-2xl border bg-[#0e0e0e] overflow-hidden"
+      className="rounded-2xl border bg-surface overflow-hidden"
       style={{ borderColor: `${blockColor}40` }}
     >
       <div
@@ -128,13 +128,13 @@ function AdminRowCommentDock({
         style={{ borderColor: `${blockColor}22`, background: `${blockColor}10` }}
       >
         <MessageSquare className="h-3.5 w-3.5" style={{ color: blockColor }} />
-        <span className="text-xs font-medium text-white truncate flex-1">
-          Commentaires · <span className="text-[#999999]">{rowTitle}</span>
+        <span className="text-xs font-medium text-ink truncate flex-1">
+          Commentaires · <span className="text-dim">{rowTitle}</span>
         </span>
         <button
           type="button"
           onClick={onClose}
-          className="h-6 w-6 grid place-items-center rounded text-[#666666] hover:text-white hover:bg-[#1a1a1a]"
+          className="h-6 w-6 grid place-items-center rounded text-faint hover:text-ink hover:bg-surface-2"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -148,31 +148,31 @@ function AdminRowCommentDock({
               const initials = authorName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
               return (
                 <div key={c.id} className={`flex gap-3 ${c.is_resolved ? 'opacity-40' : ''}`}>
-                  <div className="w-6 h-6 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
+                  <div className="w-6 h-6 rounded-full bg-surface-3 border border-line flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
                     {c.author?.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={c.author.avatar_url} alt={authorName} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-[9px] text-[#666666] font-medium">{initials}</span>
+                      <span className="text-[9px] text-faint font-medium">{initials}</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                      <span className="text-[11px] font-medium text-white">{authorName}</span>
-                      <span className="text-[10px] text-[#444444]">{formatRelative(c.created_at)}</span>
+                      <span className="text-[11px] font-medium text-ink">{authorName}</span>
+                      <span className="text-[10px] text-faint">{formatRelative(c.created_at)}</span>
                       {c.is_resolved && (
-                        <span className="text-[10px] text-[#00D76B] bg-[#00D76B]/10 px-1.5 py-0.5 rounded-full border border-[#00D76B]/20">
+                        <span className="text-[10px] text-brand bg-brand/10 px-1.5 py-0.5 rounded-full border border-brand/20">
                           Résolu
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[#999999] leading-relaxed">{c.content}</p>
+                    <p className="text-xs text-dim leading-relaxed">{c.content}</p>
                   </div>
                   {!c.is_resolved && (
                     <button
                       type="button"
                       onClick={() => handleResolve(c.id)}
-                      className="text-[#333333] hover:text-[#00D76B] transition-colors flex-shrink-0 mt-0.5"
+                      className="text-faint hover:text-brand transition-colors flex-shrink-0 mt-0.5"
                       title="Marquer comme résolu"
                     >
                       <CheckCircle className="h-3.5 w-3.5" />
@@ -191,13 +191,13 @@ function AdminRowCommentDock({
             onKeyDown={handleKeyDown}
             placeholder="Commentaire interne… (Ctrl+Entrée pour envoyer)"
             rows={2}
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+            className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
           />
           <button
             type="button"
             onClick={handleSubmit}
             disabled={!text.trim() || sending}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-[11px] font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[11px] font-medium hover:bg-brand/20 transition-colors disabled:opacity-40"
           >
             {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
             Envoyer
@@ -345,9 +345,9 @@ export default function ScriptEditor({
 
   const openRow = openRowKey ? rows.find((r) => r._key === openRowKey) ?? null : null
   const openRowColor = (() => {
-    if (!openRow) return '#00D76B'
+    if (!openRow) return 'rgb(var(--c-brand))'
     const cat = categories.find((c) => c.id === openRow.categoryId)
-    return cat?.color ?? '#00D76B'
+    return cat?.color ?? 'rgb(var(--c-brand))'
   })()
 
   const canComment = !!(projectId && phaseId)
@@ -356,7 +356,7 @@ export default function ScriptEditor({
   const rowCommentNode = (row: EditorRow) => {
     if (!row.id) {
       return (
-        <span title="Sauvegarde le brouillon pour commenter cette ligne" className="text-[#333333]">
+        <span title="Sauvegarde le brouillon pour commenter cette ligne" className="text-faint">
           <MessageSquare className="h-4 w-4" />
         </span>
       )
@@ -369,7 +369,7 @@ export default function ScriptEditor({
         type="button"
         onClick={() => setOpenRowKey(active ? null : row._key)}
         title="Commentaires de la ligne"
-        className={`relative h-7 w-7 grid place-items-center rounded-lg transition-colors ${active ? 'bg-[#1f1f1f] text-white' : 'text-[#555555] hover:text-white hover:bg-[#1a1a1a]'}`}
+        className={`relative h-7 w-7 grid place-items-center rounded-lg transition-colors ${active ? 'bg-[rgb(var(--c-border))] text-ink' : 'text-faint hover:text-ink hover:bg-surface-2'}`}
       >
         <MessageSquare className="h-4 w-4" />
         {unresolved > 0 && (
@@ -384,13 +384,13 @@ export default function ScriptEditor({
   // ── État « pending » ─────────────────────────────────────────────
   if (subPhaseStatus === 'pending') {
     return (
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-2xl p-10 text-center space-y-4">
-        <div className="w-12 h-12 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center mx-auto">
-          <FileText className="h-5 w-5 text-[#333333]" />
+      <div className="bg-surface border border-line rounded-2xl p-10 text-center space-y-4">
+        <div className="w-12 h-12 rounded-xl bg-surface-2 border border-line flex items-center justify-center mx-auto">
+          <FileText className="h-5 w-5 text-faint" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-white">Éditeur de script</p>
-          <p className="text-xs text-[#555555] mt-1 max-w-xs mx-auto">
+          <p className="text-sm font-semibold text-ink">Éditeur de script</p>
+          <p className="text-xs text-faint mt-1 max-w-xs mx-auto">
             Démarrez cette sous-phase pour commencer à rédiger le script de la vidéo.
           </p>
         </div>
@@ -399,7 +399,7 @@ export default function ScriptEditor({
             type="button"
             onClick={() => handleTransition('start')}
             disabled={busy}
-            className={`${btnBase} bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] hover:bg-[#00D76B]/20 mx-auto`}
+            className={`${btnBase} bg-brand/10 border border-brand/20 text-brand hover:bg-brand/20 mx-auto`}
           >
             {transitioning === 'start' ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -426,9 +426,9 @@ export default function ScriptEditor({
             </div>
           )}
           {(subPhaseStatus === 'completed' || subPhaseStatus === 'approved') && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20">
-              <CheckCircle className="h-3.5 w-3.5 text-[#00D76B]" />
-              <span className="text-xs text-[#00D76B]">Script approuvé</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand/10 border border-brand/20">
+              <CheckCircle className="h-3.5 w-3.5 text-brand" />
+              <span className="text-xs text-brand">Script approuvé</span>
             </div>
           )}
           {unresolvedTotal > 0 && (
@@ -447,7 +447,7 @@ export default function ScriptEditor({
               type="button"
               onClick={handleSave}
               disabled={busy}
-              className={`${btnBase} border border-[#2a2a2a] text-[#a0a0a0] hover:text-white hover:border-[#444444]`}
+              className={`${btnBase} border border-line text-dim hover:text-ink hover:border-line-strong`}
             >
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
               Sauvegarder le brouillon
@@ -459,7 +459,7 @@ export default function ScriptEditor({
               onClick={() => handleTransition('review')}
               disabled={busy || empty}
               title={empty ? 'Remplis au moins une ligne' : undefined}
-              className={`${btnBase} bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] hover:bg-[#00D76B]/20`}
+              className={`${btnBase} bg-brand/10 border border-brand/20 text-brand hover:bg-brand/20`}
             >
               {transitioning === 'review' ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -488,18 +488,18 @@ export default function ScriptEditor({
       </div>
 
       {/* Bascule Résumé / Tableau */}
-      <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-[#111111] border border-[#2a2a2a]">
+      <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-surface border border-line">
         <button
           type="button"
           onClick={() => setView('summary')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'summary' ? 'bg-[#1f1f1f] text-white' : 'text-[#666666] hover:text-white'}`}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'summary' ? 'bg-[rgb(var(--c-border))] text-ink' : 'text-faint hover:text-ink'}`}
         >
           <AlignLeft className="h-3.5 w-3.5" /> Résumé
         </button>
         <button
           type="button"
           onClick={() => setView('table')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'table' ? 'bg-[#1f1f1f] text-white' : 'text-[#666666] hover:text-white'}`}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'table' ? 'bg-[rgb(var(--c-border))] text-ink' : 'text-faint hover:text-ink'}`}
         >
           <Table2 className="h-3.5 w-3.5" /> Tableau
         </button>
@@ -544,7 +544,7 @@ export default function ScriptEditor({
       )}
 
       {subPhaseStatus === 'in_progress' && !readOnly && (
-        <p className="text-[11px] text-[#333333] text-center">
+        <p className="text-[11px] text-faint text-center">
           {saving
             ? 'Enregistrement…'
             : lastSavedAt

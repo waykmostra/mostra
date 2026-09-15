@@ -53,9 +53,9 @@ export default function InteractionsTimeline({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-white">
+        <h2 className="text-sm font-semibold text-ink">
           Interactions
-          <span className="ml-2 text-[#555555] font-normal">{interactions.length}</span>
+          <span className="ml-2 text-faint font-normal">{interactions.length}</span>
         </h2>
         {!showForm && (
           <button
@@ -63,7 +63,7 @@ export default function InteractionsTimeline({
             onClick={() => setShowForm(true)}
             className="
               inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-              bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#222222]
+              bg-surface-2 border border-line text-ink hover:bg-surface-3
               transition-colors
             "
           >
@@ -85,14 +85,14 @@ export default function InteractionsTimeline({
       )}
 
       {/* Timeline */}
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-line rounded-xl overflow-hidden">
         {interactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2">
-            <MessageSquare className="h-8 w-8 text-[#2a2a2a]" />
-            <p className="text-sm text-[#444444]">Aucune interaction. Ajoutez la première.</p>
+            <MessageSquare className="h-8 w-8 text-[rgb(var(--c-border))]" />
+            <p className="text-sm text-faint">Aucune interaction. Ajoutez la première.</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#1a1a1a]">
+          <div className="divide-y divide-line">
             {interactions.map((i) => (
               <InteractionRow key={i.id} interaction={i} onDeleted={handleDeleted} />
             ))}
@@ -153,11 +153,11 @@ function AddForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 space-y-3"
+      className="bg-surface border border-line rounded-xl p-4 space-y-3"
     >
       {/* Type selector */}
       <div>
-        <p className="text-[10px] uppercase tracking-widest text-[#444444] font-medium mb-2">
+        <p className="text-[10px] uppercase tracking-widest text-faint font-medium mb-2">
           Type
         </p>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
@@ -174,8 +174,8 @@ function AddForm({
                     flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-[10px] font-medium border
                     transition-colors
                     ${active
-                      ? 'border-[#333333] bg-[#1a1a1a] text-white'
-                      : 'border-[#1e1e1e] bg-[#0d0d0d] text-[#666666] hover:text-white'}
+                      ? 'border-line-strong bg-surface-2 text-ink'
+                      : 'border-line bg-surface text-faint hover:text-ink'}
                   `}
                   style={active ? { borderColor: `${meta.color}80` } : undefined}
                 >
@@ -197,9 +197,9 @@ function AddForm({
         autoFocus
         disabled={isPending}
         className="
-          w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2
-          text-sm text-white placeholder-[#3a3a3a] resize-none
-          focus:outline-none focus:border-[#333333]
+          w-full bg-surface border border-line rounded-lg px-3 py-2
+          text-sm text-ink placeholder-faint resize-none
+          focus:outline-none focus:border-line-strong
           disabled:opacity-50
         "
       />
@@ -212,9 +212,9 @@ function AddForm({
         placeholder="Canal (ex. WhatsApp, Instagram DM, en personne…)"
         disabled={isPending}
         className="
-          w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2
-          text-xs text-white placeholder-[#3a3a3a]
-          focus:outline-none focus:border-[#333333]
+          w-full bg-surface border border-line rounded-lg px-3 py-2
+          text-xs text-ink placeholder-faint
+          focus:outline-none focus:border-line-strong
           disabled:opacity-50
         "
       />
@@ -224,7 +224,7 @@ function AddForm({
           type="button"
           onClick={onCancel}
           disabled={isPending}
-          className="text-xs text-[#666666] hover:text-white transition-colors"
+          className="text-xs text-faint hover:text-ink transition-colors"
         >
           Annuler
         </button>
@@ -233,7 +233,7 @@ function AddForm({
           disabled={isPending || !content.trim()}
           className="
             inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold
-            bg-[#00D76B] text-white hover:bg-[#00C061] transition-colors
+            bg-brand text-ink hover:bg-brand transition-colors
             disabled:opacity-50
           "
         >
@@ -271,7 +271,7 @@ function InteractionRow({
   }
 
   return (
-    <div className="px-5 py-3.5 flex items-start gap-3 group hover:bg-[#161616] transition-colors">
+    <div className="px-5 py-3.5 flex items-start gap-3 group hover:bg-surface-2 transition-colors">
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
         style={{ backgroundColor: `${meta.color}15`, border: `1px solid ${meta.color}30` }}
@@ -281,15 +281,15 @@ function InteractionRow({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-semibold text-white">{meta.label}</span>
+          <span className="text-xs font-semibold text-ink">{meta.label}</span>
           {interaction.channel && (
-            <span className="text-[10px] text-[#666666]">· {interaction.channel}</span>
+            <span className="text-[10px] text-faint">· {interaction.channel}</span>
           )}
-          <span className="text-[10px] text-[#444444] ml-auto">
+          <span className="text-[10px] text-faint ml-auto">
             {formatDate(interaction.occurred_at)}
           </span>
         </div>
-        <p className="text-sm text-[#a0a0a0] mt-1 whitespace-pre-wrap break-words">
+        <p className="text-sm text-dim mt-1 whitespace-pre-wrap break-words">
           {interaction.content}
         </p>
       </div>
@@ -300,7 +300,7 @@ function InteractionRow({
         disabled={isPending}
         className="
           opacity-0 group-hover:opacity-100 transition-opacity
-          p-1.5 rounded text-[#444444] hover:text-[#EF4444] hover:bg-[#EF4444]/10
+          p-1.5 rounded text-faint hover:text-[#EF4444] hover:bg-[#EF4444]/10
           flex-shrink-0
         "
         title="Supprimer"

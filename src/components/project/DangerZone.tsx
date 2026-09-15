@@ -66,7 +66,7 @@ export default function DangerZone({ projectId, projectName, isArchived }: Props
   const anyPending = isPendingDelete || isPendingArchive
 
   return (
-    <div className="bg-[#111111] border border-[#EF4444]/10 rounded-xl p-4 space-y-3">
+    <div className="bg-surface border border-[#EF4444]/10 rounded-xl p-4 space-y-3">
       <p className="text-[10px] font-semibold tracking-widest text-[#EF4444]/60 uppercase">
         Zone de danger
       </p>
@@ -76,14 +76,14 @@ export default function DangerZone({ projectId, projectName, isArchived }: Props
         <div>
           {archiveStep === 'confirm' ? (
             <div className="space-y-2">
-              <p className="text-xs text-[#a0a0a0]">
+              <p className="text-xs text-dim">
                 Le projet sera archivé. Les données sont conservées.
               </p>
               <div className="flex gap-1.5">
                 <button
                   onClick={() => setArchiveStep('idle')}
                   disabled={anyPending}
-                  className="flex-1 py-1.5 rounded-lg text-xs border border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444] transition-colors"
+                  className="flex-1 py-1.5 rounded-lg text-xs border border-line text-faint hover:text-ink hover:border-line-strong transition-colors"
                 >
                   Annuler
                 </button>
@@ -105,7 +105,7 @@ export default function DangerZone({ projectId, projectName, isArchived }: Props
               onClick={handleArchiveClick}
               disabled={anyPending}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs
-                border border-[#2a2a2a] text-[#666666] hover:text-[#F59E0B]
+                border border-line text-faint hover:text-[#F59E0B]
                 hover:border-[#F59E0B]/30 hover:bg-[#F59E0B]/5
                 transition-colors disabled:opacity-40"
             >
@@ -120,15 +120,15 @@ export default function DangerZone({ projectId, projectName, isArchived }: Props
       <div>
         {deleteStep === 'confirm' ? (
           <div className="space-y-2">
-            <p className="text-xs text-[#a0a0a0]">
-              <span className="text-white font-medium">Action irréversible.</span> Phases, fichiers
+            <p className="text-xs text-dim">
+              <span className="text-ink font-medium">Action irréversible.</span> Phases, fichiers
               et commentaires seront supprimés définitivement.
             </p>
             <div className="flex gap-1.5">
               <button
                 onClick={() => setDeleteStep('idle')}
                 disabled={anyPending}
-                className="flex-1 py-1.5 rounded-lg text-xs border border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444] transition-colors"
+                className="flex-1 py-1.5 rounded-lg text-xs border border-line text-faint hover:text-ink hover:border-line-strong transition-colors"
               >
                 Annuler
               </button>
@@ -150,7 +150,7 @@ export default function DangerZone({ projectId, projectName, isArchived }: Props
             onClick={handleDeleteClick}
             disabled={anyPending}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs
-              border border-[#2a2a2a] text-[#555555] hover:text-[#EF4444]
+              border border-line text-faint hover:text-[#EF4444]
               hover:border-[#EF4444]/30 hover:bg-[#EF4444]/5
               transition-colors disabled:opacity-40"
           >

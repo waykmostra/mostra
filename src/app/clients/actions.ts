@@ -81,7 +81,7 @@ export async function createClient(input: CreateClientInput): Promise<CreateClie
     phone: input.phone?.trim() || null,
     website: input.website?.trim() || null,
     source: input.source,
-    status: input.status ?? ('interest' as ClientStatus),
+    status: input.status ?? ('active' as ClientStatus),
     notes: input.notes?.trim() || null,
   }
 
@@ -300,11 +300,8 @@ export async function createAccountForClient(clientId: string): Promise<CreateAc
       { onConflict: 'id' },
     )
 
-  // Lier le client au profile + passer en 'active' si on était au stade prospect.
-  const nextStatus: ClientStatus =
-    client.status === 'interest' || client.status === 'warm' || client.status === 'cold'
-      ? 'active'
-      : client.status
+  // Créer un compte connectable = le client est actif.
+  const nextStatus: ClientStatus = 'active'
 
   const { error: linkErr } = await db(admin)
     .from('clients')
@@ -394,11 +391,12 @@ export async function updateClientStatus(
 
   const { data: rawClient } = await admin
     .from('clients')
-    .select('status')
+    .select('status, company_id')
     .eq('id', clientId)
     .maybeSingle()
 
   const prev = (rawClient as { status: ClientStatus } | null)?.status
+  const companyId = (rawClient as { company_id: string | null } | null)?.company_id ?? null
 
   const { error } = await db(admin)
     .from('clients')
@@ -415,6 +413,15 @@ export async function updateClientStatus(
       content: `Statut changé : ${prev} → ${newStatus}`,
       created_by: user.id,
     })
+  }
+
+  // Sync société ↔ contact : déplacer un contact tire sa société vers le même
+  // statut (et inversement, cf. updateCompanyStatus). Modèle volontairement
+  // simple : la société prend le dernier statut appliqué.
+  if (companyId) {
+    await db(admin).from('companies').update({ status: newStatus }).eq('id', companyId)
+    revalidatePath('/clients/companies')
+    revalidatePath(`/clients/companies/${companyId}`)
   }
 
   revalidatePath('/clients')

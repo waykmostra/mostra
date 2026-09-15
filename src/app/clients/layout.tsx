@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import Sidebar from '@/components/dashboard/Sidebar'
-import AdminHeader from '@/components/dashboard/AdminHeader'
+import AppSidebar from '@/components/dashboard/AppSidebar'
+import AppTopbar from '@/components/dashboard/AppTopbar'
 import { Toaster } from 'sonner'
 
 export default async function ClientsLayout({ children }: { children: React.ReactNode }) {
@@ -10,29 +10,20 @@ export default async function ClientsLayout({ children }: { children: React.Reac
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect('/login')
-  }
+  if (!user) redirect('/login')
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      <Sidebar />
-      <AdminHeader />
-
-      {/* Main content — offset par la sidebar + header fixe */}
-      <main className="md:ml-[180px] min-h-screen pt-14">
-        <div className="px-4 md:px-8 py-8">{children}</div>
+    <div className="min-h-screen bg-canvas text-ink">
+      <AppSidebar />
+      <AppTopbar />
+      <main className="md:ml-[var(--rail-w)] min-h-screen pt-14">
+        <div className="w-full px-4 sm:px-6 lg:px-10 py-8">{children}</div>
       </main>
-
       <Toaster
-        theme="dark"
+        theme="light"
         position="top-right"
         toastOptions={{
-          style: {
-            background: '#111111',
-            border: '1px solid #2a2a2a',
-            color: '#ffffff',
-          },
+          style: { background: '#ffffff', border: '1px solid #d4d4d9', color: '#171718' },
         }}
       />
     </div>

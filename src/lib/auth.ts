@@ -17,6 +17,39 @@ import type { Profile } from '@/lib/types'
 
 export type AuthError = { error: string }
 
+/**
+ * True si `userId` est l'un des clients du projet (principal projects.client_id
+ * OU additionnel via project_clients, migration 031). Résolution par profile_id.
+ */
+async function userIsProjectClient(
+  admin: ReturnType<typeof createAdminClient>,
+  projectId: string,
+  userId: string,
+): Promise<boolean> {
+  // Fiches CRM rattachées à ce compte auth.
+  const { data: rawClients } = await admin.from('clients').select('id').eq('profile_id', userId)
+  const clientIds = ((rawClients as { id: string }[] | null) ?? []).map((c) => c.id)
+  if (clientIds.length === 0) return false
+
+  // Client principal ?
+  const { data: rawProj } = await admin
+    .from('projects')
+    .select('client_id')
+    .eq('id', projectId)
+    .maybeSingle()
+  const primary = (rawProj as { client_id: string | null } | null)?.client_id ?? null
+  if (primary && clientIds.includes(primary)) return true
+
+  // Client additionnel (project_clients) ?
+  const { data: rawLink } = await admin
+    .from('project_clients')
+    .select('client_id')
+    .eq('project_id', projectId)
+    .in('client_id', clientIds)
+    .limit(1)
+  return (((rawLink as unknown[] | null) ?? []).length) > 0
+}
+
 export type AuthSuccess = {
   supabase: ReturnType<typeof createClient>
   admin: ReturnType<typeof createAdminClient>
@@ -80,21 +113,16 @@ export async function requireProjectAccess(
     return { ...result, canEdit: true }
   }
 
-  // Client : projects.client_id → clients.id ; clients.profile_id = auth user
-  const { data: rawProject } = await result.admin
+  // Client : autorisé s'il est l'UN des clients du projet (principal OU additionnel).
+  const { data: rawProjectExists } = await result.admin
     .from('projects')
-    .select('client_id, clients:client_id (profile_id)')
+    .select('id')
     .eq('id', projectId)
     .maybeSingle()
+  if (!rawProjectExists) return { error: 'Projet introuvable.' }
 
-  const project = rawProject as
-    | { client_id: string | null; clients: { profile_id: string | null } | null }
-    | null
-
-  if (!project) return { error: 'Projet introuvable.' }
-  if (!project.clients || project.clients.profile_id !== result.user.id) {
-    return { error: 'Accès refusé à ce projet.' }
-  }
+  const allowed = await userIsProjectClient(result.admin, projectId, result.user.id)
+  if (!allowed) return { error: 'Accès refusé à ce projet.' }
 
   return { ...result, canEdit: false }
 }
@@ -143,22 +171,30 @@ export async function requireAssignedClient(
 
   if (profile.is_admin) return { project, userId: user.id, isAdmin: true }
 
-  if (!project.client_id) return { error: 'Accès refusé à ce projet.' }
-  const { data: rawClient } = await admin
+  // Tous les clients du projet : principal (project.client_id) + additionnels.
+  const clientIds = new Set<string>()
+  if (project.client_id) clientIds.add(project.client_id)
+  const { data: rawLinks } = await admin
+    .from('project_clients')
+    .select('client_id')
+    .eq('project_id', project.id)
+  for (const l of (rawLinks as { client_id: string }[] | null) ?? []) clientIds.add(l.client_id)
+  if (clientIds.size === 0) return { error: 'Accès refusé à ce projet.' }
+
+  const { data: rawClients } = await admin
     .from('clients')
     .select('profile_id, email')
-    .eq('id', project.client_id)
-    .maybeSingle()
-  const client = rawClient as { profile_id: string | null; email: string | null } | null
-  if (!client) return { error: 'Accès refusé à ce projet.' }
+    .in('id', [...clientIds])
+  const projectClients =
+    (rawClients as { profile_id: string | null; email: string | null }[] | null) ?? []
 
-  const emailMatch =
-    !!client.email &&
-    !!profile.email &&
-    client.email.toLowerCase() === profile.email.toLowerCase()
-  if (client.profile_id === user.id || emailMatch) {
-    return { project, userId: user.id, isAdmin: false }
-  }
+  const matches = projectClients.some((c) => {
+    if (c.profile_id === user.id) return true
+    return (
+      !!c.email && !!profile.email && c.email.toLowerCase() === profile.email.toLowerCase()
+    )
+  })
+  if (matches) return { project, userId: user.id, isAdmin: false }
   return { error: 'Accès refusé à ce projet.' }
 }
 

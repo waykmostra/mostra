@@ -8,6 +8,9 @@ import type {
   ExpenseInsert,
   ExpenseUpdate,
   FinanceCategory,
+  RevenueCategory,
+  RevenueInsert,
+  RevenueUpdate,
   SubscriptionInsert,
   SubscriptionUpdate,
 } from '@/lib/types'
@@ -248,6 +251,119 @@ export async function deleteSubscription(id: string): Promise<FinanceActionResul
   const { admin } = auth
 
   const { error } = await db(admin).from('subscriptions').delete().eq('id', id)
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/finance')
+  return { success: true }
+}
+
+// ── Revenus libres (table `revenues`, migration 032) ──────────────
+// Revenus hors-projet (prestation ponctuelle, formation, affiliation…).
+// S'ajoutent au cashflow au même titre que les revenus dérivés des projets.
+
+const REVENUE_CATEGORIES: RevenueCategory[] = [
+  'service',
+  'retainer',
+  'training',
+  'affiliate',
+  'other',
+]
+
+export interface CreateRevenueInput {
+  label: string
+  amount_eur: number
+  category?: RevenueCategory
+  /** Date 'YYYY-MM-DD'. Défaut DB : aujourd'hui. */
+  received_on?: string
+  client_id?: string | null
+  notes?: string | null
+}
+
+export async function createRevenue(input: CreateRevenueInput): Promise<FinanceActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin, user } = auth
+
+  const label = input.label?.trim()
+  if (!label) return { success: false, error: 'Le libellé est requis.' }
+
+  const amount = normalizeAmount(input.amount_eur)
+  if (amount === null) return { success: false, error: 'Le montant doit être un nombre positif.' }
+
+  const category = input.category ?? 'service'
+  if (!REVENUE_CATEGORIES.includes(category)) return { success: false, error: 'Catégorie invalide.' }
+
+  const payload: RevenueInsert = {
+    label,
+    amount_eur: amount,
+    category,
+    client_id: input.client_id || null,
+    notes: input.notes?.trim() || null,
+    created_by: user.id,
+  }
+  if (input.received_on) payload.received_on = input.received_on
+
+  const { error } = await db(admin).from('revenues').insert(payload)
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/finance')
+  return { success: true }
+}
+
+export interface UpdateRevenueInput {
+  label?: string
+  amount_eur?: number
+  category?: RevenueCategory
+  received_on?: string
+  client_id?: string | null
+  notes?: string | null
+}
+
+export async function updateRevenue(
+  id: string,
+  input: UpdateRevenueInput,
+): Promise<FinanceActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin } = auth
+
+  const patch: RevenueUpdate = {}
+
+  if ('label' in input) {
+    const label = input.label?.trim()
+    if (!label) return { success: false, error: 'Le libellé est requis.' }
+    patch.label = label
+  }
+  if ('amount_eur' in input) {
+    const amount = normalizeAmount(input.amount_eur)
+    if (amount === null) return { success: false, error: 'Le montant doit être un nombre positif.' }
+    patch.amount_eur = amount
+  }
+  if ('category' in input && input.category) {
+    if (!REVENUE_CATEGORIES.includes(input.category)) {
+      return { success: false, error: 'Catégorie invalide.' }
+    }
+    patch.category = input.category
+  }
+  if ('received_on' in input && input.received_on) patch.received_on = input.received_on
+  if ('client_id' in input) patch.client_id = input.client_id || null
+  if ('notes' in input) patch.notes = input.notes?.trim() || null
+
+  if (Object.keys(patch).length === 0) return { success: true }
+
+  const { error } = await db(admin).from('revenues').update(patch).eq('id', id)
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/finance')
+  return { success: true }
+}
+
+export async function deleteRevenue(id: string): Promise<FinanceActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin } = auth
+
+  const { error } = await db(admin).from('revenues').delete().eq('id', id)
   if (error) return { success: false, error: error.message }
 
   revalidatePath('/finance')

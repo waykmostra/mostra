@@ -198,11 +198,11 @@ export default function ScriptTableView({
       {/* ════════ Desktop : tableau ════════ */}
       <div className="hidden md:block overflow-x-auto pb-2">
       <div
-        className="border border-[#2a2a2a] rounded-2xl overflow-hidden bg-[#111111]"
+        className="border border-line rounded-2xl overflow-hidden bg-surface"
         style={{ minWidth: gridMinWidth }}
       >
         {/* ── En-tête ── */}
-        <div className="flex items-stretch border-b-2 border-[#2a2a2a] bg-[#161616]">
+        <div className="flex items-stretch border-b-2 border-line bg-surface-2">
           <div style={{ width: CAT_W }} className="shrink-0" />
           <div style={{ width: GRIP_W }} className="shrink-0" />
           {columns.map((col) => {
@@ -237,7 +237,7 @@ export default function ScriptTableView({
                     }
                   }}
                   style={{ width: FOLD_W, background: `${t.color}14` }}
-                  className="shrink-0 border-l border-[#2a2a2a] grid place-items-center py-2 cursor-pointer hover:bg-[#1a1a1a]"
+                  className="shrink-0 border-l border-line grid place-items-center py-2 cursor-pointer hover:bg-surface-2"
                   title={`Déplier « ${col.title || t.label} »`}
                 >
                   <div className="flex flex-col items-center gap-1">
@@ -252,7 +252,7 @@ export default function ScriptTableView({
                 key={col.id}
                 data-colhead
                 style={{ ...colStyle(col), background: `${t.color}14` }}
-                className={`relative border-l border-[#2a2a2a] group/col ${overCol === col.id ? 'ring-2 ring-[#00D76B] ring-inset' : ''}`}
+                className={`relative border-l border-line group/col ${overCol === col.id ? 'ring-2 ring-brand ring-inset' : ''}`}
                 onDragOver={(e) => {
                   if (dragCol) {
                     e.preventDefault()
@@ -281,7 +281,7 @@ export default function ScriptTableView({
                         setOverCol(null)
                       }}
                       title="Glisser pour déplacer la colonne"
-                      className="cursor-grab text-[#555555] hover:text-white shrink-0"
+                      className="cursor-grab text-faint hover:text-ink shrink-0"
                     >
                       <GripVertical className="w-3.5 h-3.5" />
                     </span>
@@ -300,17 +300,17 @@ export default function ScriptTableView({
                     {tagMenu === col.id && editable && (
                       <>
                         <div className="fixed inset-0 z-20" onClick={() => setTagMenu(null)} />
-                        <div className="absolute left-0 top-7 z-30 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[170px] shadow-2xl">
+                        <div className="absolute left-0 top-7 z-30 bg-surface-2 border border-line rounded-xl py-1 min-w-[170px] shadow-2xl">
                           {COLUMN_TAGS.map((tag) => (
                             <button
                               type="button"
                               key={tag.id}
                               onClick={() => setColTag(col.id, tag.id)}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] hover:bg-[#222222] text-left"
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] hover:bg-surface-3 text-left"
                             >
                               <span className="w-2.5 h-2.5 rounded-full" style={{ background: tag.color }} />
-                              <span className="text-white">{tag.label}</span>
-                              {tag.counted && <span className="ml-auto text-[10px] text-[#00D76B]">compté</span>}
+                              <span className="text-ink">{tag.label}</span>
+                              {tag.counted && <span className="ml-auto text-[10px] text-brand">compté</span>}
                             </button>
                           ))}
                         </div>
@@ -323,7 +323,7 @@ export default function ScriptTableView({
                         type="button"
                         onClick={() => toggleCollapse(col.id)}
                         title="Replier la colonne"
-                        className="h-6 w-6 grid place-items-center rounded text-[#555555] hover:text-white hover:bg-[#222222]"
+                        className="h-6 w-6 grid place-items-center rounded text-faint hover:text-ink hover:bg-surface-3"
                       >
                         <ChevronsRightLeft className="w-3.5 h-3.5" />
                       </button>
@@ -331,7 +331,7 @@ export default function ScriptTableView({
                         type="button"
                         onClick={() => deleteColumn(col.id)}
                         title="Supprimer la colonne"
-                        className="h-6 w-6 grid place-items-center rounded text-[#555555] hover:text-red-400 hover:bg-red-500/10"
+                        className="h-6 w-6 grid place-items-center rounded text-faint hover:text-red-400 hover:bg-red-500/10"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -343,21 +343,21 @@ export default function ScriptTableView({
                     value={col.title}
                     onChange={(e) => setColTitle(col.id, e.target.value)}
                     placeholder="Titre"
-                    className="w-full bg-transparent px-2 py-1.5 mt-1 font-bold text-[14px] text-white outline-none placeholder:text-[#444444]"
+                    className="w-full bg-transparent px-2 py-1.5 mt-1 font-bold text-[14px] text-ink outline-none placeholder:text-faint"
                     style={{ borderBottom: `3px solid ${t.color}` }}
                   />
                 ) : (
                   <div
-                    className="w-full px-2 py-1.5 mt-1 font-bold text-[14px] text-white truncate"
+                    className="w-full px-2 py-1.5 mt-1 font-bold text-[14px] text-ink truncate"
                     style={{ borderBottom: `3px solid ${t.color}` }}
                   >
-                    {col.title || <span className="text-[#555555]">{t.label}</span>}
+                    {col.title || <span className="text-faint">{t.label}</span>}
                   </div>
                 )}
                 {editable && (
                   <div
                     onMouseDown={(e) => onResizeStart(e, col)}
-                    className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-[#00D76B]/40"
+                    className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-brand/40"
                     title="Glisser pour redimensionner"
                   />
                 )}
@@ -370,13 +370,13 @@ export default function ScriptTableView({
               onClick={addColumn}
               title="Ajouter une colonne"
               style={{ width: ACT_W }}
-              className="shrink-0 border-l border-[#2a2a2a] grid place-items-center text-[#555555] hover:text-[#00D76B] hover:bg-[#1a1a1a]"
+              className="shrink-0 border-l border-line grid place-items-center text-faint hover:text-brand hover:bg-surface-2"
             >
               <Plus className="w-4 h-4" />
             </button>
           )}
           {showComments && (
-            <div style={{ width: COM_W }} className="shrink-0 border-l border-[#2a2a2a]" />
+            <div style={{ width: COM_W }} className="shrink-0 border-l border-line" />
           )}
         </div>
 
@@ -388,7 +388,7 @@ export default function ScriptTableView({
           return (
             <div
               key={cat.id}
-              className="flex items-stretch border-t border-[#2a2a2a] first:border-t-0"
+              className="flex items-stretch border-t border-line first:border-t-0"
               style={overCat === cat.id ? { boxShadow: `inset 0 0 0 2px ${color}` } : undefined}
               onDragOver={(e) => {
                 if (dragCat) {
@@ -421,7 +421,7 @@ export default function ScriptTableView({
                           setOverCat(null)
                         }}
                         title="Glisser pour déplacer la catégorie"
-                        className="cursor-grab text-[#444444] hover:text-white shrink-0 opacity-0 group-hover/catlabel:opacity-100"
+                        className="cursor-grab text-faint hover:text-ink shrink-0 opacity-0 group-hover/catlabel:opacity-100"
                       >
                         <GripVertical className="w-3.5 h-3.5" />
                       </span>
@@ -447,13 +447,13 @@ export default function ScriptTableView({
                         type="button"
                         onClick={() => deleteCategory(cat.id)}
                         title="Supprimer la catégorie (les lignes rejoignent la voisine)"
-                        className="opacity-0 group-hover/catlabel:opacity-100 h-5 w-5 grid place-items-center rounded text-[#555555] hover:text-red-400 hover:bg-red-500/10 shrink-0"
+                        className="opacity-0 group-hover/catlabel:opacity-100 h-5 w-5 grid place-items-center rounded text-faint hover:text-red-400 hover:bg-red-500/10 shrink-0"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
                     )}
                   </div>
-                  <div className="text-[10px] text-[#555555] font-mono text-right">
+                  <div className="text-[10px] text-faint font-mono text-right">
                     {words} mot{words > 1 ? 's' : ''}
                   </div>
                 </div>
@@ -478,7 +478,7 @@ export default function ScriptTableView({
                 {catRows.map((row, ri) => (
                   <div key={row._key}>
                     <div
-                      className={`flex items-stretch group/row ${ri ? 'border-t border-[#222222]' : ''} ${overRow === row._key ? 'bg-[#00D76B]/5' : ''}`}
+                      className={`flex items-stretch group/row ${ri ? 'border-t border-[rgb(var(--c-surface-3))]' : ''} ${overRow === row._key ? 'bg-brand/5' : ''}`}
                       onDragOver={(e) => {
                         if (dragRow) {
                           e.preventDefault()
@@ -508,7 +508,7 @@ export default function ScriptTableView({
                               setOverRow(null)
                             }}
                             title="Glisser pour réordonner la ligne"
-                            className="cursor-grab text-[#444444] hover:text-white opacity-0 group-hover/row:opacity-100"
+                            className="cursor-grab text-faint hover:text-ink opacity-0 group-hover/row:opacity-100"
                           >
                             <GripVertical className="w-3.5 h-3.5" />
                           </span>
@@ -521,21 +521,21 @@ export default function ScriptTableView({
                             onClick={() => editable && toggleCollapse(col.id)}
                             title="Déplier la colonne"
                             style={{ width: FOLD_W, background: `${tagInfo(col.tag).color}0c` }}
-                            className="shrink-0 border-l border-[#222222] cursor-pointer hover:bg-[#1a1a1a]"
+                            className="shrink-0 border-l border-[rgb(var(--c-surface-3))] cursor-pointer hover:bg-surface-2"
                           />
                         ) : (
-                          <div key={col.id} style={colStyle(col)} className="border-l border-[#222222]">
+                          <div key={col.id} style={colStyle(col)} className="border-l border-[rgb(var(--c-surface-3))]">
                             {editable ? (
                               <AutoGrowTextarea
                                 value={row.cells?.[col.id] || ''}
                                 onChange={(e) => setCell(row._key, col.id, e.target.value)}
                                 placeholder="—"
                                 minRows={1}
-                                className="w-full bg-transparent text-[13px] text-white outline-none px-2.5 py-2 focus:bg-[#1a1a1a]/60 placeholder:text-[#3a3a3a]"
+                                className="w-full bg-transparent text-[13px] text-ink outline-none px-2.5 py-2 focus:bg-surface-2/60 placeholder:text-faint"
                               />
                             ) : (
-                              <p className="w-full text-[13px] text-[#cccccc] whitespace-pre-wrap leading-relaxed px-2.5 py-2 min-h-[34px]">
-                                {row.cells?.[col.id] || <span className="text-[#3a3a3a]">—</span>}
+                              <p className="w-full text-[13px] text-dim whitespace-pre-wrap leading-relaxed px-2.5 py-2 min-h-[34px]">
+                                {row.cells?.[col.id] || <span className="text-faint">—</span>}
                               </p>
                             )}
                           </div>
@@ -547,7 +547,7 @@ export default function ScriptTableView({
                           onClick={() => deleteRow(row._key)}
                           title="Supprimer la ligne"
                           style={{ width: ACT_W }}
-                          className="shrink-0 border-l border-[#222222] grid place-items-center text-[#555555] opacity-0 group-hover/row:opacity-100 hover:text-red-400 hover:bg-red-500/10"
+                          className="shrink-0 border-l border-[rgb(var(--c-surface-3))] grid place-items-center text-faint opacity-0 group-hover/row:opacity-100 hover:text-red-400 hover:bg-red-500/10"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -555,7 +555,7 @@ export default function ScriptTableView({
                       {showComments && (
                         <div
                           style={{ width: COM_W }}
-                          className="shrink-0 border-l border-[#222222] grid place-items-start justify-items-center pt-1.5"
+                          className="shrink-0 border-l border-[rgb(var(--c-surface-3))] grid place-items-start justify-items-center pt-1.5"
                         >
                           {renderRowComments?.(row)}
                         </div>
@@ -567,7 +567,7 @@ export default function ScriptTableView({
                   <button
                     type="button"
                     onClick={() => addRow(cat.id)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] text-[#666666] hover:text-white hover:bg-[#1a1a1a]/60 ${catRows.length ? 'border-t border-[#222222]' : ''}`}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-[12px] text-faint hover:text-ink hover:bg-surface-2/60 ${catRows.length ? 'border-t border-[rgb(var(--c-surface-3))]' : ''}`}
                   >
                     <Plus className="w-3.5 h-3.5" /> Ligne
                   </button>
@@ -582,7 +582,7 @@ export default function ScriptTableView({
         <button
           type="button"
           onClick={addCategory}
-          className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] text-[#666666] hover:text-white hover:bg-[#1a1a1a] border border-dashed border-[#2a2a2a]"
+          className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] text-faint hover:text-ink hover:bg-surface-2 border border-dashed border-line"
         >
           <Plus className="w-4 h-4" /> Ajouter une catégorie
         </button>
@@ -596,10 +596,10 @@ export default function ScriptTableView({
           const catRows = rows.filter((r) => r.categoryId === cat.id)
           const words = categoryWordCount(columns, rows, cat.id)
           return (
-            <div key={cat.id} className="rounded-2xl border border-[#2a2a2a] bg-[#111111] overflow-hidden">
+            <div key={cat.id} className="rounded-2xl border border-line bg-surface overflow-hidden">
               {/* En-tête catégorie */}
               <div
-                className="flex items-center gap-2 px-3 py-2.5 border-b border-[#1f1f1f]"
+                className="flex items-center gap-2 px-3 py-2.5 border-b border-line"
                 style={{ borderLeft: `3px solid ${color}` }}
               >
                 {editable ? (
@@ -618,7 +618,7 @@ export default function ScriptTableView({
                     {cat.name || 'Catégorie'}
                   </span>
                 )}
-                <span className="text-[10px] text-[#555555] font-mono shrink-0">
+                <span className="text-[10px] text-faint font-mono shrink-0">
                   {words} mot{words > 1 ? 's' : ''}
                 </span>
                 {editable && categories.length > 1 && (
@@ -626,7 +626,7 @@ export default function ScriptTableView({
                     type="button"
                     onClick={() => deleteCategory(cat.id)}
                     title="Supprimer la catégorie"
-                    className="h-6 w-6 grid place-items-center rounded text-[#555555] hover:text-red-400 hover:bg-red-500/10 shrink-0"
+                    className="h-6 w-6 grid place-items-center rounded text-faint hover:text-red-400 hover:bg-red-500/10 shrink-0"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -634,11 +634,11 @@ export default function ScriptTableView({
               </div>
 
               {/* Lignes (cartes) */}
-              <div className="divide-y divide-[#1f1f1f]">
+              <div className="divide-y divide-[rgb(var(--c-border))]">
                 {catRows.map((row, ri) => (
                   <div key={row._key} className="p-3 space-y-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-[#555555]">#{ri + 1}</span>
+                      <span className="text-[10px] font-mono text-faint">#{ri + 1}</span>
                       <div className="ml-auto flex items-center gap-1">
                         {showComments && renderRowComments?.(row)}
                         {editable && (
@@ -646,7 +646,7 @@ export default function ScriptTableView({
                             type="button"
                             onClick={() => deleteRow(row._key)}
                             title="Supprimer la ligne"
-                            className="h-7 w-7 grid place-items-center rounded-lg text-[#555555] hover:text-red-400 hover:bg-red-500/10"
+                            className="h-7 w-7 grid place-items-center rounded-lg text-faint hover:text-red-400 hover:bg-red-500/10"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -672,11 +672,11 @@ export default function ScriptTableView({
                               onChange={(e) => setCell(row._key, col.id, e.target.value)}
                               placeholder="—"
                               minRows={1}
-                              className="w-full bg-[#0d0d0d] border border-[#222222] rounded-lg px-2.5 py-2 text-[14px] text-white outline-none focus:border-[#444444] placeholder:text-[#3a3a3a]"
+                              className="w-full bg-surface border border-[rgb(var(--c-surface-3))] rounded-lg px-2.5 py-2 text-[14px] text-ink outline-none focus:border-line-strong placeholder:text-faint"
                             />
                           ) : (
-                            <p className="text-[14px] text-[#cccccc] whitespace-pre-wrap leading-relaxed">
-                              {row.cells?.[col.id] || <span className="text-[#3a3a3a]">—</span>}
+                            <p className="text-[14px] text-dim whitespace-pre-wrap leading-relaxed">
+                              {row.cells?.[col.id] || <span className="text-faint">—</span>}
                             </p>
                           )}
                         </div>
@@ -688,7 +688,7 @@ export default function ScriptTableView({
                   <button
                     type="button"
                     onClick={() => addRow(cat.id)}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-[#666666] hover:text-white hover:bg-[#1a1a1a]/60"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-faint hover:text-ink hover:bg-surface-2/60"
                   >
                     <Plus className="w-3.5 h-3.5" /> Ligne
                   </button>
@@ -702,7 +702,7 @@ export default function ScriptTableView({
           <button
             type="button"
             onClick={addCategory}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] text-[#666666] hover:text-white hover:bg-[#1a1a1a] border border-dashed border-[#2a2a2a]"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] text-faint hover:text-ink hover:bg-surface-2 border border-dashed border-line"
           >
             <Plus className="w-4 h-4" /> Ajouter une catégorie
           </button>

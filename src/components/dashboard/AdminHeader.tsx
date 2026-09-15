@@ -32,13 +32,13 @@ export default async function AdminHeader() {
     .slice(0, 2) || '?'
 
   return (
-    <header className="fixed top-0 left-0 right-0 md:left-[180px] z-30 h-14 bg-[#0a0a0a]/90 backdrop-blur border-b border-[#1a1a1a]">
+    <header className="fixed top-0 left-0 right-0 md:left-[180px] z-30 h-14 bg-canvas/90 backdrop-blur border-b border-line">
       <div className="h-full px-5 flex items-center justify-end gap-3">
         {/* Notification bell */}
         <NotificationBell userId={user.id} />
 
         {/* Divider */}
-        <div className="h-4 w-px bg-[#2a2a2a]" />
+        <div className="h-4 w-px bg-[rgb(var(--c-border))]" />
 
         {/* User menu — client component with dropdown */}
         <UserMenuDropdown

@@ -69,32 +69,32 @@ function CommentItem({
 
   return (
     <div className={`flex gap-2.5 transition-opacity ${comment.is_resolved ? 'opacity-40' : ''}`}>
-      <div className="w-6 h-6 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
+      <div className="w-6 h-6 rounded-full bg-surface-3 border border-line flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
         {comment.author?.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={comment.author.avatar_url} alt={authorName} className="w-full h-full object-cover" />
         ) : (
-          <span className="text-[9px] text-[#666666] font-medium">{initials}</span>
+          <span className="text-[9px] text-faint font-medium">{initials}</span>
         )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-          <span className="text-xs font-medium text-white">{authorName}</span>
-          <span className="text-[10px] text-[#444444]">{formatRelative(comment.created_at)}</span>
+          <span className="text-xs font-medium text-ink">{authorName}</span>
+          <span className="text-[10px] text-faint">{formatRelative(comment.created_at)}</span>
           {comment.is_resolved && (
-            <span className="inline-flex items-center gap-1 text-[9px] text-[#00D76B] bg-[#00D76B]/10 px-1.5 py-0.5 rounded-full border border-[#00D76B]/20">
+            <span className="inline-flex items-center gap-1 text-[9px] text-brand bg-brand/10 px-1.5 py-0.5 rounded-full border border-brand/20">
               <CheckCircle className="h-2 w-2" />
               Résolu
             </span>
           )}
         </div>
-        <p className="text-xs text-[#999999] leading-relaxed">{comment.content}</p>
+        <p className="text-xs text-dim leading-relaxed">{comment.content}</p>
       </div>
       {canResolve && !comment.is_resolved && (
         <button
           type="button"
           onClick={() => onResolve(comment.id)}
-          className="text-[#333333] hover:text-[#00D76B] transition-colors flex-shrink-0 mt-1"
+          className="text-faint hover:text-brand transition-colors flex-shrink-0 mt-1"
           title="Marquer comme résolu"
         >
           <CheckCircle className="h-3.5 w-3.5" />
@@ -140,7 +140,7 @@ function BlockComments({
   }
 
   return (
-    <div className="px-4 pb-4 pt-3 border-t border-[#1e1e1e] space-y-3">
+    <div className="px-4 pb-4 pt-3 border-t border-line space-y-3">
       {blockComments.length > 0 && (
         <div className="space-y-2.5">
           {blockComments.map((c) => (
@@ -156,7 +156,7 @@ function BlockComments({
 
       {!canComment ? (
         blockComments.length > 0 ? (
-          <p className="text-[11px] text-[#444444]">
+          <p className="text-[11px] text-faint">
             {blockComments.length} commentaire{blockComments.length > 1 ? 's' : ''}
           </p>
         ) : null
@@ -164,9 +164,9 @@ function BlockComments({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex items-center gap-1.5 text-[11px] text-[#444444] hover:text-[#888888] transition-colors group"
+          className="flex items-center gap-1.5 text-[11px] text-faint hover:text-dim transition-colors group"
         >
-          <MessageSquare className="h-3.5 w-3.5 group-hover:text-[#00D76B] transition-colors" />
+          <MessageSquare className="h-3.5 w-3.5 group-hover:text-brand transition-colors" />
           {blockComments.length === 0
             ? 'Commenter'
             : `${unresolvedCount > 0 ? `${unresolvedCount} non résolu${unresolvedCount > 1 ? 's' : ''}` : `${blockComments.length} commentaire${blockComments.length > 1 ? 's' : ''}`}`}
@@ -180,14 +180,14 @@ function BlockComments({
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit() }}
             placeholder="Votre avis sur ce style… (Ctrl+Entrée pour envoyer)"
             rows={2}
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2 text-xs text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+            className="w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
           />
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleSubmit}
               disabled={!text.trim() || sending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-xs font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand/10 border border-brand/20 text-brand text-xs font-medium hover:bg-brand/20 transition-colors disabled:opacity-40"
             >
               {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
               Envoyer
@@ -195,7 +195,7 @@ function BlockComments({
             <button
               type="button"
               onClick={() => { setOpen(false); setText('') }}
-              className="text-[11px] text-[#444444] hover:text-white transition-colors"
+              className="text-[11px] text-faint hover:text-ink transition-colors"
             >
               Annuler
             </button>
@@ -334,12 +334,12 @@ export default function MoodboardViewerClient({
 
       {/* ── Approved banner ── */}
       {isApproved && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#00D76B]/10 border border-[#00D76B]/20">
-          <CheckCircle className="h-4 w-4 text-[#00D76B] flex-shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-brand/10 border border-brand/20">
+          <CheckCircle className="h-4 w-4 text-brand flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-[#00D76B]">Direction artistique approuvée</p>
+            <p className="text-sm font-semibold text-brand">Direction artistique approuvée</p>
             {selectedBlock && (
-              <p className="text-[11px] text-[#00D76B]/60">
+              <p className="text-[11px] text-brand/60">
                 Style retenu : {selectedBlock.content.title}
               </p>
             )}
@@ -353,8 +353,8 @@ export default function MoodboardViewerClient({
           <div className="flex items-start gap-3">
             <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-white">Connectez-vous pour valider</p>
-              <p className="text-xs text-[#666666] mt-0.5">Vous devez être connecté pour valider, commenter ou modifier cette phase.</p>
+              <p className="text-sm font-semibold text-ink">Connectez-vous pour valider</p>
+              <p className="text-xs text-faint mt-0.5">Vous devez être connecté pour valider, commenter ou modifier cette phase.</p>
             </div>
           </div>
           <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 transition-colors">
@@ -366,15 +366,15 @@ export default function MoodboardViewerClient({
 
       {/* ── Approval panel ── */}
       {!isApproved && status === 'in_review' && isAuthenticated && (
-        <div className="bg-[#111111] border border-[#F59E0B]/25 rounded-2xl p-5 space-y-4">
+        <div className="bg-surface border border-[#F59E0B]/25 rounded-2xl p-5 space-y-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center flex-shrink-0">
               <ThumbsUp className="h-4 w-4 text-[#F59E0B]" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">Choisissez votre direction artistique</p>
-              <p className="text-xs text-[#666666] mt-0.5 leading-relaxed">
-                Cliquez sur <strong className="text-white">«&nbsp;Sélectionner ce style&nbsp;»</strong> sur
+              <p className="text-sm font-semibold text-ink">Choisissez votre direction artistique</p>
+              <p className="text-xs text-faint mt-0.5 leading-relaxed">
+                Cliquez sur <strong className="text-ink">«&nbsp;Sélectionner ce style&nbsp;»</strong> sur
                 le moodboard qui correspond à votre vision, puis validez.
               </p>
             </div>
@@ -382,16 +382,16 @@ export default function MoodboardViewerClient({
 
           {/* Selection status */}
           {selectedBlock ? (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#00D76B]/8 border border-[#00D76B]/20">
-              <Star className="h-3.5 w-3.5 text-[#00D76B]" />
-              <span className="text-xs text-[#00D76B]">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-brand/8 border border-brand/20">
+              <Star className="h-3.5 w-3.5 text-brand" />
+              <span className="text-xs text-brand">
                 Style sélectionné : <strong>{selectedBlock.content.title}</strong>
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a]">
-              <Star className="h-3.5 w-3.5 text-[#444444]" />
-              <span className="text-xs text-[#555555]">Aucun style sélectionné</span>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-2 border border-line">
+              <Star className="h-3.5 w-3.5 text-faint" />
+              <span className="text-xs text-faint">Aucun style sélectionné</span>
             </div>
           )}
 
@@ -401,7 +401,7 @@ export default function MoodboardViewerClient({
                 type="button"
                 onClick={handleApprove}
                 disabled={approving || !selectedBlock}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00D76B]/10 border border-[#00D76B]/25 text-[#00D76B] text-sm font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand/10 border border-brand/25 text-brand text-sm font-medium hover:bg-brand/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title={!selectedBlock ? "Sélectionnez un style d'abord" : undefined}
               >
                 {approving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
@@ -410,7 +410,7 @@ export default function MoodboardViewerClient({
               <button
                 type="button"
                 onClick={() => setShowRevisionForm(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#2a2a2a] text-[#888888] text-sm hover:text-white hover:border-[#444444] transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-line text-dim text-sm hover:text-ink hover:border-line-strong transition-colors"
               >
                 <RotateCcw className="h-4 w-4" />
                 Demander des modifications
@@ -418,7 +418,7 @@ export default function MoodboardViewerClient({
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs text-[#666666]">
+              <p className="text-xs text-faint">
                 Décrivez les directions que vous souhaiteriez explorer.
               </p>
               <textarea
@@ -427,7 +427,7 @@ export default function MoodboardViewerClient({
                 onChange={(e) => setRevisionText(e.target.value)}
                 placeholder="Ex: J'aimerais quelque chose de plus chaud, avec des teintes ambrées…"
                 rows={4}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#444444] focus:outline-none focus:border-[#444444] resize-none leading-relaxed"
+                className="w-full bg-surface border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
               />
               <div className="flex items-center gap-2">
                 <button
@@ -442,7 +442,7 @@ export default function MoodboardViewerClient({
                 <button
                   type="button"
                   onClick={() => { setShowRevisionForm(false); setRevisionText('') }}
-                  className="text-xs text-[#444444] hover:text-white transition-colors"
+                  className="text-xs text-faint hover:text-ink transition-colors"
                 >
                   Annuler
                 </button>
@@ -464,15 +464,15 @@ export default function MoodboardViewerClient({
               <div
                 key={block.id}
                 className={`
-                  group bg-[#111111] rounded-2xl overflow-hidden border transition-all duration-200
+                  group bg-surface rounded-2xl overflow-hidden border transition-all duration-200
                   ${isSelected
-                    ? 'border-[#00D76B]/50 shadow-lg shadow-[#00D76B]/10 ring-1 ring-[#00D76B]/20'
-                    : 'border-[#1e1e1e] hover:border-[#2a2a2a]'}
+                    ? 'border-brand/50 shadow-lg shadow-[rgb(var(--c-brand))]/10 ring-1 ring-brand/20'
+                    : 'border-line hover:border-line'}
                 `}
               >
                 {/* Image */}
                 <div
-                  className="relative aspect-[4/3] bg-[#0d0d0d] cursor-zoom-in overflow-hidden"
+                  className="relative aspect-[4/3] bg-surface cursor-zoom-in overflow-hidden"
                   onClick={() => setLightboxIndex(i)}
                 >
                   {block.content.image_url ? (
@@ -485,21 +485,21 @@ export default function MoodboardViewerClient({
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <ImageIcon className="h-8 w-8 text-[#2a2a2a]" />
+                      <ImageIcon className="h-8 w-8 text-[rgb(var(--c-border))]" />
                     </div>
                   )}
 
                   {/* Expand overlay */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                     <div className="w-10 h-10 rounded-xl bg-black/60 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Maximize2 className="h-4 w-4 text-white" />
+                      <Maximize2 className="h-4 w-4 text-ink" />
                     </div>
                   </div>
 
                   {/* Selected badge */}
                   {isSelected && (
                     <div className="absolute top-2 left-2">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#00D76B] text-black text-[10px] font-bold shadow-lg">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-brand text-black text-[10px] font-bold shadow-lg">
                         <Star className="h-2.5 w-2.5" />
                         Sélectionné
                       </span>
@@ -509,11 +509,11 @@ export default function MoodboardViewerClient({
 
                 {/* Info */}
                 <div className="p-4 space-y-2">
-                  <h3 className="text-sm font-semibold text-white leading-tight">
-                    {block.content.title || <span className="text-[#555555] italic">Sans titre</span>}
+                  <h3 className="text-sm font-semibold text-ink leading-tight">
+                    {block.content.title || <span className="text-faint italic">Sans titre</span>}
                   </h3>
                   {block.content.description && (
-                    <p className="text-xs text-[#777777] leading-relaxed">
+                    <p className="text-xs text-faint leading-relaxed">
                       {block.content.description}
                     </p>
                   )}
@@ -527,8 +527,8 @@ export default function MoodboardViewerClient({
                       className={`
                         w-full mt-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium border transition-all duration-200
                         ${isSelected
-                          ? 'bg-[#00D76B]/15 border-[#00D76B]/30 text-[#00D76B] hover:bg-[#00D76B]/25'
-                          : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444]'}
+                          ? 'bg-brand/15 border-brand/30 text-brand hover:bg-brand/25'
+                          : 'bg-surface-2 border-line text-faint hover:text-ink hover:border-line-strong'}
                         disabled:opacity-40 disabled:cursor-not-allowed
                       `}
                     >
@@ -558,10 +558,10 @@ export default function MoodboardViewerClient({
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#111111] border border-[#1e1e1e] flex items-center justify-center">
-            <ImageIcon className="h-7 w-7 text-[#333333]" />
+          <div className="w-16 h-16 rounded-2xl bg-surface border border-line flex items-center justify-center">
+            <ImageIcon className="h-7 w-7 text-faint" />
           </div>
-          <p className="text-sm text-[#555555]">Les moodboards apparaîtront ici</p>
+          <p className="text-sm text-faint">Les moodboards apparaîtront ici</p>
         </div>
       )}
 

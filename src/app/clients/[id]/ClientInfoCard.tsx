@@ -52,8 +52,8 @@ export default function ClientInfoCard({ client: initialClient }: ClientInfoCard
   }
 
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-6 space-y-4">
-      <h2 className="text-xs font-semibold text-[#666666] uppercase tracking-widest">
+    <div className="bg-surface border border-line rounded-xl p-6 space-y-4">
+      <h2 className="text-xs font-semibold text-faint uppercase tracking-widest">
         Informations
       </h2>
 
@@ -195,8 +195,8 @@ function EditableField({
   }
 
   return (
-    <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2.5 group">
-      <p className="text-[10px] uppercase tracking-widest text-[#444444] font-medium mb-1 flex items-center gap-1.5">
+    <div className="bg-surface border border-line rounded-lg px-3 py-2.5 group">
+      <p className="text-[10px] uppercase tracking-widest text-faint font-medium mb-1 flex items-center gap-1.5">
         {icon}
         {label}
       </p>
@@ -215,8 +215,8 @@ function EditableField({
             autoFocus
             disabled={isPending}
             className="
-              flex-1 bg-[#1a1a1a] border border-[#333333] rounded px-2 py-1
-              text-sm text-white focus:outline-none focus:border-[#555555]
+              flex-1 bg-surface-2 border border-line-strong rounded px-2 py-1
+              text-sm text-ink focus:outline-none focus:border-[rgb(var(--c-text-faint))]
               disabled:opacity-50
             "
           />
@@ -235,7 +235,7 @@ function EditableField({
               onCancel()
             }}
             disabled={isPending}
-            className="p-1 rounded text-[#666666] hover:bg-[#222222] transition-colors"
+            className="p-1 rounded text-faint hover:bg-surface-3 transition-colors"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -248,15 +248,15 @@ function EditableField({
                 href={link}
                 target={link.startsWith('http') ? '_blank' : undefined}
                 rel="noreferrer"
-                className="text-sm text-white hover:text-[#00D76B] transition-colors truncate"
+                className="text-sm text-ink hover:text-brand transition-colors truncate"
               >
                 {value}
               </a>
             ) : (
-              <p className="text-sm text-white truncate">{value}</p>
+              <p className="text-sm text-ink truncate">{value}</p>
             )
           ) : (
-            <p className="text-sm text-[#555555] italic">—</p>
+            <p className="text-sm text-faint italic">—</p>
           )}
           <button
             type="button"
@@ -266,7 +266,7 @@ function EditableField({
             }}
             className="
               opacity-0 group-hover:opacity-100 transition-opacity
-              p-1 rounded text-[#444444] hover:text-white hover:bg-[#222222]
+              p-1 rounded text-faint hover:text-ink hover:bg-surface-3
             "
           >
             <Pencil className="h-3 w-3" />
@@ -303,8 +303,8 @@ function SelectField({
   }
 
   return (
-    <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2.5">
-      <p className="text-[10px] uppercase tracking-widest text-[#444444] font-medium mb-1 flex items-center gap-1.5">
+    <div className="bg-surface border border-line rounded-lg px-3 py-2.5">
+      <p className="text-[10px] uppercase tracking-widest text-faint font-medium mb-1 flex items-center gap-1.5">
         {icon}
         {label}
       </p>
@@ -313,13 +313,13 @@ function SelectField({
         onChange={(e) => handleChange(e.target.value as ClientSource)}
         disabled={isPending}
         className="
-          w-full bg-transparent text-sm text-white
+          w-full bg-transparent text-sm text-ink
           focus:outline-none cursor-pointer
           disabled:opacity-50
         "
       >
         {Object.entries(SOURCE_LABEL).map(([k, v]) => (
-          <option key={k} value={k} className="bg-[#1a1a1a]">{v}</option>
+          <option key={k} value={k} className="bg-surface-2">{v}</option>
         ))}
       </select>
     </div>
@@ -354,9 +354,9 @@ function NotesField({
   }
 
   return (
-    <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg p-4 group">
+    <div className="bg-surface border border-line rounded-lg p-4 group">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] uppercase tracking-widest text-[#444444] font-medium flex items-center gap-1.5">
+        <p className="text-[10px] uppercase tracking-widest text-faint font-medium flex items-center gap-1.5">
           <StickyNote className="h-3.5 w-3.5" />
           Notes
         </p>
@@ -369,7 +369,7 @@ function NotesField({
             }}
             className="
               opacity-0 group-hover:opacity-100 transition-opacity
-              p-1 rounded text-[#444444] hover:text-white hover:bg-[#222222]
+              p-1 rounded text-faint hover:text-ink hover:bg-surface-3
             "
           >
             <Pencil className="h-3 w-3" />
@@ -387,9 +387,9 @@ function NotesField({
             disabled={isPending}
             placeholder="Notes libres sur ce client…"
             className="
-              w-full bg-[#1a1a1a] border border-[#333333] rounded px-2 py-1.5
-              text-sm text-white placeholder-[#3a3a3a]
-              focus:outline-none focus:border-[#555555] resize-none
+              w-full bg-surface-2 border border-line-strong rounded px-2 py-1.5
+              text-sm text-ink placeholder-faint
+              focus:outline-none focus:border-[rgb(var(--c-text-faint))] resize-none
               disabled:opacity-50
             "
           />
@@ -401,7 +401,7 @@ function NotesField({
                 setEditing(false)
               }}
               disabled={isPending}
-              className="text-xs text-[#666666] hover:text-white transition-colors"
+              className="text-xs text-faint hover:text-ink transition-colors"
             >
               Annuler
             </button>
@@ -411,7 +411,7 @@ function NotesField({
               disabled={isPending}
               className="
                 inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold
-                bg-[#00D76B] text-white hover:bg-[#00C061] transition-colors
+                bg-brand text-ink hover:bg-brand transition-colors
                 disabled:opacity-50
               "
             >
@@ -421,9 +421,9 @@ function NotesField({
           </div>
         </div>
       ) : value ? (
-        <p className="text-sm text-[#a0a0a0] whitespace-pre-wrap">{value}</p>
+        <p className="text-sm text-dim whitespace-pre-wrap">{value}</p>
       ) : (
-        <p className="text-sm text-[#555555] italic">Aucune note. Survolez pour ajouter.</p>
+        <p className="text-sm text-faint italic">Aucune note. Survolez pour ajouter.</p>
       )}
     </div>
   )

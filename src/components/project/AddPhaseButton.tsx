@@ -35,7 +35,7 @@ export default function AddPhaseButton({ projectId }: { projectId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-[#2a2a2a] text-sm text-[#666666] hover:text-white hover:border-[#444444] transition-colors"
+        className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-line text-sm text-faint hover:text-ink hover:border-line-strong transition-colors"
       >
         <Plus className="h-4 w-4" />
         Ajouter une étape
@@ -44,10 +44,10 @@ export default function AddPhaseButton({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div className="mt-2 bg-[#0e0e0e] border border-[#1f1f1f] rounded-xl p-4 space-y-3">
+    <div className="mt-2 bg-surface border border-line rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[#888888]">Choisis un type d&apos;étape</p>
-        <button onClick={() => setOpen(false)} className="text-[#666666] hover:text-white transition-colors">
+        <p className="text-xs text-dim">Choisis un type d&apos;étape</p>
+        <button onClick={() => setOpen(false)} className="text-faint hover:text-ink transition-colors">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -58,14 +58,14 @@ export default function AddPhaseButton({ projectId }: { projectId: string }) {
             type="button"
             onClick={() => add(s.type)}
             disabled={isPending}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#141414] border border-[#262626] text-sm text-[#cccccc] hover:text-white hover:border-[#3a3a3a] transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-surface-2 border border-line text-sm text-dim hover:text-ink hover:border-line-strong transition-colors disabled:opacity-50"
           >
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" /> : <s.icon className="h-4 w-4 flex-shrink-0 text-[#888888]" />}
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" /> : <s.icon className="h-4 w-4 flex-shrink-0 text-dim" />}
             {s.label}
           </button>
         ))}
       </div>
-      <p className="text-[10px] text-[#555555]">L&apos;étape est ajoutée en fin de pipeline, en attente de démarrage.</p>
+      <p className="text-[10px] text-faint">L&apos;étape est ajoutée en fin de pipeline, en attente de démarrage.</p>
     </div>
   )
 }

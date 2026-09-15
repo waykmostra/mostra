@@ -28,7 +28,7 @@ const ACTION_COLORS: Partial<Record<ActivityAction, string>> = {
   phase_completed: 'bg-[#22C55E]',
   phase_approved: 'bg-[#22C55E]',
   phase_review: 'bg-[#F59E0B]',
-  project_created: 'bg-[#00D76B]',
+  project_created: 'bg-brand',
   comment_added: 'bg-[#6B7280]',
 }
 
@@ -53,20 +53,20 @@ export default function ActivityLog({ activity: initial, projectId }: ActivityLo
 
   if (activity.length === 0) {
     return (
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
+      <div className="bg-surface border border-line rounded-xl p-5">
         <div className="flex items-center gap-2 mb-3">
-          <h2 className="text-sm font-semibold text-white">Activité récente</h2>
+          <h2 className="text-sm font-semibold text-ink">Activité récente</h2>
           <LiveBadge />
         </div>
-        <p className="text-xs text-[#444444] italic">Aucune activité enregistrée.</p>
+        <p className="text-xs text-faint italic">Aucune activité enregistrée.</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-5">
+    <div className="bg-surface border border-line rounded-xl p-5">
       <div className="flex items-center gap-2 mb-4">
-        <h2 className="text-sm font-semibold text-white">Activité récente</h2>
+        <h2 className="text-sm font-semibold text-ink">Activité récente</h2>
         <LiveBadge />
       </div>
 
@@ -74,7 +74,7 @@ export default function ActivityLog({ activity: initial, projectId }: ActivityLo
         {activity.map((entry, i) => {
           const label = ACTION_LABELS[entry.action] ?? entry.action
           const detail = getDetail(entry)
-          const dotColor = ACTION_COLORS[entry.action] ?? 'bg-[#00D76B]'
+          const dotColor = ACTION_COLORS[entry.action] ?? 'bg-brand'
           const isLast = i === activity.length - 1
           const isNew = newIds.has(entry.id)
 
@@ -85,7 +85,7 @@ export default function ActivityLog({ activity: initial, projectId }: ActivityLo
             >
               {/* Ligne verticale */}
               {!isLast && (
-                <div className="absolute left-[5px] top-[14px] bottom-[-16px] w-px bg-[#1a1a1a]" />
+                <div className="absolute left-[5px] top-[14px] bottom-[-16px] w-px bg-surface-2" />
               )}
 
               {/* Dot */}
@@ -95,14 +95,14 @@ export default function ActivityLog({ activity: initial, projectId }: ActivityLo
 
               {/* Texte */}
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-[#a0a0a0] leading-relaxed">
-                  <span className="text-white font-medium">
+                <p className="text-xs text-dim leading-relaxed">
+                  <span className="text-ink font-medium">
                     {entry.user?.full_name ?? 'Système'}
                   </span>{' '}
                   {label}
-                  {detail && <span className="text-[#666666]"> · {detail}</span>}
+                  {detail && <span className="text-faint"> · {detail}</span>}
                 </p>
-                <p className="text-[10px] text-[#444444] mt-0.5" suppressHydrationWarning>
+                <p className="text-[10px] text-faint mt-0.5" suppressHydrationWarning>
                   {formatRelative(entry.created_at)}
                 </p>
               </div>
@@ -124,8 +124,8 @@ function LiveBadge() {
         className="
         pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2
         hidden group-hover:block z-10
-        bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-2 py-1
-        text-[10px] text-[#a0a0a0] whitespace-nowrap shadow-lg
+        bg-surface-2 border border-line rounded-md px-2 py-1
+        text-[10px] text-dim whitespace-nowrap shadow-lg
       "
       >
         Mises à jour en direct

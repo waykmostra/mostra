@@ -141,27 +141,27 @@ export default function CommentSection({
   return (
     <section>
       <div className="flex items-center gap-2 mb-3">
-        <h2 className="text-sm font-semibold text-white">Commentaires</h2>
+        <h2 className="mono-label text-faint">Commentaires récents</h2>
         {activeCount > 0 && (
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#00D76B]/10 text-[#00D76B] text-[10px] font-bold">
+          <span className="mono-label tnum inline-flex items-center rounded-full bg-brand/15 px-2 py-0.5 text-brand-text">
             {activeCount}
           </span>
         )}
         <LiveBadge />
       </div>
 
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl overflow-hidden">
+      <div className="surface overflow-hidden">
         {/* ── Formulaire principal ──────────────────────────────── */}
         {canComment && (
-          <form onSubmit={handleSubmit(onSubmit)} className="p-4 border-b border-[#1e1e1e]">
+          <form onSubmit={handleSubmit(onSubmit)} className="p-4 border-b border-line">
             <textarea
               {...register('content')}
               placeholder="Ajouter un commentaire…"
               rows={3}
               className="
-                w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2
-                text-xs text-white placeholder-[#3a3a3a] resize-none
-                focus:outline-none focus:border-[#00D76B]/30 transition-colors
+                w-full bg-surface border border-line rounded-lg px-3 py-2
+                text-xs text-ink placeholder-faint resize-none
+                focus:outline-none focus:border-brand/30 transition-colors
               "
             />
             {errors.content && (
@@ -173,8 +173,8 @@ export default function CommentSection({
                 <select
                   {...register('phaseId')}
                   className="
-                    bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2 py-1.5
-                    text-[10px] text-[#666666] focus:outline-none focus:border-[#00D76B]/30
+                    bg-surface border border-line rounded-lg px-2 py-1.5
+                    text-[10px] text-faint focus:outline-none focus:border-brand/30
                     cursor-pointer transition-colors
                   "
                 >
@@ -191,7 +191,7 @@ export default function CommentSection({
 
               <div className="flex items-center gap-2">
                 <span
-                  className={`text-[10px] tabular-nums ${charCount > 1800 ? 'text-[#F59E0B]' : 'text-[#444444]'}`}
+                  className={`text-[10px] tabular-nums ${charCount > 1800 ? 'text-[#F59E0B]' : 'text-faint'}`}
                 >
                   {charCount}/2000
                 </span>
@@ -200,8 +200,8 @@ export default function CommentSection({
                   disabled={submitting}
                   className="
                     inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                    bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B]
-                    hover:bg-[#00D76B]/20 transition-colors
+                    bg-brand/10 border border-brand/20 text-brand
+                    hover:bg-brand/20 transition-colors
                     disabled:opacity-50 disabled:cursor-not-allowed
                   "
                 >
@@ -219,13 +219,13 @@ export default function CommentSection({
 
         {/* ── Liste ────────────────────────────────────────────── */}
         {roots.length === 0 ? (
-          <p className="px-4 py-5 text-xs text-[#444444] italic">
+          <p className="px-4 py-5 text-xs text-faint italic">
             Aucun commentaire pour l&apos;instant.
           </p>
         ) : (
           <div>
             {roots.map((node, i) => (
-              <div key={node.id} className={i > 0 ? 'border-t border-[#1a1a1a]' : ''}>
+              <div key={node.id} className={i > 0 ? 'border-t border-line' : ''}>
                 <CommentRow comment={node} depth={0} {...sharedProps} />
                 {/* Réponses */}
                 {node.replies.map((reply) => (
@@ -286,30 +286,30 @@ function CommentRow({
       className={`
         px-4 py-3 transition-colors
         ${comment.is_resolved ? 'opacity-50' : ''}
-        ${depth > 0 ? 'pl-10 bg-[#0d0d0d]' : ''}
+        ${depth > 0 ? 'pl-10 bg-surface' : ''}
       `}
     >
       {/* Icône d'indentation */}
-      {depth > 0 && <CornerDownRight className="inline-block h-3 w-3 text-[#333333] mb-1 mr-1" />}
+      {depth > 0 && <CornerDownRight className="inline-block h-3 w-3 text-faint mb-1 mr-1" />}
 
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           {/* Avatar initiale */}
-          <div className="w-6 h-6 rounded-full bg-[#00D76B]/10 border border-[#00D76B]/20 flex items-center justify-center flex-shrink-0">
-            <span className="text-[9px] font-bold text-[#00D76B]">
+          <div className="w-6 h-6 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-[9px] font-bold text-brand">
               {(comment.author?.full_name ?? '?')[0].toUpperCase()}
             </span>
           </div>
-          <span className="text-xs font-medium text-white truncate">
+          <span className="text-xs font-medium text-ink truncate">
             {comment.author?.full_name ?? 'Anonyme'}
           </span>
           {comment.phase_name && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-[#2a2a2a] text-[#a0a0a0] border border-[#333333]">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-[rgb(var(--c-border))] text-dim border border-line-strong">
               {comment.phase_name}
             </span>
           )}
-          <span className="text-[10px] text-[#444444] flex-shrink-0">
+          <span className="text-[10px] text-faint flex-shrink-0">
             {formatRelative(comment.created_at)}
           </span>
           {comment.is_resolved && <span className="text-[10px] text-[#22C55E]">· résolu</span>}
@@ -329,7 +329,7 @@ function CommentRow({
               ${
                 comment.is_resolved
                   ? 'border-[#22C55E]/30 bg-[#22C55E]/10 text-[#22C55E]'
-                  : 'border-[#2a2a2a] text-[#444444] hover:text-[#22C55E] hover:border-[#22C55E]/40'
+                  : 'border-line text-faint hover:text-[#22C55E] hover:border-[#22C55E]/40'
               }
             `}
           >
@@ -349,8 +349,8 @@ function CommentRow({
               title="Supprimer"
               aria-label="Supprimer le commentaire"
               className="
-                w-6 h-6 rounded-full border border-[#2a2a2a] flex items-center justify-center
-                text-[#444444] hover:text-[#EF4444] hover:border-[#EF4444]/40
+                w-6 h-6 rounded-full border border-line flex items-center justify-center
+                text-faint hover:text-[#EF4444] hover:border-[#EF4444]/40
                 transition-colors disabled:opacity-40 disabled:cursor-not-allowed
               "
             >
@@ -368,7 +368,7 @@ function CommentRow({
       <p
         className={`
         text-xs leading-relaxed mt-2
-        ${comment.is_resolved ? 'text-[#555555] line-through' : 'text-[#a0a0a0]'}
+        ${comment.is_resolved ? 'text-faint line-through' : 'text-dim'}
       `}
       >
         {comment.content}
@@ -379,7 +379,7 @@ function CommentRow({
         <button
           type="button"
           onClick={() => setReplyingTo(isReplying ? null : comment.id)}
-          className="mt-1.5 text-[10px] text-[#444444] hover:text-[#a0a0a0] transition-colors"
+          className="mt-1.5 text-[10px] text-faint hover:text-dim transition-colors"
         >
           {isReplying ? 'Annuler' : 'Répondre'}
         </button>
@@ -398,8 +398,8 @@ function LiveBadge() {
         className="
         pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2
         hidden group-hover:block z-10
-        bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-2 py-1
-        text-[10px] text-[#a0a0a0] whitespace-nowrap shadow-lg
+        bg-surface-2 border border-line rounded-md px-2 py-1
+        text-[10px] text-dim whitespace-nowrap shadow-lg
       "
       >
         Mises à jour en direct
@@ -450,7 +450,7 @@ function ReplyFormInline({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="pl-10 pr-4 pb-3 bg-[#0d0d0d] border-t border-[#1a1a1a]"
+      className="pl-10 pr-4 pb-3 bg-surface border-t border-line"
     >
       <textarea
         {...register('content')}
@@ -458,9 +458,9 @@ function ReplyFormInline({
         rows={2}
         autoFocus
         className="
-          w-full mt-2 bg-[#111111] border border-[#2a2a2a] rounded-lg px-3 py-2
-          text-xs text-white placeholder-[#3a3a3a] resize-none
-          focus:outline-none focus:border-[#00D76B]/30 transition-colors
+          w-full mt-2 bg-surface border border-line rounded-lg px-3 py-2
+          text-xs text-ink placeholder-faint resize-none
+          focus:outline-none focus:border-brand/30 transition-colors
         "
       />
       {errors.content && (
@@ -470,7 +470,7 @@ function ReplyFormInline({
         <button
           type="button"
           onClick={onDone}
-          className="px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[10px] text-[#666666] hover:text-white hover:border-[#444444] transition-colors"
+          className="px-3 py-1.5 rounded-lg border border-line text-[10px] text-faint hover:text-ink hover:border-line-strong transition-colors"
         >
           Annuler
         </button>
@@ -479,8 +479,8 @@ function ReplyFormInline({
           disabled={submitting}
           className="
             inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-medium
-            bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B]
-            hover:bg-[#00D76B]/20 transition-colors
+            bg-brand/10 border border-brand/20 text-brand
+            hover:bg-brand/20 transition-colors
             disabled:opacity-50 disabled:cursor-not-allowed
           "
         >

@@ -45,7 +45,7 @@ export default function DeleteClientButton({ clientId, clientName, redirectTo, o
         <button
           onClick={() => setConfirming(false)}
           disabled={isPending}
-          className="px-2 py-1.5 rounded-lg text-[11px] border border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444] transition-colors"
+          className="px-2 py-1.5 rounded-lg text-[11px] border border-line text-faint hover:text-ink hover:border-line-strong transition-colors"
         >
           Non
         </button>
@@ -64,7 +64,7 @@ export default function DeleteClientButton({ clientId, clientName, redirectTo, o
   return (
     <button
       onClick={handleClick}
-      className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-lg border border-[#2a2a2a] text-[#555555] hover:text-[#EF4444] hover:border-[#EF4444]/30 transition-colors"
+      className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-lg border border-line text-faint hover:text-[#EF4444] hover:border-[#EF4444]/30 transition-colors"
       title={`Supprimer ${clientName}`}
       aria-label={`Supprimer ${clientName}`}
     >

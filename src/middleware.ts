@@ -17,7 +17,7 @@ const PUBLIC_PREFIXES = ['/client/', '/setup-password/']
 
 // Routes réservées à l'admin (Tarik).
 // Un client connecté qui tente d'y accéder est redirigé vers /client/dashboard.
-const ADMIN_PREFIXES = ['/dashboard', '/projects', '/settings', '/clients']
+const ADMIN_PREFIXES = ['/dashboard', '/projects', '/settings', '/clients', '/team']
 
 function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.includes(pathname)) return true

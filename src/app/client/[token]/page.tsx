@@ -81,20 +81,13 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
-      {/* Gauche — vue projet */}
-      <ClientProjectView
-        project={project}
-        phases={phases}
-        subPhasesByPhase={subPhasesByPhase}
-        commentedSubPhaseIds={commentedSubPhaseIds}
-        token={params.token}
-      />
-
-      {/* Droite — contact PM */}
-      <div className="space-y-4">
-        <ContactManager projectManager={projectManager} />
-      </div>
-    </div>
+    <ClientProjectView
+      project={project}
+      phases={phases}
+      subPhasesByPhase={subPhasesByPhase}
+      commentedSubPhaseIds={commentedSubPhaseIds}
+      token={params.token}
+      aside={<ContactManager projectManager={projectManager} />}
+    />
   )
 }

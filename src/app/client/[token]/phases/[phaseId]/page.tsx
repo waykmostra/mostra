@@ -1,6 +1,4 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/lib/auth'
 import { getClientPhaseViewData, getClientSignedUrl } from '@/app/client/actions'
@@ -8,14 +6,19 @@ import { fetchVideoData } from '@/app/client/video-actions'
 import FileViewer from '@/components/project/FileViewer'
 import ApprovalPanel from '@/components/client/ApprovalPanel'
 import VideoViewerClient from '@/components/client/VideoViewerClient'
-import type { Project, ProjectPhase } from '@/lib/types'
+import ClientSubPhaseSection from '@/components/client/ClientSubPhaseSection'
+import PhaseStepper from '@/components/project/PhaseStepper'
+import SubPhaseTabs from '@/components/project/SubPhaseTabs'
+import Breadcrumb from '@/components/shared/Breadcrumb'
+import StatusBadge from '@/components/shared/StatusBadge'
+import type { Project, ProjectPhase, SubPhase } from '@/lib/types'
 
-// Lecture toujours fraîche (le client doit voir les changements admin en temps réel au reload).
+// Lecture toujours fraîche : le client doit voir les changements admin au reload.
 export const dynamic = 'force-dynamic'
 
 interface ClientPhasePageProps {
   params: { token: string; phaseId: string }
-  searchParams: { v?: string }
+  searchParams: { v?: string; s?: string; sub?: string }
 }
 
 const ANIMATION_SLUGS = ['animation', 'animation-rendu', 'rendu']
@@ -23,43 +26,61 @@ const ANIMATION_SLUGS = ['animation', 'animation-rendu', 'rendu']
 export default async function ClientPhasePage({ params, searchParams }: ClientPhasePageProps) {
   const admin = createAdminClient()
 
-  // Resolve token → project
   const { data: rawProject } = await admin
     .from('projects')
     .select('id, name, client_id, share_token')
     .eq('share_token', params.token)
     .maybeSingle()
 
-  const project = rawProject as Pick<
-    Project,
-    'id' | 'name' | 'client_id' | 'share_token'
-  > | null
+  const project = rawProject as Pick<Project, 'id' | 'name' | 'client_id' | 'share_token'> | null
   if (!project) redirect(`/client/${params.token}`)
 
-  // Fetch phase with slug
-  const { data: rawPhase } = await admin
+  // Toutes les étapes — le stepper reste navigable depuis l'intérieur d'une étape.
+  const { data: rawPhases } = await admin
     .from('project_phases')
-    .select('id, name, slug, project_id, status, completed_at')
-    .eq('id', params.phaseId)
-    .maybeSingle()
+    .select('id, name, slug, status, sort_order, completed_at')
+    .eq('project_id', project.id)
+    .order('sort_order', { ascending: true })
 
-  const phase = rawPhase as Pick<
-    ProjectPhase,
-    'id' | 'name' | 'slug' | 'project_id' | 'status' | 'completed_at'
-  > | null
+  const allPhases =
+    (rawPhases as Pick<
+      ProjectPhase,
+      'id' | 'name' | 'slug' | 'status' | 'sort_order' | 'completed_at'
+    >[] | null) ?? []
 
-  if (!phase || phase.project_id !== project.id) redirect(`/client/${params.token}`)
+  const phase = allPhases.find((p) => p.id === params.phaseId)
+  if (!phase) redirect(`/client/${params.token}`)
 
-  // Gate: client can only see phases in_review, approved, or completed
-  const isAnimation = ANIMATION_SLUGS.includes(phase.slug)
   const isAccessible =
-    phase.status === 'in_review' ||
-    phase.status === 'approved' ||
-    phase.status === 'completed'
-
+    phase.status === 'in_review' || phase.status === 'approved' || phase.status === 'completed'
   if (!isAccessible) redirect(`/client/${params.token}`)
 
-  // Résoudre le profile_id du client CRM (NULL si pas de compte connectable)
+  const isAnimation = ANIMATION_SLUGS.includes(phase.slug)
+
+  // Sous-étapes visibles par le client, toutes étapes confondues (le stepper
+  // affiche le compteur), puis celles de l'étape ouverte.
+  const { data: rawSubs } = await admin
+    .from('sub_phases')
+    .select('id, name, slug, status, phase_id, sort_order')
+    .in(
+      'phase_id',
+      allPhases.map((p) => p.id),
+    )
+    .order('sort_order', { ascending: true })
+
+  const allSubs =
+    (rawSubs as (Pick<SubPhase, 'id' | 'name' | 'slug' | 'status' | 'sort_order'> & {
+      phase_id: string
+    })[] | null) ?? []
+
+  const subsByPhase: Record<string, Pick<SubPhase, 'id' | 'status'>[]> = {}
+  for (const s of allSubs) {
+    ;(subsByPhase[s.phase_id] ??= []).push({ id: s.id, status: s.status })
+  }
+
+  const subPhases = allSubs.filter((s) => s.phase_id === phase.id)
+
+  // profile_id du client CRM (vide si aucun compte connectable)
   let clientId = ''
   if (project.client_id) {
     const { data: rawClient } = await admin
@@ -70,32 +91,87 @@ export default async function ClientPhasePage({ params, searchParams }: ClientPh
     clientId = (rawClient as { profile_id: string | null } | null)?.profile_id ?? ''
   }
 
-  // Check auth (parallel with other data)
   const currentProfile = await getCurrentProfile()
   const isAuthenticated = !!currentProfile
 
-  // ── Animation → Video Review ─────────────────────────────────────
+  const header = (
+    <div className="space-y-6">
+      <div>
+        <Breadcrumb
+          items={[
+            { label: project.name, href: `/client/${params.token}` },
+            { label: phase.name },
+          ]}
+        />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <h1 className="text-[1.75rem] leading-tight text-ink">{phase.name}</h1>
+          <StatusBadge status={phase.status} className="flex-shrink-0" />
+        </div>
+      </div>
+
+      {/* Les onglets du projet — mêmes qu'en admin. */}
+      <PhaseStepper
+        phases={allPhases}
+        subPhasesByPhase={subsByPhase}
+        currentPhaseId={phase.id}
+        hrefForPhase={(p) => `/client/${params.token}/phases/${p.id}`}
+        lockPending
+      />
+
+      <ApprovalPanel
+        projectId={project.id}
+        phaseId={params.phaseId}
+        phaseName={phase.name}
+        status={phase.status}
+        completedAt={phase.completed_at}
+        isAuthenticated={isAuthenticated}
+        loginHref="/login"
+      />
+    </div>
+  )
+
+  // ── Sous-étapes : le contenu s'empile, comme en admin ────────────
+  if (subPhases.length > 0) {
+    // On ouvre sur ce qui demande une action, comme en admin.
+    const activeSub =
+      subPhases.find((s) => s.id === searchParams.sub) ??
+      subPhases.find((s) => s.status === 'in_review') ??
+      subPhases.find((s) => s.status === 'in_progress') ??
+      subPhases[0]
+
+    return (
+      <div className="space-y-6">
+        {header}
+
+        <SubPhaseTabs
+          subPhases={subPhases}
+          activeId={activeSub.id}
+          hrefFor={(sub) => `/client/${params.token}/phases/${phase.id}?sub=${sub.id}`}
+        />
+
+        <ClientSubPhaseSection
+          token={params.token}
+          projectId={project.id}
+          phaseId={phase.id}
+          subPhase={activeSub}
+          clientProfileId={clientId || null}
+          isAuthenticated={isAuthenticated}
+          activeScriptParam={searchParams.s}
+          showHeading={subPhases.length === 1}
+        />
+      </div>
+    )
+  }
+
+  // ── Animation / Rendu : la vidéo est portée par l'étape ──────────
   if (isAnimation) {
     const { currentVideo, allVersions, comments } = await fetchVideoData(
       params.token,
       params.phaseId,
     )
-
     return (
-      <div className="space-y-5">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 text-xs text-[#666666]">
-          <Link
-            href={`/client/${params.token}`}
-            className="inline-flex items-center gap-1 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            {project.name}
-          </Link>
-          <span className="text-[#333333]">/</span>
-          <span className="text-[#a0a0a0]">{phase.name}</span>
-        </div>
-
+      <div className="space-y-6">
+        {header}
         <VideoViewerClient
           token={params.token}
           projectId={project.id}
@@ -111,62 +187,22 @@ export default async function ClientPhasePage({ params, searchParams }: ClientPh
     )
   }
 
-  // ── Other phases → File Viewer ───────────────────────────────────
+  // ── Fichiers ─────────────────────────────────────────────────────
   const requestedVersion = searchParams.v ? Number(searchParams.v) : undefined
   const data = await getClientPhaseViewData(params.token, params.phaseId, requestedVersion)
 
-  if ('error' in data) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <p className="text-sm text-[#EF4444]">{data.error}</p>
-        <Link
-          href={`/client/${params.token}`}
-          className="text-xs text-[#666666] hover:text-white transition-colors"
-        >
-          ← Retour au projet
-        </Link>
-      </div>
-    )
-  }
-
-  // Signed URL for "download" link (no session needed)
   async function clientGetSignedUrl(filePath: string) {
     'use server'
     return getClientSignedUrl(params.token, filePath)
   }
 
   return (
-    <div className="space-y-5">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-xs text-[#666666]">
-        <Link
-          href={`/client/${params.token}`}
-          className="inline-flex items-center gap-1 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          {data.projectName}
-        </Link>
-        <span className="text-[#333333]">/</span>
-        <span className="text-[#a0a0a0]">{data.phaseName}</span>
-      </div>
+    <div className="space-y-6">
+      {header}
 
-      {/* Approval panel */}
-      <ApprovalPanel
-        projectId={project.id}
-        phaseId={params.phaseId}
-        phaseName={data.phaseName}
-        status={data.phaseStatus}
-        completedAt={data.completedAt}
-        isAuthenticated={isAuthenticated}
-        loginHref="/login"
-      />
-
-      {/* File viewer */}
-      {data.files.length === 0 ? (
-        <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-10 text-center">
-          <p className="text-sm text-[#444444] italic">
-            Aucun fichier disponible pour cette phase.
-          </p>
+      {'error' in data || data.files.length === 0 ? (
+        <div className="surface px-5 py-10 text-center">
+          <p className="text-[13.5px] text-faint">Aucun fichier disponible sur cette étape.</p>
         </div>
       ) : (
         <FileViewer

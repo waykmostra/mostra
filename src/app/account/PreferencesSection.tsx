@@ -45,10 +45,10 @@ export default function PreferencesSection({ contactMethod }: PreferencesSection
   }
 
   return (
-    <section className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-6 space-y-5">
+    <section className="bg-surface border border-line rounded-xl p-6 space-y-5">
       <div>
-        <h2 className="text-sm font-semibold text-white">Préférences</h2>
-        <p className="text-xs text-[#555555] mt-0.5">
+        <h2 className="text-sm font-semibold text-ink">Préférences</h2>
+        <p className="text-xs text-faint mt-0.5">
           Méthode de contact préférée pour les notifications
         </p>
       </div>
@@ -63,26 +63,26 @@ export default function PreferencesSection({ contactMethod }: PreferencesSection
               onClick={() => setSelected(value)}
               className={`flex flex-col gap-2 rounded-xl p-4 border text-left transition-colors ${
                 active
-                  ? 'border-[#00D76B] bg-[#00D76B]/8'
-                  : 'border-[#2a2a2a] hover:border-[#3a3a3a] bg-[#0a0a0a]'
+                  ? 'border-brand bg-brand/8'
+                  : 'border-line hover:border-line-strong bg-canvas'
               }`}
             >
               <Icon
-                className={`h-5 w-5 ${active ? 'text-[#00D76B]' : 'text-[#555555]'}`}
+                className={`h-5 w-5 ${active ? 'text-brand' : 'text-faint'}`}
               />
               <div>
-                <p className={`text-sm font-medium ${active ? 'text-white' : 'text-[#a0a0a0]'}`}>
+                <p className={`text-sm font-medium ${active ? 'text-ink' : 'text-dim'}`}>
                   {label}
                 </p>
-                <p className="text-[11px] text-[#555555] mt-0.5">{description}</p>
+                <p className="text-[11px] text-faint mt-0.5">{description}</p>
               </div>
               {/* Selection indicator */}
               <div
                 className={`w-4 h-4 rounded-full border-2 flex items-center justify-center self-end ${
-                  active ? 'border-[#00D76B]' : 'border-[#2a2a2a]'
+                  active ? 'border-brand' : 'border-line'
                 }`}
               >
-                {active && <div className="w-2 h-2 rounded-full bg-[#00D76B]" />}
+                {active && <div className="w-2 h-2 rounded-full bg-brand" />}
               </div>
             </button>
           )
@@ -93,7 +93,7 @@ export default function PreferencesSection({ contactMethod }: PreferencesSection
         type="button"
         onClick={handleSave}
         disabled={pending || selected === contactMethod}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00D76B] text-black text-sm font-semibold hover:bg-[#00c060] disabled:opacity-50 transition-colors"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand text-black text-sm font-semibold hover:bg-brand disabled:opacity-50 transition-colors"
       >
         {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
         Sauvegarder les préférences

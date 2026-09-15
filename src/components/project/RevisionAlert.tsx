@@ -21,7 +21,7 @@ export default function RevisionAlert({ message }: RevisionAlertProps) {
           Le client a demandé des modifications
         </p>
         {message && (
-          <p className="mt-1 text-xs text-[#a0a0a0] leading-relaxed whitespace-pre-wrap break-words">
+          <p className="mt-1 text-xs text-dim leading-relaxed whitespace-pre-wrap break-words">
             {message}
           </p>
         )}
@@ -31,7 +31,7 @@ export default function RevisionAlert({ message }: RevisionAlertProps) {
         type="button"
         onClick={() => setDismissed(true)}
         aria-label="Masquer l'alerte"
-        className="flex-shrink-0 self-start p-1 rounded-md text-[#555555] hover:text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors"
+        className="flex-shrink-0 self-start p-1 rounded-md text-faint hover:text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors"
       >
         <X className="h-3.5 w-3.5" />
       </button>

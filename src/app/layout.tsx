@@ -1,21 +1,23 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, JetBrains_Mono, Poppins } from 'next/font/google'
+import { Inter, JetBrains_Mono, Sora } from 'next/font/google'
 import './globals.css'
 import ServiceWorkerRegistrar from '@/components/shared/ServiceWorkerRegistrar'
 
+// Les deux familles du site Mostra, et rien d'autre : Sora pour les titres,
+// Inter pour le texte. Le mono ne sert qu'aux micro-labels et aux compteurs.
 const inter = Inter({
-  variable: '--font-sans',
+  variable: '--font-inter',
   subsets: ['latin'],
 })
 
-const poppins = Poppins({
-  variable: '--font-poppins',
+const sora = Sora({
+  variable: '--font-sora',
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
+  weight: ['300', '400', '500', '600', '700'],
 })
 
 const jetbrainsMono = JetBrains_Mono({
-  variable: '--font-mono',
+  variable: '--font-jetbrains',
   subsets: ['latin'],
 })
 
@@ -38,7 +40,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0a0a0a',
+  themeColor: '#020302',
 }
 
 export default function RootLayout({
@@ -46,11 +48,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Pas d'`antialiased` : on garde le rendu sous-pixel de Windows, sur lequel
+  // Inter et Sora sont nettement plus nettes. Même choix que le site.
   return (
     <html
       lang="fr"
-      className={`${inter.variable} ${poppins.variable} ${jetbrainsMono.variable} dark h-full antialiased`}
+      className={`${inter.variable} ${sora.variable} ${jetbrainsMono.variable} h-full`}
     >
+      <head>
+        {/* Mode nuit sans flash : applique .dark avant le premier paint. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var d=document.documentElement;if(localStorage.getItem('mostra-theme')==='dark')d.classList.add('dark');if(localStorage.getItem('mostra-rail')==='collapsed')d.style.setProperty('--rail-w','68px')}catch(e){}",
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistrar />
         {children}

@@ -105,17 +105,17 @@ function AdminAnswerField({
     return (
       <div className="space-y-1.5">
         <div className="flex items-start gap-2">
-          <p className="text-xs font-medium text-[#cccccc] flex-1">
+          <p className="text-xs font-medium text-dim flex-1">
             {block.content.label}
             {block.content.required && <span className="text-red-400 ml-1">*</span>}
           </p>
           {hasAnySelected && !saving && (
-            <CheckCircle className="h-3.5 w-3.5 text-[#00D76B] flex-shrink-0 mt-0.5" />
+            <CheckCircle className="h-3.5 w-3.5 text-brand flex-shrink-0 mt-0.5" />
           )}
-          {saving && <Loader2 className="h-3.5 w-3.5 text-[#555555] animate-spin flex-shrink-0 mt-0.5" />}
+          {saving && <Loader2 className="h-3.5 w-3.5 text-faint animate-spin flex-shrink-0 mt-0.5" />}
         </div>
         {block.content.helpText && (
-          <p className="text-[11px] text-[#444444]">{block.content.helpText}</p>
+          <p className="text-[11px] text-faint">{block.content.helpText}</p>
         )}
         <div className="space-y-2">
           {(block.content.options ?? []).map((opt) => {
@@ -129,13 +129,13 @@ function AdminAnswerField({
                 <div
                   className={`w-4 h-4 rounded-sm border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                     checked
-                      ? 'border-[#00D76B] bg-[#00D76B]'
-                      : 'border-[#2a2a2a] group-hover:border-[#555555]'
+                      ? 'border-brand bg-brand'
+                      : 'border-line group-hover:border-[rgb(var(--c-text-faint))]'
                   }`}
                 >
                   {checked && <Check className="h-2.5 w-2.5 text-black" strokeWidth={3} />}
                 </div>
-                <span className="text-sm text-[#cccccc]">{opt}</span>
+                <span className="text-sm text-dim">{opt}</span>
               </label>
             )
           })}
@@ -148,17 +148,17 @@ function AdminAnswerField({
   return (
     <div className="space-y-1.5">
       <div className="flex items-start gap-2">
-        <p className="text-xs font-medium text-[#cccccc] flex-1">
+        <p className="text-xs font-medium text-dim flex-1">
           {block.content.label}
           {block.content.required && <span className="text-red-400 ml-1">*</span>}
         </p>
         {hasAnswer && !saving && (
-          <CheckCircle className="h-3.5 w-3.5 text-[#00D76B] flex-shrink-0 mt-0.5" />
+          <CheckCircle className="h-3.5 w-3.5 text-brand flex-shrink-0 mt-0.5" />
         )}
-        {saving && <Loader2 className="h-3.5 w-3.5 text-[#555555] animate-spin flex-shrink-0 mt-0.5" />}
+        {saving && <Loader2 className="h-3.5 w-3.5 text-faint animate-spin flex-shrink-0 mt-0.5" />}
       </div>
       {block.content.helpText && (
-        <p className="text-[11px] text-[#444444]">{block.content.helpText}</p>
+        <p className="text-[11px] text-faint">{block.content.helpText}</p>
       )}
       {isLong ? (
         <textarea
@@ -167,7 +167,7 @@ function AdminAnswerField({
           onBlur={handleBlur}
           rows={3}
           placeholder="Répondre au nom du client…"
-          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333333] focus:outline-none focus:border-[#444444] resize-none leading-relaxed transition-colors"
+          className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder-[rgb(var(--c-border-strong))] focus:outline-none focus:border-line-strong resize-none leading-relaxed transition-colors"
         />
       ) : (
         <input
@@ -176,7 +176,7 @@ function AdminAnswerField({
           onChange={(e) => setValue(e.target.value)}
           onBlur={handleBlur}
           placeholder="Répondre au nom du client…"
-          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333333] focus:outline-none focus:border-[#444444] transition-colors"
+          className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder-[rgb(var(--c-border-strong))] focus:outline-none focus:border-line-strong transition-colors"
         />
       )}
     </div>
@@ -227,10 +227,10 @@ function QuestionEditRow({
   }
 
   return (
-    <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-3 space-y-2.5">
+    <div className="bg-surface border border-line rounded-xl p-3 space-y-2.5">
       {/* Header: index + delete */}
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-[#333333] font-mono w-4">{index + 1}</span>
+        <span className="text-[10px] text-faint font-mono w-4">{index + 1}</span>
         {/* Type */}
         <select
           value={type}
@@ -239,14 +239,14 @@ function QuestionEditRow({
             setType(newType)
             handleFieldBlur('type', newType)
           }}
-          className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-2 py-1 text-[11px] text-[#a0a0a0] focus:outline-none focus:border-[#444444] transition-colors"
+          className="flex-1 bg-canvas border border-line rounded-lg px-2 py-1 text-[11px] text-dim focus:outline-none focus:border-line-strong transition-colors"
         >
           {QUESTION_TYPES.map((qt) => (
             <option key={qt.value} value={qt.value}>{qt.label}</option>
           ))}
         </select>
         {/* Required */}
-        <label className="flex items-center gap-1 text-[11px] text-[#555555] cursor-pointer flex-shrink-0">
+        <label className="flex items-center gap-1 text-[11px] text-faint cursor-pointer flex-shrink-0">
           <input
             type="checkbox"
             checked={required}
@@ -254,7 +254,7 @@ function QuestionEditRow({
               setRequired(e.target.checked)
               handleFieldBlur('required', e.target.checked)
             }}
-            className="w-3 h-3 accent-[#00D76B]"
+            className="w-3 h-3 accent-[rgb(var(--c-brand))]"
           />
           Requis
         </label>
@@ -263,7 +263,7 @@ function QuestionEditRow({
           type="button"
           onClick={handleDelete}
           disabled={deleting}
-          className="p-1 rounded text-[#333333] hover:text-[#EF4444] transition-colors disabled:opacity-40 flex-shrink-0"
+          className="p-1 rounded text-faint hover:text-[#EF4444] transition-colors disabled:opacity-40 flex-shrink-0"
         >
           {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
         </button>
@@ -276,7 +276,7 @@ function QuestionEditRow({
         onChange={(e) => setLabel(e.target.value)}
         onBlur={(e) => handleFieldBlur('label', e.target.value.trim())}
         placeholder="Question…"
-        className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#333333] focus:outline-none focus:border-[#00D76B]/50 transition-colors"
+        className="w-full bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink placeholder-[rgb(var(--c-border-strong))] focus:outline-none focus:border-brand/50 transition-colors"
       />
 
       {/* Help text */}
@@ -286,7 +286,7 @@ function QuestionEditRow({
         onChange={(e) => setHelpText(e.target.value)}
         onBlur={(e) => handleFieldBlur('helpText', e.target.value.trim())}
         placeholder="Description optionnelle…"
-        className="w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-[11px] text-[#666666] placeholder-[#2a2a2a] focus:outline-none focus:border-[#333333] transition-colors"
+        className="w-full bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-[11px] text-faint placeholder-[rgb(var(--c-border))] focus:outline-none focus:border-line-strong transition-colors"
       />
     </div>
   )
@@ -305,29 +305,29 @@ function AnswerDisplay({ block }: { block: FormBlock }) {
     return (
       <div className="space-y-1.5">
         <div className="flex items-start gap-2">
-          <p className="text-xs font-medium text-[#cccccc] flex-1">
+          <p className="text-xs font-medium text-dim flex-1">
             {content.label}
             {content.required && <span className="text-red-400 ml-1">*</span>}
           </p>
           {hasSelections && (
-            <CheckCircle className="h-3.5 w-3.5 text-[#00D76B] flex-shrink-0 mt-0.5" />
+            <CheckCircle className="h-3.5 w-3.5 text-brand flex-shrink-0 mt-0.5" />
           )}
         </div>
         {content.helpText && (
-          <p className="text-[11px] text-[#444444]">{content.helpText}</p>
+          <p className="text-[11px] text-faint">{content.helpText}</p>
         )}
         <div
           className={`rounded-lg px-3 py-2.5 text-sm ${
             hasSelections
-              ? 'bg-[#111111] border border-[#2a2a2a]'
-              : 'bg-[#0d0d0d] border border-dashed border-[#2a2a2a] text-[#333333] italic'
+              ? 'bg-surface border border-line'
+              : 'bg-surface border border-dashed border-line text-faint italic'
           }`}
         >
           {hasSelections ? (
             <ul className="space-y-1">
               {selected.map((item, i) => (
-                <li key={i} className="flex items-center gap-2 text-white">
-                  <span className="text-[#00D76B] flex-shrink-0">•</span>
+                <li key={i} className="flex items-center gap-2 text-ink">
+                  <span className="text-brand flex-shrink-0">•</span>
                   {item}
                 </li>
               ))}
@@ -346,22 +346,22 @@ function AnswerDisplay({ block }: { block: FormBlock }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-start gap-2">
-        <p className="text-xs font-medium text-[#cccccc] flex-1">
+        <p className="text-xs font-medium text-dim flex-1">
           {content.label}
           {content.required && <span className="text-red-400 ml-1">*</span>}
         </p>
         {hasAnswer && (
-          <CheckCircle className="h-3.5 w-3.5 text-[#00D76B] flex-shrink-0 mt-0.5" />
+          <CheckCircle className="h-3.5 w-3.5 text-brand flex-shrink-0 mt-0.5" />
         )}
       </div>
       {content.helpText && (
-        <p className="text-[11px] text-[#444444]">{content.helpText}</p>
+        <p className="text-[11px] text-faint">{content.helpText}</p>
       )}
       <div
         className={`rounded-lg px-3 py-2.5 text-sm ${
           hasAnswer
-            ? 'bg-[#111111] border border-[#2a2a2a] text-white'
-            : 'bg-[#0d0d0d] border border-dashed border-[#2a2a2a] text-[#333333] italic'
+            ? 'bg-surface border border-line text-ink'
+            : 'bg-surface border border-dashed border-line text-faint italic'
         }`}
       >
         {hasAnswer ? (
@@ -514,18 +514,18 @@ export default function FormSubPhaseAdmin({
   if (!hasBlocks) {
     return (
       <div className="space-y-4">
-        <div className="bg-[#111111] border border-[#2a2a2a] rounded-2xl p-6 space-y-4">
+        <div className="bg-surface border border-line rounded-2xl p-6 space-y-4">
           <div className="flex items-center gap-2 mb-2">
-            <FileText className="h-4 w-4 text-[#555555]" />
-            <p className="text-sm font-medium text-white">Appliquer un template</p>
+            <FileText className="h-4 w-4 text-faint" />
+            <p className="text-sm font-medium text-ink">Appliquer un template</p>
           </div>
 
           {templates.length === 0 ? (
             <div className="text-center py-6 space-y-2">
-              <p className="text-sm text-[#555555]">Aucun template de formulaire disponible.</p>
+              <p className="text-sm text-faint">Aucun template de formulaire disponible.</p>
               <a
                 href="/settings/forms/new"
-                className="text-xs text-[#00D76B] hover:underline"
+                className="text-xs text-brand hover:underline"
               >
                 Créer un template →
               </a>
@@ -533,12 +533,12 @@ export default function FormSubPhaseAdmin({
           ) : (
             <>
               <div>
-                <label className="block text-xs text-[#666666] mb-1.5">Template</label>
+                <label className="block text-xs text-faint mb-1.5">Template</label>
                 <div className="relative">
                   <select
                     value={selectedTemplateId}
                     onChange={(e) => setSelectedTemplateId(e.target.value)}
-                    className="w-full appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-sm text-white pr-8 focus:outline-none focus:border-[#00D76B]/50 transition-colors"
+                    className="w-full appearance-none bg-surface border border-line rounded-xl px-3 py-2.5 text-sm text-ink pr-8 focus:outline-none focus:border-brand/50 transition-colors"
                   >
                     {templates.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -549,7 +549,7 @@ export default function FormSubPhaseAdmin({
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#555555]" />
+                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-faint" />
                 </div>
               </div>
 
@@ -557,7 +557,7 @@ export default function FormSubPhaseAdmin({
                 type="button"
                 onClick={handleApply}
                 disabled={applying || !selectedTemplateId}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00D76B] text-black text-sm font-semibold hover:bg-[#00D76B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-black text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {applying ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -577,12 +577,12 @@ export default function FormSubPhaseAdmin({
   return (
     <div className="space-y-4">
       {/* Status bar */}
-      <div className="bg-[#111111] border border-[#2a2a2a] rounded-2xl p-4 flex items-center justify-between gap-4 flex-wrap">
+      <div className="bg-surface border border-line rounded-2xl p-4 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           {subPhaseStatus === 'pending' && (
             <>
-              <div className="w-2 h-2 rounded-full bg-[#555555]" />
-              <span className="text-sm text-[#555555]">
+              <div className="w-2 h-2 rounded-full bg-[rgb(var(--c-text-faint))]" />
+              <span className="text-sm text-faint">
                 Template appliqué — pas encore envoyé au client
               </span>
             </>
@@ -605,8 +605,8 @@ export default function FormSubPhaseAdmin({
           )}
           {(subPhaseStatus === 'completed' || subPhaseStatus === 'approved') && (
             <>
-              <div className="w-2 h-2 rounded-full bg-[#00D76B]" />
-              <span className="text-sm text-[#00D76B]">Formulaire approuvé</span>
+              <div className="w-2 h-2 rounded-full bg-brand" />
+              <span className="text-sm text-brand">Formulaire approuvé</span>
             </>
           )}
         </div>
@@ -619,8 +619,8 @@ export default function FormSubPhaseAdmin({
               onClick={() => setEditMode((v) => !v)}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                 editMode
-                  ? 'bg-[#00D76B]/10 border-[#00D76B]/30 text-[#00D76B]'
-                  : 'border-[#2a2a2a] text-[#555555] hover:text-white hover:border-[#444444]'
+                  ? 'bg-brand/10 border-brand/30 text-brand'
+                  : 'border-line text-faint hover:text-ink hover:border-line-strong'
               }`}
             >
               <Pencil className="h-3.5 w-3.5" />
@@ -634,7 +634,7 @@ export default function FormSubPhaseAdmin({
               type="button"
               onClick={handleSendToClient}
               disabled={starting}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/30 text-[#00D76B] text-xs font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand/10 border border-brand/30 text-brand text-xs font-medium hover:bg-brand/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {starting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -668,7 +668,7 @@ export default function FormSubPhaseAdmin({
               type="button"
               onClick={handleReset}
               disabled={resetting}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[#555555] text-xs hover:text-white hover:border-[#333333] transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-faint text-xs hover:text-ink hover:border-line-strong transition-colors disabled:opacity-50"
             >
               {resetting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -694,7 +694,7 @@ export default function FormSubPhaseAdmin({
       {/* ── Edit mode: question editor ── */}
       {editMode && canEditQuestions ? (
         <div className="space-y-2">
-          <p className="text-[10px] text-[#444444] uppercase tracking-widest font-medium px-1">
+          <p className="text-[10px] text-faint uppercase tracking-widest font-medium px-1">
             Modifier les questions
           </p>
 
@@ -708,8 +708,8 @@ export default function FormSubPhaseAdmin({
           ))}
 
           {/* Add new question */}
-          <div className="bg-[#0d0d0d] border border-dashed border-[#2a2a2a] rounded-xl p-3 space-y-2">
-            <p className="text-[10px] text-[#444444] uppercase tracking-widest">Nouvelle question</p>
+          <div className="bg-surface border border-dashed border-line rounded-xl p-3 space-y-2">
+            <p className="text-[10px] text-faint uppercase tracking-widest">Nouvelle question</p>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -717,12 +717,12 @@ export default function FormSubPhaseAdmin({
                 onChange={(e) => setNewLabel(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAddQuestion() }}
                 placeholder="Texte de la question…"
-                className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#333333] focus:outline-none focus:border-[#00D76B]/50 transition-colors"
+                className="flex-1 bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink placeholder-[rgb(var(--c-border-strong))] focus:outline-none focus:border-brand/50 transition-colors"
               />
               <select
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as QuestionType)}
-                className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-[11px] text-[#a0a0a0] focus:outline-none focus:border-[#444444] transition-colors"
+                className="bg-canvas border border-line rounded-lg px-2 py-1.5 text-[11px] text-dim focus:outline-none focus:border-line-strong transition-colors"
               >
                 {QUESTION_TYPES.map((qt) => (
                   <option key={qt.value} value={qt.value}>{qt.label}</option>
@@ -732,7 +732,7 @@ export default function FormSubPhaseAdmin({
                 type="button"
                 onClick={handleAddQuestion}
                 disabled={addingQuestion || !newLabel.trim()}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] text-xs font-medium hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand/10 border border-brand/20 text-brand text-xs font-medium hover:bg-brand/20 transition-colors disabled:opacity-40"
               >
                 {addingQuestion ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                 Ajouter
@@ -742,11 +742,11 @@ export default function FormSubPhaseAdmin({
         </div>
       ) : (
         /* ── Normal mode: questions with admin fill ── */
-        <div className="bg-[#111111] border border-[#2a2a2a] rounded-2xl divide-y divide-[#1a1a1a]">
+        <div className="bg-surface border border-line rounded-2xl divide-y divide-line">
           {blocks.map((block, i) => (
             <div key={block.id} className="px-5 py-4">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-[10px] text-[#333333] font-mono">{i + 1}</span>
+                <span className="text-[10px] text-faint font-mono">{i + 1}</span>
               </div>
 
               {/* Admin can fill answers when pending or in_progress */}
@@ -762,9 +762,9 @@ export default function FormSubPhaseAdmin({
 
       {/* Waiting for review hint */}
       {subPhaseStatus === 'in_progress' && (
-        <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#0d0d0d] border border-[#1e1e1e]">
-          <Clock className="h-3.5 w-3.5 text-[#333333] flex-shrink-0" />
-          <p className="text-xs text-[#444444]">
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface border border-line">
+          <Clock className="h-3.5 w-3.5 text-faint flex-shrink-0" />
+          <p className="text-xs text-faint">
             Le client peut remplir et soumettre le formulaire depuis son espace.
             Les réponses ci-dessus sont éditables par l&apos;admin.
           </p>

@@ -21,6 +21,8 @@ import {
   Loader2,
   X,
   Trash2,
+  Pencil,
+  Check,
   ClipboardList,
   Image as ImageIcon,
   LayoutGrid,
@@ -31,7 +33,7 @@ import StatusBadge from '@/components/shared/StatusBadge'
 import FileUpload from '@/components/project/FileUpload'
 import FileVersionHistory from '@/components/project/FileVersionHistory'
 import { formatDate } from '@/lib/utils/dates'
-import { startPhase, sendToReview, completePhase, unapprovePhase, deleteProjectPhase } from '@/app/projects/phase-actions'
+import { startPhase, sendToReview, completePhase, unapprovePhase, deleteProjectPhase, renameProjectPhase } from '@/app/projects/phase-actions'
 import {
   startSubPhase,
   sendSubPhaseToReview,
@@ -69,6 +71,8 @@ interface PhaseCardProps {
   files: PhaseFile[]
   subPhases: SubPhase[]
   userRole: UserRole
+  /** Mode éditeur actif → renommage + suppression des étapes autorisés. */
+  editMode?: boolean
 }
 
 type LoadingAction = 'start' | 'review' | 'complete' | 'unapprove' | null
@@ -83,6 +87,7 @@ export default function PhaseCard({
   files,
   subPhases,
   userRole,
+  editMode = false,
 }: PhaseCardProps) {
   const [loading, setLoading] = useState<LoadingAction>(null)
   const [confirmUnapprovePhase, setConfirmUnapprovePhase] = useState(false)
@@ -95,6 +100,9 @@ export default function PhaseCard({
   )
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [renaming, setRenaming] = useState(false)
+  const [nameDraft, setNameDraft] = useState(phase.name)
+  const [savingName, setSavingName] = useState(false)
 
   const isAdmin = userRole === 'admin'
   const canAct = userRole === 'admin'
@@ -125,6 +133,24 @@ export default function PhaseCard({
     }
   }
 
+  async function handleRename() {
+    const clean = nameDraft.trim()
+    if (!clean || clean === phase.name) {
+      setRenaming(false)
+      setNameDraft(phase.name)
+      return
+    }
+    setSavingName(true)
+    const result = await renameProjectPhase(phase.id, clean)
+    setSavingName(false)
+    if (result.success) {
+      setRenaming(false)
+    } else {
+      toast.error(result.error)
+      setNameDraft(phase.name)
+    }
+  }
+
   return (
     <>
       <div className="relative flex gap-4">
@@ -132,7 +158,7 @@ export default function PhaseCard({
         {!isLast && (
           <div
             className="absolute left-[19px] top-[40px] bottom-[-12px] w-px"
-            style={{ background: isDone ? '#00D76B' : '#2a2a2a' }}
+            style={{ background: isDone ? 'rgb(var(--c-brand))' : 'rgb(var(--c-border))' }}
           />
         )}
 
@@ -142,34 +168,94 @@ export default function PhaseCard({
             relative z-10 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors
             ${
               isDone
-                ? 'bg-[#00D76B]/10 border-[#00D76B]'
+                ? 'bg-brand/10 border-brand'
                 : isActive
-                  ? 'bg-[#1a1a1a] border-[#00D76B]'
-                  : 'bg-[#111111] border-[#2a2a2a]'
+                  ? 'bg-surface-2 border-brand'
+                  : 'bg-surface border-line'
             }
           `}
         >
-          <Icon className={`h-4 w-4 ${isDone || isActive ? 'text-[#00D76B]' : 'text-[#444444]'}`} />
+          <Icon className={`h-4 w-4 ${isDone || isActive ? 'text-brand' : 'text-faint'}`} />
         </div>
 
         {/* Contenu */}
         <div
           className={`
             flex-1 mb-3 p-4 rounded-xl border transition-colors
-            ${isActive ? 'bg-[#1a1a1a] border-[#3a3a3a]' : 'bg-[#111111] border-[#2a2a2a]'}
+            ${isActive ? 'bg-surface-2 border-line-strong' : 'bg-surface border-line'}
           `}
         >
           {/* Header */}
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0 flex-1">
-              {/* Nom + toggle sous-phases */}
+              {/* Nom (+ renommage en mode éditeur) + toggle sous-phases */}
               <div className="flex items-center gap-1.5">
-                <h3 className="text-sm font-medium text-white">{phase.name}</h3>
-                {hasSubPhases && (
+                {editMode && renaming ? (
+                  <span className="inline-flex items-center gap-1">
+                    <input
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleRename()
+                        if (e.key === 'Escape') {
+                          setRenaming(false)
+                          setNameDraft(phase.name)
+                        }
+                      }}
+                      autoFocus
+                      disabled={savingName}
+                      className="bg-surface-2 border border-line-strong rounded px-2 py-0.5 text-sm text-ink focus:outline-none focus:border-[rgb(var(--c-text-faint))] w-44 disabled:opacity-50"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRename}
+                      disabled={savingName}
+                      className="p-0.5 rounded text-[#22C55E] hover:bg-[#22C55E]/10 transition-colors"
+                      aria-label="Enregistrer le nom"
+                    >
+                      {savingName ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRenaming(false)
+                        setNameDraft(phase.name)
+                      }}
+                      disabled={savingName}
+                      className="p-0.5 rounded text-faint hover:bg-surface-3 transition-colors"
+                      aria-label="Annuler"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ) : (
+                  <>
+                    <h3 className="text-sm font-medium text-ink">{phase.name}</h3>
+                    {editMode && isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNameDraft(phase.name)
+                          setRenaming(true)
+                        }}
+                        title="Renommer l'étape"
+                        aria-label="Renommer l'étape"
+                        className="p-0.5 rounded text-faint hover:text-brand hover:bg-brand/10 transition-colors"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    )}
+                  </>
+                )}
+                {hasSubPhases && !renaming && (
                   <button
                     type="button"
                     onClick={() => setSubPhasesOpen((v) => !v)}
-                    className="flex items-center gap-0.5 text-[#444444] hover:text-[#00D76B] transition-colors"
+                    className="flex items-center gap-0.5 text-faint hover:text-brand transition-colors"
                     title={subPhasesOpen ? 'Réduire' : 'Voir les sous-phases'}
                   >
                     {subPhasesOpen ? (
@@ -182,19 +268,19 @@ export default function PhaseCard({
                 )}
               </div>
               {phase.started_at && (
-                <p className="text-xs text-[#666666] mt-0.5">
+                <p className="text-xs text-faint mt-0.5">
                   Démarré le {formatDate(phase.started_at)}
                 </p>
               )}
               {phase.completed_at && (
-                <p className="text-xs text-[#666666] mt-0.5">
+                <p className="text-xs text-faint mt-0.5">
                   Terminé le {formatDate(phase.completed_at)}
                 </p>
               )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <StatusBadge status={phase.status} />
-              {isAdmin && (
+              {isAdmin && editMode && (
                 confirmDelete ? (
                   <span className="inline-flex items-center gap-1">
                     <button
@@ -208,7 +294,7 @@ export default function PhaseCard({
                     <button
                       type="button"
                       onClick={() => setConfirmDelete(false)}
-                      className="px-2 py-1 rounded text-[10px] text-[#888888] hover:text-white transition-colors"
+                      className="px-2 py-1 rounded text-[10px] text-dim hover:text-ink transition-colors"
                     >
                       Annuler
                     </button>
@@ -219,7 +305,7 @@ export default function PhaseCard({
                     onClick={() => setConfirmDelete(true)}
                     title="Supprimer cette étape"
                     aria-label="Supprimer cette étape"
-                    className="w-6 h-6 flex items-center justify-center rounded-md text-[#555555] hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    className="w-6 h-6 flex items-center justify-center rounded-md text-faint hover:text-red-400 hover:bg-red-500/10 transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -266,7 +352,7 @@ export default function PhaseCard({
             phase.status === 'pending' && canAct && canStart ? (
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] hover:bg-[#00D76B]/20 transition-colors disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brand/10 border border-brand/20 text-brand hover:bg-brand/20 transition-colors disabled:opacity-40"
                 disabled={!!loading}
                 onClick={() => handle('start')}
               >
@@ -343,14 +429,14 @@ function SubPhaseList({
 
   const btnBase =
     'inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
-  const btnGhost = `${btnBase} border border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444]`
-  const btnGreen = `${btnBase} bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] hover:bg-[#00D76B]/20`
+  const btnGhost = `${btnBase} border border-line text-faint hover:text-ink hover:border-line-strong`
+  const btnGreen = `${btnBase} bg-brand/10 border border-brand/20 text-brand hover:bg-brand/20`
   const btnAmber = `${btnBase} bg-[#22C55E]/10 border border-[#22C55E]/20 text-[#22C55E] hover:bg-[#22C55E]/20`
   const btnRed = `${btnBase} bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20`
 
   return (
     <div className="mb-3 space-y-1.5 pl-1">
-      <p className="text-[10px] text-[#444444] uppercase tracking-widest mb-2">Sous-phases</p>
+      <p className="text-[10px] text-faint uppercase tracking-widest mb-2">Sous-phases</p>
       {subPhases.map((sp, i) => {
         const busy = !!spLoading[sp.id]
         const spHref = `/projects/${projectId}/phases/${phaseId}/sub/${sp.id}`
@@ -374,8 +460,8 @@ function SubPhaseList({
               flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-3 py-2 rounded-lg border
               ${
                 sp.status === 'in_progress' || sp.status === 'in_review'
-                  ? 'bg-[#0a0a0a] border-[#2a2a2a]'
-                  : 'bg-[#0d0d0d] border-[#1e1e1e]'
+                  ? 'bg-canvas border-line'
+                  : 'bg-surface border-line'
               }
             `}
           >
@@ -390,19 +476,19 @@ function SubPhaseList({
                       : sp.status === 'in_review'
                         ? '#F59E0B'
                         : sp.status === 'in_progress'
-                          ? '#00D76B'
-                          : '#333333',
+                          ? 'rgb(var(--c-brand))'
+                          : 'rgb(var(--c-border-strong))',
                 }}
               />
               {canView ? (
                 <Link
                   href={spHref}
-                  className="text-xs truncate text-[#a0a0a0] hover:text-white transition-colors"
+                  className="text-xs truncate text-dim hover:text-ink transition-colors"
                 >
                   {sp.name}
                 </Link>
               ) : (
-                <span className="text-xs truncate text-[#a0a0a0]">{sp.name}</span>
+                <span className="text-xs truncate text-dim">{sp.name}</span>
               )}
             </div>
 
@@ -496,7 +582,7 @@ function SubPhaseList({
               )}
 
               {!canStartSp && sp.status === 'pending' && (
-                <Lock className="h-3 w-3 text-[#333333]" />
+                <Lock className="h-3 w-3 text-faint" />
               )}
             </div>
           </div>
@@ -543,8 +629,8 @@ function PhaseActions({
 }: PhaseActionsProps) {
   const btnBase =
     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
-  const btnGhost = `${btnBase} border border-[#2a2a2a] text-[#a0a0a0] hover:text-white hover:border-[#444444]`
-  const btnPrimary = `${btnBase} bg-[#00D76B]/10 border border-[#00D76B]/20 text-[#00D76B] hover:bg-[#00D76B]/20`
+  const btnGhost = `${btnBase} border border-line text-dim hover:text-ink hover:border-line-strong`
+  const btnPrimary = `${btnBase} bg-brand/10 border border-brand/20 text-brand hover:bg-brand/20`
   const btnGreen = `${btnBase} bg-[#22C55E]/10 border border-[#22C55E]/20 text-[#22C55E] hover:bg-[#22C55E]/20`
   const btnRed = `${btnBase} bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20`
 
@@ -554,7 +640,7 @@ function PhaseActions({
   if (status === 'pending') {
     if (!canAct || !canStart) {
       return (
-        <div className="flex items-center gap-1.5 text-xs text-[#444444]">
+        <div className="flex items-center gap-1.5 text-xs text-faint">
           <Lock className="h-3.5 w-3.5" />
           <span>En attente</span>
         </div>
@@ -706,17 +792,17 @@ function UploadModal({ phaseId, projectId, phaseSlug, phaseName, onClose }: Uplo
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
       {/* Panneau */}
-      <div className="relative z-10 w-full max-w-md bg-[#111111] border border-[#2a2a2a] rounded-2xl p-6 shadow-2xl">
+      <div className="relative z-10 w-full max-w-md bg-surface border border-line rounded-2xl p-6 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-sm font-semibold text-white">Upload un fichier</h3>
-            <p className="text-xs text-[#666666] mt-0.5">{phaseName}</p>
+            <h3 className="text-sm font-semibold text-ink">Upload un fichier</h3>
+            <p className="text-xs text-faint mt-0.5">{phaseName}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-full border border-[#2a2a2a] text-[#666666] hover:text-white hover:border-[#444444] transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-full border border-line text-faint hover:text-ink hover:border-line-strong transition-colors"
           >
             <X className="h-3.5 w-3.5" />
           </button>

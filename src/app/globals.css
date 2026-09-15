@@ -4,162 +4,238 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ── Animation: entrée glissante vers le bas (Realtime) ─── */
+/* ─────────────────────────────────────────────────────────────────────
+   Pont Tailwind v4 → tokens MOSTRA.
+   Un seul système : tout ce qui suit lit les variables de
+   src/styles/globals.css. Aucune couleur en dur ici.
+   ───────────────────────────────────────────────────────────────────── */
+@theme inline {
+  /* Feuilles de travail */
+  --color-canvas: rgb(var(--c-bg));
+  --color-surface: rgb(var(--c-surface));
+  --color-surface-2: rgb(var(--c-surface-2));
+  --color-surface-3: rgb(var(--c-surface-3));
+  --color-line: rgb(var(--c-border));
+  --color-line-strong: rgb(var(--c-border-strong));
+  --color-ink: rgb(var(--c-text));
+  --color-dim: rgb(var(--c-text-dim));
+  --color-faint: rgb(var(--c-text-faint));
+
+  /* Marque */
+  --color-brand: rgb(var(--c-brand));
+  --color-brand-text: var(--brand-text);
+
+  /* Chrome sombre — rail, topbar, scènes média. Ne suit pas le thème. */
+  --color-chrome: var(--chrome);
+  --color-chrome-2: var(--chrome-2);
+  --color-chrome-3: var(--chrome-3);
+  --color-chrome-line: var(--chrome-line);
+  --color-chrome-line-strong: var(--chrome-line-strong);
+  --color-chrome-text: var(--chrome-text);
+  --color-chrome-dim: var(--chrome-dim);
+  --color-chrome-faint: var(--chrome-faint);
+
+  /* Signaux */
+  --color-late: var(--c-late);
+  --color-soon: var(--c-soon);
+  --color-ok: var(--c-ok);
+
+  /* Typo */
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-sora);
+  --font-mono: var(--font-jetbrains);
+
+  /* Rayons — l'échelle fermée de la DA, choisie par taille d'objet */
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-2xl: 24px;
+
+  /* Compatibilité shadcn — branchée sur les mêmes tokens pour qu'aucun
+     composant ne puisse diverger du système. */
+  --color-background: rgb(var(--c-bg));
+  --color-foreground: rgb(var(--c-text));
+  --color-card: rgb(var(--c-surface));
+  --color-card-foreground: rgb(var(--c-text));
+  --color-popover: rgb(var(--c-surface));
+  --color-popover-foreground: rgb(var(--c-text));
+  --color-primary: var(--ink);
+  --color-primary-foreground: var(--ink-text);
+  --color-secondary: rgb(var(--c-surface-2));
+  --color-secondary-foreground: rgb(var(--c-text));
+  --color-muted: rgb(var(--c-surface-2));
+  --color-muted-foreground: rgb(var(--c-text-dim));
+  --color-accent: rgb(var(--c-brand));
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--c-late);
+  --color-border: rgb(var(--c-border));
+  --color-input: rgb(var(--c-border));
+  --color-ring: rgb(var(--c-brand));
+  --color-sidebar: var(--chrome);
+  --color-sidebar-foreground: var(--chrome-text);
+  --color-sidebar-border: var(--chrome-line);
+  --color-sidebar-accent: var(--chrome-2);
+  --color-sidebar-accent-foreground: var(--chrome-text);
+  --color-sidebar-primary: rgb(var(--c-brand));
+  --color-sidebar-primary-foreground: var(--chrome);
+  --color-sidebar-ring: rgb(var(--c-brand));
+  --color-chart-1: rgb(var(--c-brand));
+  --color-chart-2: #046b36;
+  --color-chart-3: var(--c-soon);
+  --color-chart-4: var(--c-late);
+  --color-chart-5: rgb(var(--c-text-faint));
+}
+
+@layer base {
+  * {
+    border-color: rgb(var(--c-border));
+  }
+
+  body {
+    background: rgb(var(--c-bg));
+    color: rgb(var(--c-text));
+    font-family: var(--font-inter), system-ui, sans-serif;
+  }
+
+  /* Titres en Sora, toujours resserrés. Sora n'a pas d'italique réelle :
+     l'italique est synthétisée, c'est voulu (même choix que le site). */
+  h1, h2, h3, h4 {
+    font-family: var(--font-sora), var(--font-inter), system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  /* Les chiffres d'un tableau ou d'un KPI s'alignent en colonne. */
+  th, td, output, time, [data-num] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-sora), var(--font-inter), system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Boutons
+   ───────────────────────────────────────────────────────────────────── */
+@layer components {
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 38px;
+    padding: 0.5rem 1rem;
+    border-radius: var(--r-sm);
+    font-size: 13.5px;
+    font-weight: 600;
+    background: var(--ink);
+    color: var(--ink-text);
+    transition: filter var(--t-fast) var(--ease-soft),
+                transform var(--t-fast) var(--ease);
+  }
+  .btn-primary:hover { filter: brightness(1.18); }
+  .btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: none;
+    transform: none;
+  }
+
+  /* L'action qui appelle vraiment le clic — une seule par vue. */
+  .btn-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 38px;
+    padding: 0.5rem 1.125rem;
+    border-radius: var(--r-sm);
+    font-size: 13.5px;
+    font-weight: 600;
+    background: var(--brand);
+    color: #020302;
+    box-shadow: var(--e-brand);
+    transition: transform var(--t-fast) var(--ease),
+                box-shadow var(--t-base) var(--ease);
+  }
+  .btn-brand:hover { transform: scale(1.02); }
+  .btn-brand:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 38px;
+    padding: 0.5rem 0.875rem;
+    border-radius: var(--r-sm);
+    font-size: 13.5px;
+    font-weight: 500;
+    background: rgb(var(--c-surface));
+    color: rgb(var(--c-text));
+    box-shadow: var(--hairline), var(--e1);
+    transition: box-shadow var(--t-base) var(--ease),
+                background var(--t-fast) var(--ease-soft);
+  }
+  .btn-secondary:hover {
+    background: rgb(var(--c-surface-2));
+    box-shadow: var(--hairline), var(--e2);
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 38px;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--r-sm);
+    font-size: 13.5px;
+    font-weight: 500;
+    color: rgb(var(--c-text-dim));
+    transition: background var(--t-fast) var(--ease-soft),
+                color var(--t-fast) var(--ease-soft);
+  }
+  .btn-ghost:hover {
+    background: rgb(var(--c-surface-2));
+    color: rgb(var(--c-text));
+  }
+
+  /* Champs — un seul dessin pour toute l'app. */
+  .field {
+    width: 100%;
+    min-height: 40px;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--r-sm);
+    background: rgb(var(--c-surface));
+    color: rgb(var(--c-text));
+    font-size: 14px;
+    box-shadow: var(--hairline);
+    transition: box-shadow var(--t-fast) var(--ease-soft);
+  }
+  .field::placeholder { color: rgb(var(--c-text-faint)); }
+  .field:focus {
+    outline: none;
+    box-shadow: 0 0 0 1px rgb(var(--c-brand)), 0 0 0 4px rgb(var(--c-brand) / 0.16);
+  }
+}
+
+/* Entrée douce pour les éléments poussés en Realtime. */
 @keyframes fade-in-down {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in-down {
-  animation: fade-in-down 0.3s ease-out;
-}
-
-@theme inline {
-  /* MOSTRA Design Tokens */
-  --color-mostra-bg: var(--mostra-bg);
-  --color-mostra-card: var(--mostra-card-bg);
-  --color-mostra-card-hover: var(--mostra-card-bg-hover);
-  --color-mostra-border: var(--mostra-border);
-  --color-mostra-accent: var(--mostra-accent);
-  --color-mostra-accent-hover: var(--mostra-accent-hover);
-  --color-mostra-text-secondary: var(--mostra-text-secondary);
-  --color-mostra-text-muted: var(--mostra-text-muted);
-  --color-status-active: var(--mostra-status-active);
-  --color-status-completed: var(--mostra-status-completed);
-  --color-status-pending: var(--mostra-status-pending);
-  --color-status-in-progress: var(--mostra-status-in-progress);
-  --color-status-in-review: var(--mostra-status-in-review);
-
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-poppins);
-  --font-poppins: var(--font-poppins);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  /* MOSTRA Dark Theme — Charte graphique officielle */
-  --background: #070707;
-  --foreground: #ffffff;
-  --card: #0f0f0f;
-  --card-foreground: #ffffff;
-  --popover: #0f0f0f;
-  --popover-foreground: #ffffff;
-  --primary: #00D76B;
-  --primary-foreground: #070707;
-  --secondary: #1a1a1a;
-  --secondary-foreground: #ffffff;
-  --muted: #1a1a1a;
-  --muted-foreground: #a0a0a0;
-  --accent: #00D76B;
-  --accent-foreground: #070707;
-  --destructive: #DC2626;
-  --border: #1f1f1f;
-  --input: #1f1f1f;
-  --ring: #00D76B;
-  --chart-1: #00D76B;
-  --chart-2: #3B82F6;
-  --chart-3: #F59E0B;
-  --chart-4: #8B5CF6;
-  --chart-5: #6B7280;
-  --sidebar: #0a0a0a;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #00D76B;
-  --sidebar-primary-foreground: #070707;
-  --sidebar-accent: #0f0f0f;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #1f1f1f;
-  --sidebar-ring: #00D76B;
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
-  h1, h2, h3 {
-    font-family: var(--font-poppins), var(--font-sans), sans-serif;
-  }
-}
-
-@layer utilities {
-  .font-poppins {
-    font-family: var(--font-poppins), sans-serif;
-  }
+  animation: fade-in-down var(--t-base) var(--ease);
 }

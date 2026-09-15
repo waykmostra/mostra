@@ -85,12 +85,12 @@ function FormField({
 }) {
   const { content } = block
   const inputBase =
-    'w-full bg-[#0d0d0d] border rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#333333] focus:outline-none transition-colors ' +
+    'w-full bg-surface border rounded-xl px-3 py-2.5 text-sm text-ink placeholder-[rgb(var(--c-border-strong))] focus:outline-none transition-colors ' +
     (error
       ? 'border-red-500/50 focus:border-red-500'
-      : 'border-[#2a2a2a] focus:border-[#00D76B]/50')
+      : 'border-line focus:border-brand/50')
   const readOnlyBase =
-    'w-full bg-[#111111] border border-[#1e1e1e] rounded-xl px-3 py-2.5 text-sm text-[#aaaaaa] cursor-default'
+    'w-full bg-surface border border-line rounded-xl px-3 py-2.5 text-sm text-dim cursor-default'
 
   if (readOnly) {
     // Checkbox read-only: parse JSON and display as list
@@ -102,13 +102,13 @@ function FormField({
             <ul className="space-y-1">
               {selected.map((s, i) => (
                 <li key={i} className="flex items-center gap-2">
-                  <Check className="h-3 w-3 text-[#00D76B] flex-shrink-0" strokeWidth={3} />
+                  <Check className="h-3 w-3 text-brand flex-shrink-0" strokeWidth={3} />
                   <span>{s}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <span className="text-[#333333] italic">Pas de réponse</span>
+            <span className="text-faint italic">Pas de réponse</span>
           )}
         </div>
       )
@@ -120,7 +120,7 @@ function FormField({
         {hasAnswer ? (
           value
         ) : (
-          <span className="text-[#333333] italic">Pas de réponse</span>
+          <span className="text-faint italic">Pas de réponse</span>
         )}
       </div>
     )
@@ -150,13 +150,13 @@ function FormField({
               <div
                 className={`w-4 h-4 rounded-sm border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                   checked
-                    ? 'border-[#00D76B] bg-[#00D76B]'
-                    : 'border-[#2a2a2a] group-hover:border-[#555555]'
+                    ? 'border-brand bg-brand'
+                    : 'border-line group-hover:border-[rgb(var(--c-text-faint))]'
                 }`}
               >
                 {checked && <Check className="h-2.5 w-2.5 text-black" strokeWidth={3} />}
               </div>
-              <span className="text-sm text-[#cccccc]">{opt}</span>
+              <span className="text-sm text-dim">{opt}</span>
             </label>
           )
         })}
@@ -207,13 +207,13 @@ function FormField({
             <div
               className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                 value === opt
-                  ? 'border-[#00D76B] bg-[#00D76B]'
-                  : 'border-[#2a2a2a] group-hover:border-[#555555]'
+                  ? 'border-brand bg-brand'
+                  : 'border-line group-hover:border-[rgb(var(--c-text-faint))]'
               }`}
             >
               {value === opt && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
             </div>
-            <span className="text-sm text-[#cccccc]">{opt}</span>
+            <span className="text-sm text-dim">{opt}</span>
           </label>
         ))}
       </div>
@@ -322,7 +322,7 @@ export default function FormSubPhaseClient({
   if (blocks.length === 0) {
     return (
       <div className="text-center py-12 space-y-2">
-        <p className="text-sm text-[#555555]">Aucune question dans ce formulaire.</p>
+        <p className="text-sm text-faint">Aucune question dans ce formulaire.</p>
       </div>
     )
   }
@@ -335,8 +335,8 @@ export default function FormSubPhaseClient({
           <div className="flex items-start gap-3">
             <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-white">Connectez-vous pour remplir le formulaire</p>
-              <p className="text-xs text-[#666666] mt-0.5">Vous devez être connecté pour valider, commenter ou modifier cette phase.</p>
+              <p className="text-sm font-semibold text-ink">Connectez-vous pour remplir le formulaire</p>
+              <p className="text-xs text-faint mt-0.5">Vous devez être connecté pour valider, commenter ou modifier cette phase.</p>
             </div>
           </div>
           <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 transition-colors">
@@ -348,7 +348,7 @@ export default function FormSubPhaseClient({
 
       {/* Read-only notice */}
       {isReadOnly && status !== 'in_progress' && (
-        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#111111] border border-[#2a2a2a]">
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-surface border border-line">
           {status === 'in_review' ? (
             <>
               <div className="w-2 h-2 rounded-full bg-[#3B82F6] flex-shrink-0" />
@@ -358,8 +358,8 @@ export default function FormSubPhaseClient({
             </>
           ) : (
             <>
-              <CheckCircle className="h-4 w-4 text-[#00D76B] flex-shrink-0" />
-              <p className="text-sm text-[#00D76B]">Formulaire validé par l&apos;équipe.</p>
+              <CheckCircle className="h-4 w-4 text-brand flex-shrink-0" />
+              <p className="text-sm text-brand">Formulaire validé par l&apos;équipe.</p>
             </>
           )}
         </div>
@@ -372,15 +372,15 @@ export default function FormSubPhaseClient({
           const fieldError = errors[block.id]?.message as string | undefined
 
           return (
-            <div key={block.id} className="bg-[#111111] border border-[#2a2a2a] rounded-2xl p-5 space-y-3">
+            <div key={block.id} className="bg-surface border border-line rounded-2xl p-5 space-y-3">
               <div className="space-y-0.5">
-                <label className="block text-sm font-medium text-white">
-                  <span className="text-[#444444] text-xs mr-2 font-normal">{i + 1}.</span>
+                <label className="block text-sm font-medium text-ink">
+                  <span className="text-faint text-xs mr-2 font-normal">{i + 1}.</span>
                   {content.label}
                   {content.required && <span className="text-red-400 ml-1">*</span>}
                 </label>
                 {content.helpText && (
-                  <p className="text-xs text-[#555555] ml-5">{content.helpText}</p>
+                  <p className="text-xs text-faint ml-5">{content.helpText}</p>
                 )}
               </div>
 
@@ -404,13 +404,13 @@ export default function FormSubPhaseClient({
       {/* Submit */}
       {!isReadOnly && (
         <div className="flex items-center justify-between gap-4 pt-2">
-          <p className="text-xs text-[#444444]">
+          <p className="text-xs text-faint">
             Les réponses sont sauvegardées automatiquement.
           </p>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00D76B] text-black text-sm font-semibold hover:bg-[#00D76B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-black text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -423,7 +423,7 @@ export default function FormSubPhaseClient({
       )}
 
       {isReadOnly && status !== 'in_progress' && (
-        <div className="flex items-center gap-2 text-xs text-[#333333]">
+        <div className="flex items-center gap-2 text-xs text-faint">
           <Lock className="h-3.5 w-3.5" />
           Formulaire verrouillé — soumis le {new Date().toLocaleDateString('fr-FR')}
         </div>

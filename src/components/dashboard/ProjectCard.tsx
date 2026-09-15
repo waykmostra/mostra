@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { formatRelative } from '@/lib/utils/dates'
 import StatusBadge from '@/components/shared/StatusBadge'
-import ProgressBar from '@/components/shared/ProgressBar'
 import type { ProjectSummary } from '@/lib/types'
 
 interface ProjectCardProps {
@@ -13,19 +12,19 @@ export default function ProjectCard({ project }: ProjectCardProps) {
     <Link
       href={`/projects/${project.id}`}
       className="
-        block bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-5
-        hover:bg-[#222222] hover:border-[#3a3a3a]
-        transition-colors group
+        block bg-surface border border-line rounded-2xl p-5
+        hover:border-line-strong hover:shadow-sm hover:-translate-y-0.5
+        transition-all group
       "
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-medium text-white truncate group-hover:text-white">
+          <h3 className="text-[14px] font-medium text-ink truncate group-hover:text-brand transition-colors">
             {project.name}
           </h3>
           {project.client && (
-            <p className="text-xs text-[#666666] mt-0.5 truncate">
+            <p className="text-[12px] text-faint mt-0.5 truncate">
               {project.client.company_name || project.client.contact_name}
             </p>
           )}
@@ -35,19 +34,25 @@ export default function ProjectCard({ project }: ProjectCardProps) {
 
       {/* Phase courante */}
       {project.current_phase && (
-        <p className="text-xs text-[#a0a0a0] mb-3">
-          <span className="text-[#666666]">Phase: </span>
+        <p className="text-[12px] text-dim mb-3">
+          <span className="text-faint">Phase : </span>
           {project.current_phase.name}
         </p>
       )}
 
       {/* Progress */}
-      <div className="mb-3">
-        <ProgressBar value={project.progress} showLabel size="sm" />
+      <div className="mb-3 flex items-center gap-2">
+        <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{ width: `${project.progress ?? 0}%`, background: 'rgb(var(--c-brand))' }}
+          />
+        </div>
+        <span className="text-[11px] text-faint tnum w-8 text-right">{project.progress ?? 0}%</span>
       </div>
 
       {/* Footer */}
-      <p className="text-[11px] text-[#444444]">Mis à jour {formatRelative(project.updated_at)}</p>
+      <p className="text-[11px] text-faint">Mis à jour {formatRelative(project.updated_at)}</p>
     </Link>
   )
 }

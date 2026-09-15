@@ -59,7 +59,7 @@ export default function ImageLightbox({
         className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-colors z-10"
         aria-label="Fermer"
       >
-        <X className="h-4 w-4 text-white" />
+        <X className="h-4 w-4 text-ink" />
       </button>
 
       {/* Prev */}
@@ -73,7 +73,7 @@ export default function ImageLightbox({
           className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-colors z-10"
           aria-label="Précédent"
         >
-          <ChevronLeft className="h-5 w-5 text-white" />
+          <ChevronLeft className="h-5 w-5 text-ink" />
         </button>
       )}
 
@@ -88,7 +88,7 @@ export default function ImageLightbox({
           className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-colors z-10"
           aria-label="Suivant"
         >
-          <ChevronRight className="h-5 w-5 text-white" />
+          <ChevronRight className="h-5 w-5 text-ink" />
         </button>
       )}
 
@@ -109,14 +109,14 @@ export default function ImageLightbox({
         {/* Caption */}
         {current.title && (
           <div className="flex items-center gap-3">
-            <p className="text-sm font-medium text-white">{current.title}</p>
-            <span className="text-xs text-[#555555] tabular-nums">
+            <p className="text-sm font-medium text-ink">{current.title}</p>
+            <span className="text-xs text-faint tabular-nums">
               {currentIndex + 1} / {images.length}
             </span>
           </div>
         )}
         {!current.title && images.length > 1 && (
-          <span className="text-xs text-[#555555] tabular-nums">
+          <span className="text-xs text-faint tabular-nums">
             {currentIndex + 1} / {images.length}
           </span>
         )}

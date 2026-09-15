@@ -27,7 +27,8 @@ export type PhaseStatus = 'pending' | 'in_progress' | 'in_review' | 'approved' |
 
 // ── CRM (migration 018) ───────────────────────────────────────────
 
-export type ClientStatus = 'cold' | 'interest' | 'warm' | 'active' | 'former' | 'lost'
+// Plus de prospection : un client est soit actif, soit ancien (migration 036).
+export type ClientStatus = 'active' | 'former'
 
 export type ClientSource =
   | 'instagram'
@@ -37,22 +38,6 @@ export type ClientSource =
   | 'referral'
   | 'cold_outreach'
   | 'other'
-
-/**
- * Étape du funnel commercial (migration 021). NULL = hors funnel.
- * Prospection (froids) : froid → contacte → a_relancer
- * Pipeline (chauds)    : repondu → call_booke → proposition
- * Terminal             : signe (→ conversion client) | perdu
- */
-export type PipelineStage =
-  | 'froid'
-  | 'contacte'
-  | 'a_relancer'
-  | 'repondu'
-  | 'call_booke'
-  | 'proposition'
-  | 'signe'
-  | 'perdu'
 
 export type InteractionType =
   | 'message_sent'
@@ -163,6 +148,17 @@ export interface Project {
   updated_at: string
 }
 
+/**
+ * Lien N-N projet ↔ clients CRM (migration 031). L'ensemble des clients
+ * pouvant consulter/commenter/valider un projet. Le client principal
+ * (projects.client_id) y figure toujours.
+ */
+export interface ProjectClient {
+  project_id: string
+  client_id: string
+  created_at: string
+}
+
 // ── CRM Clients ──────────────────────────────────────────────────
 
 export interface Client {
@@ -178,16 +174,14 @@ export interface Client {
   profile_url: string | null
   source: ClientSource
   status: ClientStatus
-  /** Étape du funnel commercial (migration 021). NULL = hors funnel. */
-  pipeline_stage: PipelineStage | null
-  /** Date de prochaine relance (migration 021). Tri de la vue Prospection. */
-  next_follow_up_on: string | null
   last_message_sent_at: string | null
   last_reply_at: string | null
   follow_up_pending: boolean
   notes: string | null
   /** Si lié à un compte auth (profiles), c'est ici. NULL = prospect. */
   profile_id: string | null
+  /** Société de rattachement (migration 033). NULL = fiche indépendante. */
+  company_id: string | null
   created_at: string
   updated_at: string
 }
@@ -519,20 +513,19 @@ export type ProjectInsert = Omit<Project, 'id' | 'created_at' | 'updated_at' | '
   paid_at?: string | null
 }
 
-export type ClientInsert = Omit<Client, 'id' | 'created_at' | 'updated_at' | 'last_message_sent_at' | 'last_reply_at' | 'follow_up_pending' | 'profile_id' | 'notes' | 'company_name' | 'email' | 'phone' | 'website' | 'profile_url' | 'pipeline_stage' | 'next_follow_up_on'> & {
+export type ClientInsert = Omit<Client, 'id' | 'created_at' | 'updated_at' | 'last_message_sent_at' | 'last_reply_at' | 'follow_up_pending' | 'profile_id' | 'notes' | 'company_name' | 'email' | 'phone' | 'website' | 'profile_url' | 'company_id'> & {
   id?: string
   company_name?: string | null
   email?: string | null
   phone?: string | null
   website?: string | null
   profile_url?: string | null
-  pipeline_stage?: PipelineStage | null
-  next_follow_up_on?: string | null
   notes?: string | null
   follow_up_pending?: boolean
   last_message_sent_at?: string | null
   last_reply_at?: string | null
   profile_id?: string | null
+  company_id?: string | null
 }
 
 export type ClientUpdate = Partial<Omit<Client, 'id' | 'created_at'>>
@@ -719,105 +712,81 @@ export interface RevenueEntry {
   payment_status: PaymentStatus
 }
 
-// ── Cockpit Founder (migration 022) ───────────────────────────────
+// ── Revenus libres / hors-projet (migration 032) ──────────────────
 
-export type ObjectiveMetric = 'manual' | 'revenue_month' | 'new_leads_month' | 'calls_booked'
-export type ContentPlatform = 'linkedin' | 'instagram' | 'x'
-export type ContentStatus = 'idea' | 'in_progress' | 'published'
+export type RevenueCategory = 'service' | 'retainer' | 'training' | 'affiliate' | 'other'
 
-export interface DailyWorkflowTask {
+export interface Revenue {
   id: string
   label: string
-  sort_order: number
-  active: boolean
-  created_at: string
-}
-
-export interface DailyWorkflowLog {
-  id: string
-  task_id: string
-  done_on: string
-  created_at: string
-}
-
-export interface Objective {
-  id: string
-  label: string
-  metric: ObjectiveMetric
-  target_value: number
-  manual_value: number
-  deadline: string | null
-  is_priority: boolean
+  amount_eur: number
+  /** Date d'encaissement (alimente le cashflow). */
+  received_on: string
+  category: RevenueCategory
+  /** Client CRM optionnellement rattaché. */
+  client_id: string | null
+  notes: string | null
+  created_by: string | null
   created_at: string
   updated_at: string
 }
 
-export interface WeeklyKpi {
-  id: string
-  week_start: string
-  prospects_contacted: number
-  replies: number
-  calls_held: number
-  posts_linkedin: number
-  posts_instagram: number
-  what_worked: string | null
-  what_didnt: string | null
-  one_change: string | null
-  created_at: string
-  updated_at: string
+export type RevenueInsert = Omit<
+  Revenue,
+  | 'id' | 'created_at' | 'updated_at'
+  | 'received_on' | 'category' | 'client_id' | 'notes' | 'created_by'
+> & {
+  id?: string
+  received_on?: string
+  category?: RevenueCategory
+  client_id?: string | null
+  notes?: string | null
+  created_by?: string | null
 }
 
-export interface Competitor {
+export type RevenueUpdate = Partial<Omit<Revenue, 'id' | 'created_at'>>
+
+/** Revenu libre + nom du client rattaché (affichage /finance). */
+export interface RevenueWithClient extends Revenue {
+  client_name: string | null
+}
+
+// ── Sociétés : regroupement de clients (migration 033) ────────────
+
+export interface Company {
   id: string
   name: string
   website: string | null
-  positioning: string | null
-  their_methods: string | null
-  replicate: string | null
+  notes: string | null
+  /** Statut CRM (pipeline), comme les clients (migration 034). */
+  status: ClientStatus
   created_at: string
   updated_at: string
 }
 
-export interface ContentIdea {
-  id: string
-  content: string
-  platform: ContentPlatform
-  status: ContentStatus
-  created_at: string
-  updated_at: string
+export type CompanyInsert = Omit<Company, 'id' | 'created_at' | 'updated_at' | 'website' | 'notes' | 'status'> & {
+  id?: string
+  website?: string | null
+  notes?: string | null
+  status?: ClientStatus
 }
 
-// ── Notes (migration 023) ─────────────────────────────────────────
+export type CompanyUpdate = Partial<Omit<Company, 'id' | 'created_at'>>
 
-export interface NoteGroup {
-  id: string
-  name: string
-  color: string
-  sort_order: number
-  created_at: string
-  updated_at: string
+/** Société + stats (contacts, projets, CA cumulé) pour la liste et la fiche. */
+export interface CompanyWithStats extends Company {
+  client_count: number
+  project_count: number
+  total_revenue: number
 }
 
-export interface Note {
-  id: string
-  group_id: string
-  content: string
-  sort_order: number
-  created_at: string
-  updated_at: string
-}
+// ── Équipe : annuaire des intervenants (migration 030) ────────────
 
-// ── Data : bases de statistiques personnalisables (migration 024) ──
+/** Disponibilité d'un membre, réglée à la main (pastille vert/bleu/rouge/orange). */
+export type TeamAvailability = 'active' | 'occasional' | 'unavailable' | 'on_leave'
 
-export type DataColumnType = 'number' | 'category' | 'text'
-
-/** Format d'affichage d'une colonne Nombre. */
-export type DataNumberFormat = 'raw' | 'rating' | 'percent' | 'currency' | 'fraction'
-
-/** Valeur d'une cellule, indexée par column.id dans data_entries.values. */
-export type DataValue = string | number | null
-
-export interface DataSet {
+/** Métier configurable (motion designer, voix off…). Façon data_sets. */
+export interface TeamRole {
   id: string
   name: string
   color: string
@@ -826,37 +795,55 @@ export interface DataSet {
   updated_at: string
 }
 
-export interface DataColumn {
+/** Fiche d'un intervenant (freelance). Pas de compte auth — géré par l'admin. */
+export interface TeamMember {
   id: string
-  set_id: string
-  name: string
-  type: DataColumnType
-  /** Choix possibles pour une colonne de type 'category'. */
-  options: string[] | null
-  /** Format d'une colonne 'number' : brut / note (sur N) / % / €. */
-  number_format: DataNumberFormat | null
-  /** Le N d'une note (ex. 5 pour « /5 »), si number_format = 'rating'. */
-  number_max: number | null
-  sort_order: number
-  created_at: string
-}
-
-export interface DataEntry {
-  id: string
-  set_id: string
-  values: Record<string, DataValue>
+  contact_name: string
+  email: string | null
+  phone: string | null
+  portfolio_url: string | null
+  /** Langues parlées (champ libre « FR, EN »), clé pour les voix off. */
+  languages: string | null
+  /** Tarifs optionnels (préparent la future marge projet ↔ Finance). */
+  daily_rate_eur: number | null
+  project_rate_eur: number | null
+  availability: TeamAvailability
+  /** Spécialités / tags libres. */
+  tags: string[] | null
+  notes: string | null
   created_at: string
   updated_at: string
 }
 
-/** Tâche quotidienne + état "fait aujourd'hui" (vue Daily Workflow). */
-export interface DailyWorkflowItem extends DailyWorkflowTask {
-  done_today: boolean
+/** Lien N-N membre ↔ métier. */
+export interface TeamMemberRole {
+  member_id: string
+  role_id: string
 }
 
-/** Objectif + valeur courante résolue (manuelle ou calculée). */
-export interface ObjectiveWithProgress extends Objective {
-  current_value: number
+export type TeamMemberInsert = Omit<
+  TeamMember,
+  | 'id' | 'created_at' | 'updated_at'
+  | 'email' | 'phone' | 'portfolio_url' | 'languages'
+  | 'daily_rate_eur' | 'project_rate_eur' | 'tags' | 'notes' | 'availability'
+> & {
+  id?: string
+  email?: string | null
+  phone?: string | null
+  portfolio_url?: string | null
+  languages?: string | null
+  daily_rate_eur?: number | null
+  project_rate_eur?: number | null
+  availability?: TeamAvailability
+  tags?: string[] | null
+  notes?: string | null
+}
+
+export type TeamMemberUpdate = Partial<Omit<TeamMember, 'id' | 'created_at'>>
+
+/** Membre + ses métiers résolus (utilisé par l'annuaire et la fiche). */
+export interface TeamMemberWithRoles extends TeamMember {
+  roles: TeamRole[]
 }
 
 // ----------------------------------------------------------
@@ -880,6 +867,11 @@ export interface Database {
         Row:    Project
         Insert: ProjectInsert
         Update: ProjectUpdate
+      }
+      project_clients: {
+        Row:    ProjectClient
+        Insert: Partial<ProjectClient>
+        Update: never
       }
       project_phases: {
         Row:    ProjectPhase
@@ -946,65 +938,35 @@ export interface Database {
         Insert: ExpenseInsert
         Update: ExpenseUpdate
       }
+      revenues: {
+        Row:    Revenue
+        Insert: RevenueInsert
+        Update: RevenueUpdate
+      }
+      companies: {
+        Row:    Company
+        Insert: CompanyInsert
+        Update: CompanyUpdate
+      }
       subscriptions: {
         Row:    Subscription
         Insert: SubscriptionInsert
         Update: SubscriptionUpdate
       }
-      daily_workflow_tasks: {
-        Row:    DailyWorkflowTask
-        Insert: Partial<DailyWorkflowTask>
-        Update: Partial<DailyWorkflowTask>
+      team_roles: {
+        Row:    TeamRole
+        Insert: Partial<TeamRole>
+        Update: Partial<TeamRole>
       }
-      daily_workflow_log: {
-        Row:    DailyWorkflowLog
-        Insert: Partial<DailyWorkflowLog>
-        Update: Partial<DailyWorkflowLog>
+      team_members: {
+        Row:    TeamMember
+        Insert: TeamMemberInsert
+        Update: TeamMemberUpdate
       }
-      objectives: {
-        Row:    Objective
-        Insert: Partial<Objective>
-        Update: Partial<Objective>
-      }
-      weekly_kpis: {
-        Row:    WeeklyKpi
-        Insert: Partial<WeeklyKpi>
-        Update: Partial<WeeklyKpi>
-      }
-      competitors: {
-        Row:    Competitor
-        Insert: Partial<Competitor>
-        Update: Partial<Competitor>
-      }
-      content_ideas: {
-        Row:    ContentIdea
-        Insert: Partial<ContentIdea>
-        Update: Partial<ContentIdea>
-      }
-      note_groups: {
-        Row:    NoteGroup
-        Insert: Partial<NoteGroup>
-        Update: Partial<NoteGroup>
-      }
-      notes: {
-        Row:    Note
-        Insert: Partial<Note>
-        Update: Partial<Note>
-      }
-      data_sets: {
-        Row:    DataSet
-        Insert: Partial<DataSet>
-        Update: Partial<DataSet>
-      }
-      data_columns: {
-        Row:    DataColumn
-        Insert: Partial<DataColumn>
-        Update: Partial<DataColumn>
-      }
-      data_entries: {
-        Row:    DataEntry
-        Insert: Partial<DataEntry>
-        Update: Partial<DataEntry>
+      team_member_roles: {
+        Row:    TeamMemberRole
+        Insert: Partial<TeamMemberRole>
+        Update: never
       }
     }
     Functions: {

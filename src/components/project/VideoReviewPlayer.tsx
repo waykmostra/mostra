@@ -23,6 +23,9 @@ import {
   Loader2,
   MessageSquare,
   Film,
+  AlertCircle,
+  Download,
+  ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { PhaseStatus, UserRole } from '@/lib/types'
@@ -124,11 +127,11 @@ function VideoTimeline({
       <div
         ref={barRef}
         onMouseDown={handleMouseDown}
-        className="relative w-full h-1 bg-[#2a2a2a] rounded-full cursor-pointer group-hover:h-1.5 transition-all"
+        className="relative w-full h-1 bg-[rgb(var(--c-border))] rounded-full cursor-pointer group-hover:h-1.5 transition-all"
       >
         {/* Progress fill */}
         <div
-          className="absolute inset-y-0 left-0 bg-white rounded-full"
+          className="absolute inset-y-0 left-0 bg-brand rounded-full"
           style={{ width: `${progress}%` }}
         />
 
@@ -151,7 +154,7 @@ function VideoTimeline({
               style={{ left: `${pos}%`, borderColor: color }}
               className="
                 absolute top-1/2 -translate-y-1/2 -translate-x-1/2
-                w-2.5 h-2.5 rounded-full border-2 bg-[#111111] cursor-pointer
+                w-2.5 h-2.5 rounded-full border-2 bg-surface cursor-pointer
                 hover:scale-150 transition-transform z-10
               "
             >
@@ -160,11 +163,11 @@ function VideoTimeline({
                 <div
                   className="
                     absolute bottom-5 left-1/2 -translate-x-1/2
-                    bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1
-                    text-xs text-white whitespace-nowrap z-20 pointer-events-none
+                    bg-surface-2 border border-line rounded px-2 py-1
+                    text-xs text-ink whitespace-nowrap z-20 pointer-events-none
                   "
                 >
-                  <span className="text-[#888888]">{formatTime(c.timecode_seconds ?? 0)}</span>
+                  <span className="text-dim">{formatTime(c.timecode_seconds ?? 0)}</span>
                   {' · '}
                   {c.author?.full_name ?? 'Inconnu'}
                 </div>
@@ -177,7 +180,7 @@ function VideoTimeline({
         <div
           className="
             absolute top-1/2 -translate-y-1/2 -translate-x-1/2
-            w-3 h-3 rounded-full bg-white opacity-0 group-hover:opacity-100 transition-opacity
+            w-3 h-3 rounded-full bg-ink opacity-0 group-hover:opacity-100 transition-opacity
           "
           style={{ left: `${progress}%` }}
         />
@@ -212,6 +215,11 @@ function UploadZone({ phaseId, projectId, onUploaded, isNewVersion = false }: Up
     }
     const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
     const mimeType = VIDEO_MIME[ext] ?? file.type ?? 'video/mp4'
+
+    // Avertissement compat : MOV/AVI ne se lisent pas sur tous les appareils (Android).
+    if (ext === 'mov' || ext === 'avi') {
+      toast.warning('Astuce : le MP4 (H.264) se lit partout. Le .MOV/.AVI peut ne pas s’ouvrir sur Android.')
+    }
 
     // ── Étape 1 : obtenir la signed upload URL (Server Action légère, pas de fichier) ──
     const urlResult = await createVideoUploadUrl({
@@ -303,8 +311,8 @@ function UploadZone({ phaseId, projectId, onUploaded, isNewVersion = false }: Up
           onClick={() => inputRef.current?.click()}
           className="
             inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-            bg-[#1a1a1a] border border-[#2a2a2a] text-[#a0a0a0]
-            hover:border-[#3a3a3a] hover:text-white transition-colors
+            bg-surface-2 border border-line text-dim
+            hover:border-line-strong hover:text-ink transition-colors
             disabled:opacity-40 disabled:cursor-not-allowed
           "
         >
@@ -327,14 +335,14 @@ function UploadZone({ phaseId, projectId, onUploaded, isNewVersion = false }: Up
       className={`
         flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed p-12
         transition-colors
-        ${isDragOver ? 'border-white/40 bg-white/5' : 'border-[#2a2a2a] bg-[#111111]'}
+        ${isDragOver ? 'border-white/40 bg-white/5' : 'border-line bg-surface'}
       `}
     >
-      <Film className="h-12 w-12 text-[#333333]" />
+      <Film className="h-12 w-12 text-faint" />
       <div className="text-center">
-        <p className="text-sm font-medium text-[#666666]">
+        <p className="text-sm font-medium text-faint">
           Glissez une vidéo ici ou{' '}
-          <label className="text-white cursor-pointer hover:underline">
+          <label className="text-ink cursor-pointer hover:underline">
             choisissez un fichier
             <input
               type="file"
@@ -348,10 +356,10 @@ function UploadZone({ phaseId, projectId, onUploaded, isNewVersion = false }: Up
             />
           </label>
         </p>
-        <p className="text-xs text-[#444444] mt-1">MP4, MOV, WebM — max 500 MB</p>
+        <p className="text-xs text-faint mt-1">MP4, MOV, WebM — max 500 MB</p>
       </div>
       {isUploading && (
-        <div className="flex items-center gap-2 text-xs text-[#666666]">
+        <div className="flex items-center gap-2 text-xs text-faint">
           <Loader2 className="h-4 w-4 animate-spin" />
           {progress}
         </div>
@@ -418,9 +426,9 @@ function CommentForm({ phaseId, videoVersion, getCurrentTime, onPause, onAdded }
           rows={2}
           disabled={isPending}
           className="
-            w-full bg-[#111111] border border-[#2a2a2a] rounded-lg px-3 py-2 pr-24
-            text-sm text-white placeholder-[#3a3a3a] resize-none
-            focus:outline-none focus:border-[#444444] transition-colors
+            w-full bg-surface border border-line rounded-lg px-3 py-2 pr-24
+            text-sm text-ink placeholder-faint resize-none
+            focus:outline-none focus:border-line-strong transition-colors
             disabled:opacity-50
           "
         />
@@ -432,20 +440,20 @@ function CommentForm({ phaseId, videoVersion, getCurrentTime, onPause, onAdded }
       </div>
       <div className="flex items-center justify-between">
         {capturedTime !== null ? (
-          <p className="text-xs text-[#555555]">
+          <p className="text-xs text-faint">
             Lié à{' '}
             <span className="font-mono text-[#F59E0B]">{formatTime(capturedTime)}</span>
             {' · '}
             <button
               type="button"
               onClick={() => setCapturedTime(null)}
-              className="text-[#555555] hover:text-[#888888] transition-colors"
+              className="text-faint hover:text-dim transition-colors"
             >
               retirer le timecode
             </button>
           </p>
         ) : (
-          <p className="text-xs text-[#444444]">Focalisez le champ pour capturer le timecode</p>
+          <p className="text-xs text-faint">Focalisez le champ pour capturer le timecode</p>
         )}
         <button
           type="submit"
@@ -510,18 +518,18 @@ function CommentCard({ comment, canDelete, onSeek, onResolved, onDeleted }: Comm
         rounded-lg border p-3 transition-colors
         ${comment.is_resolved
           ? 'bg-[#22C55E]/5 border-[#22C55E]/15'
-          : 'bg-[#111111] border-[#2a2a2a]'}
+          : 'bg-surface border-line'}
       `}
     >
       <div className="flex items-start gap-2">
         {/* Avatar */}
-        <div className="h-6 w-6 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[9px] font-bold text-[#666666] flex-shrink-0 mt-0.5">
+        <div className="h-6 w-6 rounded-full bg-surface-2 border border-line flex items-center justify-center text-[9px] font-bold text-faint flex-shrink-0 mt-0.5">
           {initials(comment.author?.full_name)}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-medium text-white">
+            <span className="text-xs font-medium text-ink">
               {comment.author?.full_name ?? 'Inconnu'}
             </span>
             {comment.timecode_seconds !== null && (
@@ -544,7 +552,7 @@ function CommentCard({ comment, canDelete, onSeek, onResolved, onDeleted }: Comm
               </span>
             )}
           </div>
-          <p className="text-xs text-[#a0a0a0] mt-1 leading-relaxed">{comment.content}</p>
+          <p className="text-xs text-dim mt-1 leading-relaxed">{comment.content}</p>
         </div>
 
         {/* Actions */}
@@ -554,7 +562,7 @@ function CommentCard({ comment, canDelete, onSeek, onResolved, onDeleted }: Comm
             onClick={handleResolve}
             disabled={isPending}
             title={comment.is_resolved ? 'Ré-ouvrir' : 'Marquer résolu'}
-            className="p-1 rounded text-[#444444] hover:text-[#22C55E] transition-colors disabled:opacity-40"
+            className="p-1 rounded text-faint hover:text-[#22C55E] transition-colors disabled:opacity-40"
           >
             <Check className="h-3.5 w-3.5" />
           </button>
@@ -565,7 +573,7 @@ function CommentCard({ comment, canDelete, onSeek, onResolved, onDeleted }: Comm
               disabled={isPending}
               title={confirmDelete ? 'Confirmer la suppression' : 'Supprimer'}
               className={`p-1 rounded transition-colors disabled:opacity-40 ${
-                confirmDelete ? 'text-[#EF4444]' : 'text-[#444444] hover:text-[#EF4444]'
+                confirmDelete ? 'text-[#EF4444]' : 'text-faint hover:text-[#EF4444]'
               }`}
             >
               {isPending ? (
@@ -614,7 +622,7 @@ function WorkflowPanel({ phaseId, status, hasVideo, onStatusChange }: WorkflowPa
           type="button"
           disabled={isPending}
           onClick={() => run(() => startPhase(phaseId), 'in_progress', 'Phase démarrée')}
-          className={`${btnBase} bg-white/10 border border-white/20 text-white hover:bg-white/15`}
+          className={`${btnBase} bg-white/10 border border-white/20 text-ink hover:bg-white/15`}
         >
           {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
           Démarrer
@@ -708,6 +716,7 @@ export default function VideoReviewPlayer({
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [videoError, setVideoError] = useState(false)
   const [isVersionDropOpen, setIsVersionDropOpen] = useState(false)
   const [highlightedComment, setHighlightedComment] = useState<string | null>(null)
 
@@ -773,6 +782,7 @@ export default function VideoReviewPlayer({
     setIsVersionDropOpen(false)
     setCurrentTime(0)
     setIsPlaying(false)
+    setVideoError(false)
     if (videoRef.current) {
       videoRef.current.src = v.file_url
       videoRef.current.load()
@@ -867,6 +877,7 @@ export default function VideoReviewPlayer({
       return [file, ...without].sort((a, b) => b.version - a.version)
     })
     setSelectedVersion(file.version)
+    setVideoError(false)
     if (videoRef.current) {
       videoRef.current.src = file.file_url
       videoRef.current.load()
@@ -906,8 +917,8 @@ export default function VideoReviewPlayer({
                   onClick={() => setIsVersionDropOpen((v) => !v)}
                   className="
                     inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs
-                    bg-[#1a1a1a] border border-[#2a2a2a] text-[#a0a0a0]
-                    hover:border-[#3a3a3a] hover:text-white transition-colors
+                    bg-surface-2 border border-line text-dim
+                    hover:border-line-strong hover:text-ink transition-colors
                   "
                 >
                   <Film className="h-3.5 w-3.5" />
@@ -915,7 +926,7 @@ export default function VideoReviewPlayer({
                   <ChevronDown className="h-3 w-3" />
                 </button>
                 {isVersionDropOpen && (
-                  <div className="absolute right-0 top-full mt-1 bg-[#111111] border border-[#2a2a2a] rounded-lg overflow-hidden z-20 w-44">
+                  <div className="absolute right-0 top-full mt-1 bg-surface border border-line rounded-lg overflow-hidden z-20 w-44">
                     {allVersions.map((v) => (
                       <button
                         key={v.id}
@@ -923,10 +934,10 @@ export default function VideoReviewPlayer({
                         onClick={() => switchVersion(v)}
                         className="
                           w-full flex items-center justify-between px-3 py-2 text-xs
-                          hover:bg-[#1a1a1a] transition-colors text-left
+                          hover:bg-surface-2 transition-colors text-left
                         "
                       >
-                        <span className={v.version === selectedVersion ? 'text-white font-medium' : 'text-[#a0a0a0]'}>
+                        <span className={v.version === selectedVersion ? 'text-ink font-medium' : 'text-dim'}>
                           Version {v.version}
                         </span>
                         {v.is_current && (
@@ -954,41 +965,67 @@ export default function VideoReviewPlayer({
 
         {/* Video player */}
         {currentVideo ? (
-          <div
-            ref={containerRef}
-            className="relative bg-black rounded-xl overflow-hidden"
-            style={{ aspectRatio: '16/9' }}
-          >
+          <div ref={containerRef} className="group rounded-xl overflow-hidden border border-line bg-surface">
+            {/* Vidéo — seul le bouton play/stop par-dessus */}
+            <div className="relative bg-black" style={{ aspectRatio: '16/9' }}>
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
             <video
               ref={videoRef}
               src={currentVideo.file_url}
               className="w-full h-full object-contain"
               onClick={togglePlay}
+              onError={() => setVideoError(true)}
               preload="metadata"
+              playsInline
             />
 
-            {/* Play/pause overlay */}
-            <div
-              className="absolute inset-0 flex items-center justify-center cursor-pointer"
-              onClick={togglePlay}
-            >
-              {!isPlaying && (
-                <div className="bg-black/50 rounded-full p-4">
-                  <Play className="h-8 w-8 text-white fill-white" />
+            {/* Fallback si format illisible (ex. .MOV sur Android) */}
+            {videoError ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/90 px-6 text-center">
+                <AlertCircle className="h-8 w-8 text-[#F59E0B]" />
+                <p className="text-sm text-white font-medium">Lecture impossible sur cet appareil</p>
+                <p className="text-xs text-white/60 max-w-xs">
+                  Format peut-être non supporté par ce navigateur (ex. .MOV sur Android). Préférez le
+                  MP4 (H.264). Ouvre ou télécharge la vidéo :
+                </p>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={currentVideo.file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-black hover:bg-white/90 transition-colors"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Ouvrir
+                  </a>
+                  <a
+                    href={currentVideo.file_url}
+                    download
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-2 border border-line text-ink hover:bg-surface-3 transition-colors"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Télécharger
+                  </a>
                 </div>
-              )}
+              </div>
+            ) : (
+              /* Play/pause overlay */
+              <div
+                className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                onClick={togglePlay}
+              >
+                {!isPlaying && (
+                  <div className="bg-black/50 rounded-full p-4">
+                    <Play className="h-8 w-8 text-white fill-white" />
+                  </div>
+                )}
+              </div>
+            )}
             </div>
 
-            {/* Controls bar */}
-            <div
-              className="
-                absolute bottom-0 left-0 right-0
-                bg-gradient-to-t from-black/80 to-transparent
-                px-4 pb-3 pt-8
-                opacity-0 hover:opacity-100 transition-opacity
-              "
-            >
+            {/* Contrôles SOUS la vidéo (toujours sur mobile, au survol sur desktop) */}
+            {!videoError && (
+            <div className="bg-surface border-t border-line px-3 sm:px-4 py-2.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               {/* Timeline */}
               <VideoTimeline
                 currentTime={currentTime}
@@ -1005,17 +1042,17 @@ export default function VideoReviewPlayer({
                 <button
                   type="button"
                   onClick={togglePlay}
-                  className="text-white hover:text-white/80 transition-colors"
+                  className="text-ink hover:text-ink/80 transition-colors"
                 >
                   {isPlaying ? (
-                    <Pause className="h-4 w-4 fill-white" />
+                    <Pause className="h-4 w-4 fill-ink" />
                   ) : (
-                    <Play className="h-4 w-4 fill-white" />
+                    <Play className="h-4 w-4 fill-ink" />
                   )}
                 </button>
 
                 {/* Time */}
-                <span className="text-xs text-white/70 font-mono tabular-nums">
+                <span className="text-xs text-ink/70 font-mono tabular-nums">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
 
@@ -1026,7 +1063,7 @@ export default function VideoReviewPlayer({
                   <button
                     type="button"
                     onClick={toggleMute}
-                    className="text-white/70 hover:text-white transition-colors"
+                    className="text-ink/70 hover:text-ink transition-colors"
                   >
                     {isMuted || volume === 0 ? (
                       <VolumeX className="h-4 w-4" />
@@ -1041,7 +1078,7 @@ export default function VideoReviewPlayer({
                     step={0.05}
                     value={isMuted ? 0 : volume}
                     onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                    className="w-16 h-1 accent-white cursor-pointer"
+                    className="w-16 h-1 accent-[rgb(var(--c-brand))] cursor-pointer"
                   />
                 </div>
 
@@ -1049,7 +1086,7 @@ export default function VideoReviewPlayer({
                 <button
                   type="button"
                   onClick={toggleFullscreen}
-                  className="text-white/70 hover:text-white transition-colors"
+                  className="text-ink/70 hover:text-ink transition-colors"
                 >
                   {isFullscreen ? (
                     <Minimize className="h-4 w-4" />
@@ -1059,6 +1096,7 @@ export default function VideoReviewPlayer({
                 </button>
               </div>
             </div>
+            )}
           </div>
         ) : (
           isAdmin && (
@@ -1071,9 +1109,9 @@ export default function VideoReviewPlayer({
         )}
 
         {!currentVideo && !isAdmin && (
-          <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-12 text-center">
-            <Film className="h-12 w-12 text-[#333333] mx-auto mb-4" />
-            <p className="text-sm text-[#444444] italic">Aucune vidéo disponible pour cette phase.</p>
+          <div className="bg-surface border border-line rounded-xl p-12 text-center">
+            <Film className="h-12 w-12 text-faint mx-auto mb-4" />
+            <p className="text-sm text-faint italic">Aucune vidéo disponible pour cette phase.</p>
           </div>
         )}
       </div>
@@ -1082,8 +1120,8 @@ export default function VideoReviewPlayer({
       <div className="flex flex-col gap-4 lg:w-80 xl:w-96 flex-shrink-0">
         {/* Comment form */}
         {isAdmin && currentVideo && (
-          <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
-            <h3 className="text-xs font-semibold text-[#666666] uppercase tracking-wider">
+          <div className="bg-surface border border-line rounded-xl p-4 space-y-3">
+            <h3 className="text-xs font-semibold text-faint uppercase tracking-wider">
               Ajouter un commentaire
             </h3>
             <CommentForm
@@ -1097,20 +1135,20 @@ export default function VideoReviewPlayer({
         )}
 
         {/* Comment list */}
-        <div className="bg-[#111111] border border-[#2a2a2a] rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-[#666666] uppercase tracking-wider">
+        <div className="bg-surface border border-line rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-line flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-faint uppercase tracking-wider">
               Commentaires
             </h3>
-            <span className="text-xs text-[#444444]">
+            <span className="text-xs text-faint">
               {displayedComments.length}
             </span>
           </div>
 
           {displayedComments.length === 0 ? (
             <div className="px-4 py-8 text-center">
-              <MessageSquare className="h-8 w-8 text-[#2a2a2a] mx-auto mb-2" />
-              <p className="text-xs text-[#444444]">Aucun commentaire</p>
+              <MessageSquare className="h-8 w-8 text-[rgb(var(--c-border))] mx-auto mb-2" />
+              <p className="text-xs text-faint">Aucun commentaire</p>
             </div>
           ) : (
             <div className="p-3 space-y-2 max-h-[500px] overflow-y-auto">
@@ -1136,7 +1174,7 @@ export default function VideoReviewPlayer({
 
         {/* Version info */}
         {currentVideo && (
-          <div className="text-xs text-[#444444] px-1">
+          <div className="text-xs text-faint px-1">
             Version {currentVideo.version} · {currentVideo.file_name}
             {currentVideo.file_size && (
               <> · {(currentVideo.file_size / 1024 / 1024).toFixed(1)} MB</>

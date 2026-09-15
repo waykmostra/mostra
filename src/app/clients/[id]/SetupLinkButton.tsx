@@ -41,19 +41,19 @@ export default function SetupLinkButton({ clientId }: SetupLinkButtonProps) {
   }
 
   return (
-    <section className="rounded-xl border border-[#2a2a2a] bg-[#111111] p-4 space-y-3">
+    <section className="rounded-xl border border-line bg-surface p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <KeyRound className="h-3.5 w-3.5 text-[#666666]" />
-        <h3 className="text-sm font-semibold text-white">Lien set-password</h3>
+        <KeyRound className="h-3.5 w-3.5 text-faint" />
+        <h3 className="text-sm font-semibold text-ink">Lien set-password</h3>
       </div>
-      <p className="text-xs text-[#666666]">
+      <p className="text-xs text-faint">
         Génère un lien à envoyer au client pour qu&apos;il définisse son mot de passe. Valide 7
         jours.
       </p>
 
       {url && (
-        <div className="rounded-lg bg-[#0a0a0a] border border-[#1e1e1e] px-3 py-2">
-          <p className="text-[11px] text-[#a0a0a0] font-mono break-all">{url}</p>
+        <div className="rounded-lg bg-canvas border border-line px-3 py-2">
+          <p className="text-[11px] text-dim font-mono break-all">{url}</p>
         </div>
       )}
 
@@ -62,7 +62,7 @@ export default function SetupLinkButton({ clientId }: SetupLinkButtonProps) {
           <button
             type="button"
             onClick={handleCopy}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:bg-[#222222] transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-surface-2 border border-line text-ink hover:bg-surface-3 transition-colors"
           >
             {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             {copied ? 'Copié' : 'Copier'}
@@ -74,8 +74,8 @@ export default function SetupLinkButton({ clientId }: SetupLinkButtonProps) {
           disabled={pending}
           className={`${url ? '' : 'flex-1'} flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
             url
-              ? 'border border-[#2a2a2a] text-[#a0a0a0] hover:text-white hover:border-[#444444]'
-              : 'bg-[#00D76B] text-white hover:bg-[#00C061]'
+              ? 'border border-line text-dim hover:text-ink hover:border-line-strong'
+              : 'bg-brand text-ink hover:bg-brand'
           } transition-colors disabled:opacity-60`}
         >
           <RefreshCw className={`h-3.5 w-3.5 ${pending ? 'animate-spin' : ''}`} />

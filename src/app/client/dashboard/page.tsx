@@ -36,12 +36,28 @@ export default async function ClientDashboardPage() {
   const { data: rawClients } = await admin.from('clients').select('id').or(orFilter)
   const clientIds = [...new Set(((rawClients as { id: string }[] | null) ?? []).map((c) => c.id))]
 
-  // 3. Projets de toutes ces fiches.
+  // 2b. Projets où l'utilisateur est client ADDITIONNEL (migration 031).
+  let linkedProjectIds: string[] = []
+  if (clientIds.length) {
+    const { data: rawLinks } = await admin
+      .from('project_clients')
+      .select('project_id')
+      .in('client_id', clientIds)
+    linkedProjectIds = [
+      ...new Set(((rawLinks as { project_id: string }[] | null) ?? []).map((l) => l.project_id)),
+    ]
+  }
+
+  // 3. Projets : client principal (client_id) OU client additionnel (project_clients).
+  const orProjects =
+    `client_id.in.(${clientIds.join(',')})` +
+    (linkedProjectIds.length ? `,id.in.(${linkedProjectIds.join(',')})` : '')
+
   const rawProjects: ProjectRow[] = clientIds.length
     ? (((await admin
         .from('projects')
         .select('*, project_phases(*)')
-        .in('client_id', clientIds)
+        .or(orProjects)
         .order('updated_at', { ascending: false })).data as unknown as ProjectRow[] | null) ?? [])
     : []
 
@@ -75,6 +91,8 @@ export default async function ClientDashboardPage() {
   }
 
   return (
-    <ClientDashboardTabs projects={projects} profile={profile} />
+    <div className="px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
+      <ClientDashboardTabs projects={projects} profile={profile} />
+    </div>
   )
 }

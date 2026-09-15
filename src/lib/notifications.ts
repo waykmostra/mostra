@@ -114,8 +114,10 @@ export interface ProjectRecipients {
   shareToken: string | null
   /** CRM client id (projects.client_id → clients.id). NULL si projet non rattaché. */
   crmClientId: string | null
-  /** Profile auth lié au client si un compte a été créé (clients.profile_id). */
+  /** Profile auth du client PRINCIPAL si un compte existe (clients.profile_id). */
   clientUserId: string | null
+  /** Profiles auth de TOUS les clients du projet (migration 031), dédupliqués. */
+  clientUserIds: string[]
   clientEmail: string | null
   projectManagerId: string | null
   /** IDs des profiles avec is_admin = true. */
@@ -129,6 +131,7 @@ export async function getProjectRecipients(projectId: string): Promise<ProjectRe
     shareToken: null,
     crmClientId: null,
     clientUserId: null,
+    clientUserIds: [],
     clientEmail: null,
     projectManagerId: null,
     adminIds: [],
@@ -153,7 +156,7 @@ export async function getProjectRecipients(projectId: string): Promise<ProjectRe
 
     if (!project) return empty
 
-    const [adminsResult, clientResult] = await Promise.all([
+    const [adminsResult, clientResult, linksResult] = await Promise.all([
       admin.from('profiles').select('id').eq('is_admin', true),
       project.client_id
         ? admin
@@ -162,10 +165,32 @@ export async function getProjectRecipients(projectId: string): Promise<ProjectRe
             .eq('id', project.client_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
+      admin.from('project_clients').select('client_id').eq('project_id', projectId),
     ])
 
     const adminIds = ((adminsResult.data as { id: string }[] | null) ?? []).map((a) => a.id)
     const clientRow = clientResult.data as { email: string | null; profile_id: string | null } | null
+
+    // Tous les clients du projet (principal + additionnels) → profile_ids.
+    const clientIdSet = new Set<string>()
+    if (project.client_id) clientIdSet.add(project.client_id)
+    for (const l of (linksResult.data as { client_id: string }[] | null) ?? []) {
+      clientIdSet.add(l.client_id)
+    }
+    let clientUserIds: string[] = []
+    if (clientIdSet.size > 0) {
+      const { data: rawAllClients } = await admin
+        .from('clients')
+        .select('profile_id')
+        .in('id', [...clientIdSet])
+      clientUserIds = [
+        ...new Set(
+          ((rawAllClients as { profile_id: string | null }[] | null) ?? [])
+            .map((c) => c.profile_id)
+            .filter(Boolean) as string[],
+        ),
+      ]
+    }
 
     return {
       projectName: project.name,
@@ -173,6 +198,7 @@ export async function getProjectRecipients(projectId: string): Promise<ProjectRe
       shareToken: project.share_token,
       crmClientId: project.client_id,
       clientUserId: clientRow?.profile_id ?? null,
+      clientUserIds,
       clientEmail: clientRow?.email ?? null,
       projectManagerId: project.project_manager_id,
       adminIds,

@@ -122,16 +122,16 @@ export default function FileUpload({ phaseId, projectId, phaseSlug, onComplete }
     return (
       <div className="space-y-3 py-2">
         <div className="flex items-center gap-3">
-          <FileIcon className="h-4 w-4 text-[#666666] flex-shrink-0" />
+          <FileIcon className="h-4 w-4 text-faint flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-white truncate">{state.file.name}</p>
-            <p className="text-[10px] text-[#666666]">{formatFileSize(state.file.size)}</p>
+            <p className="text-xs text-ink truncate">{state.file.name}</p>
+            <p className="text-[10px] text-faint">{formatFileSize(state.file.size)}</p>
           </div>
-          <span className="text-xs text-[#a0a0a0] tabular-nums">{state.progress}%</span>
+          <span className="text-xs text-dim tabular-nums">{state.progress}%</span>
         </div>
-        <div className="h-1 bg-[#2a2a2a] rounded-full overflow-hidden">
+        <div className="h-1 bg-[rgb(var(--c-border))] rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#00D76B] rounded-full transition-all duration-200"
+            className="h-full bg-brand rounded-full transition-all duration-200"
             style={{ width: `${state.progress}%` }}
           />
         </div>
@@ -142,16 +142,16 @@ export default function FileUpload({ phaseId, projectId, phaseSlug, onComplete }
   if (state.status === 'selected') {
     return (
       <div className="space-y-3">
-        <div className="flex items-center gap-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2">
-          <FileIcon className="h-4 w-4 text-[#666666] flex-shrink-0" />
+        <div className="flex items-center gap-3 bg-surface-2 border border-line rounded-lg px-3 py-2">
+          <FileIcon className="h-4 w-4 text-faint flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-white truncate">{state.file.name}</p>
-            <p className="text-[10px] text-[#666666]">{formatFileSize(state.file.size)}</p>
+            <p className="text-xs text-ink truncate">{state.file.name}</p>
+            <p className="text-[10px] text-faint">{formatFileSize(state.file.size)}</p>
           </div>
           <button
             type="button"
             onClick={reset}
-            className="text-[#444444] hover:text-white transition-colors"
+            className="text-faint hover:text-ink transition-colors"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -160,14 +160,14 @@ export default function FileUpload({ phaseId, projectId, phaseSlug, onComplete }
           <button
             type="button"
             onClick={reset}
-            className="flex-1 py-2 rounded-lg border border-[#2a2a2a] text-xs text-[#a0a0a0] hover:text-white hover:border-[#444444] transition-colors"
+            className="flex-1 py-2 rounded-lg border border-line text-xs text-dim hover:text-ink hover:border-line-strong transition-colors"
           >
             Annuler
           </button>
           <button
             type="button"
             onClick={handleUpload}
-            className="flex-1 py-2 rounded-lg bg-[#00D76B]/10 border border-[#00D76B]/20 text-xs text-[#00D76B] hover:bg-[#00D76B]/20 transition-colors"
+            className="flex-1 py-2 rounded-lg bg-brand/10 border border-brand/20 text-xs text-brand hover:bg-brand/20 transition-colors"
           >
             Uploader
           </button>
@@ -189,8 +189,8 @@ export default function FileUpload({ phaseId, projectId, phaseSlug, onComplete }
           border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer
           ${
             dragging
-              ? 'border-[#00D76B] bg-[#00D76B]/5'
-              : 'border-[#2a2a2a] hover:border-[#3a3a3a] hover:bg-[#111111]'
+              ? 'border-brand bg-brand/5'
+              : 'border-line hover:border-line-strong hover:bg-surface'
           }
         `}
         onDragOver={(e) => {
@@ -205,12 +205,12 @@ export default function FileUpload({ phaseId, projectId, phaseSlug, onComplete }
         }}
       >
         <UploadCloud
-          className={`h-8 w-8 mx-auto mb-2 ${dragging ? 'text-[#00D76B]' : 'text-[#444444]'}`}
+          className={`h-8 w-8 mx-auto mb-2 ${dragging ? 'text-brand' : 'text-faint'}`}
         />
-        <p className="text-xs text-[#666666]">
-          Glissez un fichier ici ou <span className="text-white underline">parcourez</span>
+        <p className="text-xs text-faint">
+          Glissez un fichier ici ou <span className="text-ink underline">parcourez</span>
         </p>
-        <p className="text-[10px] text-[#444444] mt-1">
+        <p className="text-[10px] text-faint mt-1">
           PDF · Image · Vidéo · AI · PSD · FIG — max 100 MB
         </p>
       </div>

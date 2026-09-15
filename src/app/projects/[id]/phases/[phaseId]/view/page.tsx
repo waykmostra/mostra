@@ -53,21 +53,21 @@ export default async function PhaseViewPage({ params, searchParams }: PageProps)
     const { currentVideo, allVersions, comments } = await getVideoData(params.phaseId)
 
     return (
-      <div className="min-h-screen bg-[#0a0a0a] px-6 py-8">
+      <div className="min-h-screen bg-canvas px-6 py-8">
         <div className="max-w-7xl mx-auto space-y-5">
           {/* Header */}
           <div>
             <Link
               href={`/projects/${project.id}`}
-              className="inline-flex items-center gap-1.5 text-xs text-[#666666] hover:text-white transition-colors mb-3"
+              className="inline-flex items-center gap-1.5 text-xs text-faint hover:text-ink transition-colors mb-3"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               {project.name}
             </Link>
             <div className="flex items-baseline gap-3">
-              <h1 className="text-lg font-bold text-white">{phase.name}</h1>
-              <span className="text-[#444444] text-sm">·</span>
-              <span className="text-sm text-[#666666]">Review vidéo</span>
+              <h1 className="text-lg font-bold text-ink">{phase.name}</h1>
+              <span className="text-faint text-sm">·</span>
+              <span className="text-sm text-faint">Review vidéo</span>
             </div>
           </div>
 
@@ -95,17 +95,17 @@ export default async function PhaseViewPage({ params, searchParams }: PageProps)
 
   if (files.length === 0 || signedUrl === null || activeVersion === null) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] px-6 py-8">
+      <div className="min-h-screen bg-canvas px-6 py-8">
         <div className="max-w-5xl mx-auto">
           <Link
             href={`/projects/${projectId}`}
-            className="inline-flex items-center gap-1.5 text-xs text-[#666666] hover:text-white transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-xs text-faint hover:text-ink transition-colors mb-6"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             {projectName}
           </Link>
-          <h1 className="text-lg font-bold text-white mb-1">{phaseName}</h1>
-          <p className="text-sm text-[#444444] italic mt-8">
+          <h1 className="text-lg font-bold text-ink mb-1">{phaseName}</h1>
+          <p className="text-sm text-faint italic mt-8">
             Aucun fichier uploadé sur cette phase.
           </p>
         </div>
@@ -116,20 +116,20 @@ export default async function PhaseViewPage({ params, searchParams }: PageProps)
   const viewPath = `/projects/${params.id}/phases/${params.phaseId}/view`
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] px-6 py-8 flex flex-col">
+    <div className="min-h-screen bg-canvas px-6 py-8 flex flex-col">
       <div className="max-w-6xl mx-auto w-full flex flex-col flex-1 gap-5">
         <div>
           <Link
             href={`/projects/${projectId}`}
-            className="inline-flex items-center gap-1.5 text-xs text-[#666666] hover:text-white transition-colors mb-3"
+            className="inline-flex items-center gap-1.5 text-xs text-faint hover:text-ink transition-colors mb-3"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             {projectName}
           </Link>
           <div className="flex items-baseline gap-3">
-            <h1 className="text-lg font-bold text-white">{phaseName}</h1>
-            <span className="text-[#444444] text-sm">·</span>
-            <span className="text-sm text-[#666666]">Fichiers</span>
+            <h1 className="text-lg font-bold text-ink">{phaseName}</h1>
+            <span className="text-faint text-sm">·</span>
+            <span className="text-sm text-faint">Fichiers</span>
           </div>
         </div>
 
