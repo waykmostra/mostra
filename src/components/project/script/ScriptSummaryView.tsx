@@ -259,7 +259,7 @@ export default function ScriptSummaryView({
                       const body = (
                         <>
                           {vo.map((v, i) => (
-                            <p key={i} className="text-ink whitespace-pre-wrap">
+                            <p key={i} className="font-semibold text-ink whitespace-pre-wrap">
                               {v}
                             </p>
                           ))}

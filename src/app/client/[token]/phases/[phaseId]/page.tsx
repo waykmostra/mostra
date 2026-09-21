@@ -51,10 +51,6 @@ export default async function ClientPhasePage({ params, searchParams }: ClientPh
   const phase = allPhases.find((p) => p.id === params.phaseId)
   if (!phase) redirect(`/client/${params.token}`)
 
-  const isAccessible =
-    phase.status === 'in_review' || phase.status === 'approved' || phase.status === 'completed'
-  if (!isAccessible) redirect(`/client/${params.token}`)
-
   const isAnimation = ANIMATION_SLUGS.includes(phase.slug)
 
   // Sous-étapes visibles par le client, toutes étapes confondues (le stepper
@@ -79,6 +75,17 @@ export default async function ClientPhasePage({ params, searchParams }: ClientPh
   }
 
   const subPhases = allSubs.filter((s) => s.phase_id === phase.id)
+
+  // Une étape à sous-étapes reste « en cours » tant que toutes ne sont pas
+  // validées, alors qu'une de ses sous-étapes peut déjà attendre le client
+  // (ex. Analyse en cours, Script en review). On l'ouvre donc dès qu'elle a
+  // démarré : chaque sous-étape pas encore prête reste masquée individuellement.
+  // Sans sous-étape (Animation, Rendu), le fichier n'est montré qu'en review.
+  const isAccessible =
+    subPhases.length > 0
+      ? phase.status !== 'pending' || subPhases.some((s) => s.status !== 'pending')
+      : phase.status === 'in_review' || phase.status === 'approved' || phase.status === 'completed'
+  if (!isAccessible) redirect(`/client/${params.token}`)
 
   // profile_id du client CRM (vide si aucun compte connectable)
   let clientId = ''

@@ -141,6 +141,13 @@ export default async function ClientSubPhasePage({ params, searchParams }: Clien
   }
   const restricted = !isLinkedViewer
 
+  // Un visiteur rattaché au projet voit la sous-étape dans la page à onglets,
+  // comme en admin. Seul le partage d'une sous-étape isolée reste ici.
+  if (!restricted) {
+    const script = typeof searchParams?.s === 'string' ? `&s=${encodeURIComponent(searchParams.s)}` : ''
+    redirect(`/client/${params.token}/phases/${phase.id}?sub=${subPhase.id}${script}`)
+  }
+
   if (isReviewGated && (subPhase.status === 'pending' || (subPhase.status === 'in_progress' && !hasComments))) {
     redirect(`/client/${params.token}`)
   }
@@ -642,7 +649,6 @@ function PageShell({
   phaseName,
   subPhaseName,
   subtitle,
-  wide = false,
   revisionInProgress = false,
   restricted = false,
   children,
@@ -660,8 +666,8 @@ function PageShell({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-canvas px-4 py-8">
-      <div className={`${wide ? 'max-w-3xl' : 'max-w-2xl'} mx-auto space-y-6`}>
+    <div>
+      <div className="space-y-6">
         {restricted ? (
           /* Sous-phase partagée seule : aucune navigation vers le reste du projet. */
           <p className="text-[10px] text-faint uppercase tracking-widest">

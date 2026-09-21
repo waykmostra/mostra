@@ -531,10 +531,17 @@ export default function ScriptTableView({
                                 onChange={(e) => setCell(row._key, col.id, e.target.value)}
                                 placeholder="—"
                                 minRows={1}
-                                className="w-full bg-transparent text-[13px] text-ink outline-none px-2.5 py-2 focus:bg-surface-2/60 placeholder:text-faint"
+                                className={`w-full bg-transparent text-[13px] text-ink outline-none px-2.5 py-2 focus:bg-surface-2/60 placeholder:text-faint ${
+                                  col.tag === 'voixoff' ? 'font-semibold' : ''
+                                }`}
                               />
                             ) : (
-                              <p className="w-full text-[13px] text-dim whitespace-pre-wrap leading-relaxed px-2.5 py-2 min-h-[34px]">
+                              // La narration est le texte lu à voix haute : elle ressort en gras.
+                              <p
+                                className={`w-full text-[13px] whitespace-pre-wrap leading-relaxed px-2.5 py-2 min-h-[34px] ${
+                                  col.tag === 'voixoff' ? 'font-semibold text-ink' : 'text-dim'
+                                }`}
+                              >
                                 {row.cells?.[col.id] || <span className="text-faint">—</span>}
                               </p>
                             )}
@@ -672,10 +679,16 @@ export default function ScriptTableView({
                               onChange={(e) => setCell(row._key, col.id, e.target.value)}
                               placeholder="—"
                               minRows={1}
-                              className="w-full bg-surface border border-[rgb(var(--c-surface-3))] rounded-lg px-2.5 py-2 text-[14px] text-ink outline-none focus:border-line-strong placeholder:text-faint"
+                              className={`w-full bg-surface border border-[rgb(var(--c-surface-3))] rounded-lg px-2.5 py-2 text-[14px] text-ink outline-none focus:border-line-strong placeholder:text-faint ${
+                                col.tag === 'voixoff' ? 'font-semibold' : ''
+                              }`}
                             />
                           ) : (
-                            <p className="text-[14px] text-dim whitespace-pre-wrap leading-relaxed">
+                            <p
+                              className={`text-[14px] whitespace-pre-wrap leading-relaxed ${
+                                col.tag === 'voixoff' ? 'font-semibold text-ink' : 'text-dim'
+                              }`}
+                            >
                               {row.cells?.[col.id] || <span className="text-faint">—</span>}
                             </p>
                           )}
