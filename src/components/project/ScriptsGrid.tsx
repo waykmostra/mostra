@@ -1,12 +1,19 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FileText, Plus, Trash2, Loader2, Check, Star, ChevronRight, Pencil } from 'lucide-react'
+import { FileText, Plus, Trash2, Loader2, Check, Star, ChevronRight, Pencil, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Script } from '@/lib/types'
-import { createScript, deleteScript, setSelectedScript, updateScript } from '@/app/projects/script-actions'
+import {
+  createScript,
+  deleteScript,
+  saveScript,
+  setSelectedScript,
+  updateScript,
+} from '@/app/projects/script-actions'
+import { parseScriptFile, SCRIPT_FILE_EXT, withParam } from '@/lib/scriptFile'
 
 interface ScriptsGridProps {
   subPhaseId: string
@@ -23,20 +30,80 @@ const field =
 export default function ScriptsGrid({ subPhaseId, basePath, scripts, sectionCounts }: ScriptsGridProps) {
   const router = useRouter()
   const [creating, setCreating] = useState(false)
+  const [importing, startImport] = useTransition()
+  const fileInput = useRef<HTMLInputElement>(null)
+
+  /**
+   * Import d'un `.mostrascript` exporté depuis Mostra Compagnon : on crée un
+   * script neuf puis on y écrit le tableau du fichier. Rien n'est écrasé —
+   * l'import arrive toujours à côté des scripts existants.
+   */
+  function onFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // pour pouvoir réimporter le même fichier
+    if (!file) return
+
+    startImport(async () => {
+      let parsed
+      try {
+        parsed = parseScriptFile(await file.text())
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Fichier illisible.')
+        return
+      }
+
+      const created = await createScript(subPhaseId, parsed.name)
+      if (!created.success) { toast.error(created.error); return }
+
+      const saved = await saveScript(created.scriptId, {
+        columns: parsed.columns,
+        categories: parsed.categories,
+        beats: parsed.beats,
+        rows: parsed.rows.map((r, i) => ({ _key: `import_${i}`, id: null, ...r })),
+      })
+      if (!saved.success) {
+        // Le script vide créé juste avant ne doit pas rester en plan.
+        await deleteScript(created.scriptId)
+        toast.error(`Import impossible : ${saved.error}`)
+        return
+      }
+
+      toast.success(`« ${parsed.name} » importé ✓`)
+      router.push(withParam(basePath, 'script', created.scriptId))
+    })
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-dim">
           {scripts.length} script{scripts.length !== 1 ? 's' : ''} · le client les voit tous et en choisit un
         </p>
-        <button
-          onClick={() => setCreating((v) => !v)}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-brand text-black hover:bg-brand transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Nouveau script
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInput}
+            type="file"
+            accept={`.${SCRIPT_FILE_EXT},application/json,.json`}
+            onChange={onFileChosen}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInput.current?.click()}
+            disabled={importing}
+            title="Importer un script exporté depuis Mostra Compagnon (.mostrascript)"
+            className="btn-secondary disabled:opacity-50"
+          >
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            Importer
+          </button>
+          <button
+            onClick={() => setCreating((v) => !v)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-brand text-black hover:bg-brand transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Nouveau script
+          </button>
+        </div>
       </div>
 
       {creating && (
@@ -90,7 +157,7 @@ function NewScriptForm({
       const res = await createScript(subPhaseId, clean, description)
       if (!res.success) { toast.error(res.error); return }
       toast.success('Script créé ✓')
-      router.push(`${basePath}?script=${res.scriptId}`)
+      router.push(withParam(basePath, 'script', res.scriptId))
     })
   }
 
@@ -192,7 +259,7 @@ function ScriptCard({
   return (
     <div className="group bg-surface border border-line rounded-2xl p-4 hover:border-line-strong transition-colors flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
-        <Link href={`${basePath}?script=${script.id}`} className="min-w-0 flex-1">
+        <Link href={withParam(basePath, 'script', script.id)} className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-faint flex-shrink-0" />
             <p className="text-sm font-semibold text-ink truncate group-hover:text-brand transition-colors">{script.title}</p>
@@ -231,7 +298,7 @@ function ScriptCard({
             Marquer comme choisi
           </button>
         )}
-        <Link href={`${basePath}?script=${script.id}`} className="inline-flex items-center gap-1 text-[11px] text-dim hover:text-ink transition-colors">
+        <Link href={withParam(basePath, 'script', script.id)} className="inline-flex items-center gap-1 text-[11px] text-dim hover:text-ink transition-colors">
           Ouvrir <ChevronRight className="h-3 w-3" />
         </Link>
       </div>

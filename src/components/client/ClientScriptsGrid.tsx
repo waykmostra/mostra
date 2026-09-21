@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { FileText, ChevronRight, CheckCircle2 } from 'lucide-react'
+import { withParam } from '@/lib/scriptFile'
 
 interface ClientScript {
   id: string
@@ -24,7 +25,7 @@ export default function ClientScriptsGrid({ scripts, sectionCounts, basePath }: 
           return (
             <Link
               key={s.id}
-              href={`${basePath}?s=${s.id}`}
+              href={withParam(basePath, 's', s.id)}
               className={`group rounded-2xl border p-4 transition-colors flex flex-col gap-2
                 ${s.is_selected ? 'border-brand/40 bg-brand/5' : 'border-line bg-surface hover:border-line-strong'}`}
             >

@@ -300,8 +300,8 @@ export default async function ClientSubPhaseSection({
           ? null
           : (scripts[0]?.id ?? null)
 
-    // On reste sur la page à onglets : choisir un script change juste ?s=.
-    const basePath = `/client/${token}/phases/${phaseId}`
+    // On reste sur la page à onglets, sur cette sous-étape.
+    const basePath = `/client/${token}/phases/${phaseId}?sub=${subPhase.id}`
 
     if (multi && !viewId) {
       const { data: rawCounts } = await admin

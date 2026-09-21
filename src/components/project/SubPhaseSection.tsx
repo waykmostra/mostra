@@ -3,6 +3,7 @@ import { ArrowLeft, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
 import { ensureTableModel } from '@/lib/scriptTable'
+import { withParam } from '@/lib/scriptFile'
 import StatusBadge from '@/components/shared/StatusBadge'
 import RevisionAlert from '@/components/project/RevisionAlert'
 import SubPhaseActions from '@/components/project/SubPhaseActions'
@@ -241,8 +242,9 @@ export default async function SubPhaseSection({
   }
 
   const audioKind: 'vo' | 'music' = subPhase.slug === 'musique' ? 'music' : 'vo'
-  // On reste sur la page à onglets : choisir un script change juste ?script=.
-  const basePath = `/projects/${projectId}/phases/${phaseId}`
+  // On reste sur la page à onglets, sur CETTE sous-étape : sans ?sub= la page
+  // rouvrirait la sous-étape par défaut, pas forcément celle du script.
+  const basePath = `/projects/${projectId}/phases/${phaseId}?sub=${subPhase.id}`
 
   return (
     <section className="space-y-4">
@@ -290,15 +292,15 @@ export default async function SubPhaseSection({
       {isScript &&
         (activeScriptId && scriptModel ? (
           <div className="space-y-4">
-            {scripts.length > 1 && (
-              <Link
-                href={`${basePath}?grid=1`}
-                className="inline-flex items-center gap-1.5 text-[13px] text-faint transition-colors hover:text-ink"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Tous les scripts
-              </Link>
-            )}
+            {/* Toujours visible : c'est la seule porte vers « Nouveau script »
+                et « Importer » quand la sous-étape n'a qu'un script. */}
+            <Link
+              href={withParam(basePath, 'grid', '1')}
+              className="inline-flex items-center gap-1.5 text-[13px] text-faint transition-colors hover:text-ink"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Tous les scripts
+            </Link>
             <ScriptEditor
               scriptId={activeScriptId}
               subPhaseId={subPhase.id}
