@@ -137,7 +137,9 @@ export default async function ClientPhaseContent({
       {embedded ? (
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
           <div className="min-w-0">
-            <p className="mono-label text-faint">Étape en cours</p>
+            <p className="mono-label text-faint">
+              {phase.status === 'completed' || phase.status === 'approved' ? 'Dernière étape validée' : 'Étape en cours'}
+            </p>
             <h2 className="mt-1.5 truncate text-[1.375rem] leading-tight text-ink">{phase.name}</h2>
           </div>
           <StatusBadge status={phase.status} className="flex-shrink-0" />

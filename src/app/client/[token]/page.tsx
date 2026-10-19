@@ -6,6 +6,7 @@ import ClientPhaseContent from '@/components/client/ClientPhaseContent'
 import Board from '@/components/board/Board'
 import { getCurrentProfile } from '@/lib/auth'
 import { loadBoard, loadBoardComments } from '@/lib/board'
+import { pickCurrentPhase } from '@/lib/currentPhase'
 import type { Profile, Project, ProjectPhase, SubPhase } from '@/lib/types'
 
 // Toujours lire l'état réel : le client doit voir les ajouts/suppressions/démarrages
@@ -84,12 +85,9 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
     projectManager = rawPm as Profile | null
   }
 
-  // 5. Contenu principal : l'étape en cours, sinon le Cadrage (avant le R3,
-  //    aucune étape n'a démarré — c'est là que se construit la vision commune).
-  const current =
-    phases.find((p) => p.status === 'in_review') ??
-    phases.find((p) => p.status === 'in_progress') ??
-    null
+  // 5. Contenu principal : l'étape en cours (ou la dernière validée), sinon le
+  //    Cadrage (avant le R3, rien n'a démarré — la vision commune se construit là).
+  const current = pickCurrentPhase(phases)
 
   let main: React.ReactNode
   if (current) {
