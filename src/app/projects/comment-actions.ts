@@ -61,8 +61,10 @@ export async function addComment(input: {
       phase_id: input.phaseId ?? null,
       sub_phase_id: input.subPhaseId ?? null,
       block_id: input.blockId ?? null,
-      board_section_id: input.boardSectionId ?? null,
-      board_item_id: input.boardItemId ?? null,
+      // N'envoyer les colonnes du Cadrage que si besoin : un commentaire
+      // classique reste valide même sur une base sans la migration 037.
+      ...(input.boardSectionId ? { board_section_id: input.boardSectionId } : {}),
+      ...(input.boardItemId ? { board_item_id: input.boardItemId } : {}),
       user_id: user.id,
       content: input.content.trim(),
       parent_id: input.parentId ?? null,
