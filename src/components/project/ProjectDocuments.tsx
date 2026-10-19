@@ -6,6 +6,8 @@ import type { PhaseFile, Project, ProjectPhase } from '@/lib/types'
 
 interface Props {
   projectId: string
+  /** « Vos documents » côté client : devis et factures seulement. Les livrables restent dans leurs étapes. */
+  billingOnly?: boolean
 }
 
 function formatSize(bytes: number | null): string | null {
@@ -19,7 +21,7 @@ function formatSize(bytes: number | null): string | null {
  * sur chaque étape, et les pièces de facturation. Les liens sont signés à la
  * volée — le bucket est privé.
  */
-export default async function ProjectDocuments({ projectId }: Props) {
+export default async function ProjectDocuments({ projectId, billingOnly = false }: Props) {
   const admin = createAdminClient()
 
   const { data: rawProject } = await admin
@@ -34,7 +36,9 @@ export default async function ProjectDocuments({ projectId }: Props) {
     .select('id, name, sort_order')
     .eq('project_id', projectId)
     .order('sort_order', { ascending: true })
-  const phases = (rawPhases as Pick<ProjectPhase, 'id' | 'name' | 'sort_order'>[] | null) ?? []
+  const phases = billingOnly
+    ? []
+    : ((rawPhases as Pick<ProjectPhase, 'id' | 'name' | 'sort_order'>[] | null) ?? [])
 
   const { data: rawFiles } = phases.length
     ? await admin
@@ -78,7 +82,11 @@ export default async function ProjectDocuments({ projectId }: Props) {
         <EmptyState
           icon={FileText}
           title="Aucun document pour l’instant"
-          description="Les livrables déposés sur les étapes et les pièces de facturation apparaîtront ici au fil du projet."
+          description={
+            billingOnly
+              ? 'Le devis et les factures du projet apparaîtront ici.'
+              : 'Les livrables déposés sur les étapes et les pièces de facturation apparaîtront ici au fil du projet.'
+          }
         />
       </div>
     )

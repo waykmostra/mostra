@@ -31,11 +31,11 @@ export default async function ClientDocumentsPage({ params }: { params: { token:
         />
         <h1 className="mt-3 text-[1.75rem] leading-tight text-ink">Vos documents</h1>
         <p className="mt-1.5 max-w-[64ch] text-[14px] leading-relaxed text-dim">
-          Les livrables de chaque étape et vos pièces de facturation, réunis ici.
+          Le devis et les factures du projet. Les livrables se trouvent dans chaque étape.
         </p>
       </div>
 
-      <ProjectDocuments projectId={project.id} />
+      <ProjectDocuments projectId={project.id} billingOnly />
     </div>
   )
 }

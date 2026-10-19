@@ -479,6 +479,7 @@ export default async function SubPhasePage({ params, searchParams }: SubPhasePag
           subPhasesByPhase={subsByPhase}
           currentPhaseId={phase.id}
           hrefForPhase={(p) => `/projects/${project.id}/phases/${p.id}`}
+          cadrage={{ href: `/projects/${project.id}/cadrage` }}
         />
 
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">

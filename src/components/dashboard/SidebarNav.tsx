@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   ChevronRight,
+  ClipboardList,
   Contact,
   FolderKanban,
   FolderOpen,
@@ -231,6 +232,14 @@ export default function SidebarNav({ projects, isAdmin }: Props) {
                             onNavigate={close}
                           >
                             Vue d’ensemble
+                          </SubLink>
+                          <SubLink
+                            href={`/projects/${project.id}/cadrage`}
+                            active={pathname === `/projects/${project.id}/cadrage`}
+                            onNavigate={close}
+                            icon={ClipboardList}
+                          >
+                            Cadrage
                           </SubLink>
                           <SubLink
                             href={`/projects/${project.id}/documents`}

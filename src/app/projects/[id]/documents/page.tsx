@@ -36,7 +36,7 @@ export default async function ProjectDocumentsPage({ params }: { params: { id: s
           />
           <h1 className="mt-3 text-[1.75rem] leading-tight text-ink">Documents</h1>
           <p className="mt-1.5 max-w-[64ch] text-[14px] leading-relaxed text-dim">
-            Ce que le client voit : les livrables de chaque étape et les pièces de facturation.
+            Les livrables de chaque étape et les pièces de facturation. Côté client, « Vos documents » ne montre que le devis et les factures.
           </p>
         </div>
 

@@ -128,6 +128,65 @@ export async function reorderBoardColumns(projectId: string, orderedIds: string[
   return { success: true }
 }
 
+/**
+ * Pose une première mise en page sur un Cadrage vide : de quoi démarrer le R3
+ * sans partir d'une page blanche. Tout reste modifiable ensuite.
+ */
+export async function seedBoardTemplate(projectId: string): Promise<BoardActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
+
+  const { count } = await supabase
+    .from('board_columns')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+  if ((count ?? 0) > 0) return { success: false, error: 'Le Cadrage a déjà une mise en page' }
+
+  const layout: { width: number; sections: { type: BoardSectionType; title: string }[] }[] = [
+    {
+      width: 8,
+      sections: [
+        { type: 'text', title: 'Objectif et message clé' },
+        { type: 'media', title: 'Références visuelles' },
+      ],
+    },
+    {
+      width: 4,
+      sections: [
+        { type: 'text', title: 'Décisions' },
+        { type: 'documents', title: 'Liens et documents' },
+      ],
+    },
+  ]
+
+  for (const [ci, col] of layout.entries()) {
+    const { data: rawCol, error } = await db(supabase)
+      .from('board_columns')
+      .insert({ project_id: projectId, width: col.width, sort_order: ci + 1 })
+      .select('id')
+      .single()
+    if (error || !rawCol) return { success: false, error: error?.message ?? 'Colonne non créée' }
+    const columnId = (rawCol as { id: string }).id
+
+    const { error: secErr } = await db(supabase)
+      .from('board_sections')
+      .insert(
+        col.sections.map((s, si) => ({
+          project_id: projectId,
+          column_id: columnId,
+          type: s.type,
+          title: s.title,
+          sort_order: si + 1,
+        })),
+      )
+    if (secErr) return { success: false, error: secErr.message }
+  }
+
+  revalidateBoard(projectId)
+  return { success: true }
+}
+
 // ── Sections ──────────────────────────────────────────────────────
 
 export async function addBoardSection(
@@ -441,6 +500,30 @@ export async function arrangeBoardItems(
   if (failed?.error) return { success: false, error: failed.error.message }
 
   revalidateBoard(projectId)
+  return { success: true }
+}
+
+/** Range un élément en fin de section (ou le renvoie dans « À trier » si null). */
+export async function moveBoardItem(itemId: string, sectionId: string | null): Promise<BoardActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
+
+  const { data: raw } = await supabase.from('board_items').select('id, project_id').eq('id', itemId).maybeSingle()
+  const item = raw as Pick<BoardItem, 'id' | 'project_id'> | null
+  if (!item) return { success: false, error: 'Élément introuvable' }
+
+  const bad = await assertSectionInProject(supabase, item.project_id, sectionId)
+  if (bad) return { success: false, error: bad }
+
+  const sort_order = sectionId ? await nextOrder(supabase, 'board_items', 'section_id', sectionId) : 0
+  const { error } = await db(supabase)
+    .from('board_items')
+    .update({ section_id: sectionId, sort_order })
+    .eq('id', itemId)
+  if (error) return { success: false, error: error.message }
+
+  revalidateBoard(item.project_id)
   return { success: true }
 }
 

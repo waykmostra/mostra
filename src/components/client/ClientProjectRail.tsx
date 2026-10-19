@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Check, CreditCard, FolderOpen, LayoutList, Lock, Menu, X } from 'lucide-react'
+import { Check, ClipboardList, CreditCard, FolderOpen, LayoutList, Lock, Menu, X } from 'lucide-react'
 import Logo from '@/components/shared/Logo'
 import type { PhaseStatus } from '@/lib/types'
 
@@ -116,6 +116,20 @@ export default function ClientProjectRail({ token, projectName, progress, phases
 
           <div className="mono-label mb-2 px-2.5 text-chrome-faint">Étapes</div>
           <div className="flex flex-col gap-0.5">
+            {/* Le Cadrage ouvre le projet et reste accessible jusqu'au bout. */}
+            <Link
+              href={`${base}/cadrage`}
+              onClick={() => setMobileOpen(false)}
+              aria-current={pathname === `${base}/cadrage` ? 'page' : undefined}
+              className={`flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] transition-colors duration-[160ms] ${
+                pathname === `${base}/cadrage`
+                  ? 'bg-white/[0.055] text-chrome-text'
+                  : 'text-chrome-dim hover:bg-white/[0.03] hover:text-chrome-text'
+              }`}
+            >
+              <ClipboardList className="h-3.5 w-3.5 flex-shrink-0 text-brand" />
+              <span className="truncate">Cadrage</span>
+            </Link>
             {phases.map((phase) => {
               const done = isDone(phase.status)
               const locked = phase.status === 'pending'

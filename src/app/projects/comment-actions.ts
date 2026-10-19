@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
 import { requireUser, requireProjectAccess } from '@/lib/auth'
 import { createNotifications, getProjectRecipients } from '@/lib/notifications'
@@ -15,12 +16,43 @@ export async function addComment(input: {
   phaseId?: string
   subPhaseId?: string
   blockId?: string
+  /** Cadrage (migration 037) : section commentée, et éventuellement l'un de ses éléments. */
+  boardSectionId?: string
+  boardItemId?: string
   content: string
   parentId?: string
 }): Promise<CommentActionResult> {
   const auth = await requireProjectAccess(input.projectId)
   if ('error' in auth) return { success: false, error: auth.error }
   const { supabase, profile, user } = auth
+
+  if (!input.content.trim()) return { success: false, error: 'Commentaire vide' }
+
+  // Cadrage : la section (et l'élément) doivent appartenir au projet. Lecture
+  // via le client admin — l'accès au projet vient d'être vérifié.
+  if (input.boardSectionId) {
+    const admin = createAdminClient()
+    const { data: rawSection } = await admin
+      .from('board_sections')
+      .select('project_id')
+      .eq('id', input.boardSectionId)
+      .maybeSingle()
+    if ((rawSection as { project_id: string } | null)?.project_id !== input.projectId) {
+      return { success: false, error: 'Section introuvable' }
+    }
+    if (input.boardItemId) {
+      const { data: rawItem } = await admin
+        .from('board_items')
+        .select('section_id')
+        .eq('id', input.boardItemId)
+        .maybeSingle()
+      if ((rawItem as { section_id: string | null } | null)?.section_id !== input.boardSectionId) {
+        return { success: false, error: 'Élément introuvable' }
+      }
+    }
+  } else if (input.boardItemId) {
+    return { success: false, error: 'Section manquante' }
+  }
 
   const { error } = await db(supabase)
     .from('comments')
@@ -29,6 +61,8 @@ export async function addComment(input: {
       phase_id: input.phaseId ?? null,
       sub_phase_id: input.subPhaseId ?? null,
       block_id: input.blockId ?? null,
+      board_section_id: input.boardSectionId ?? null,
+      board_item_id: input.boardItemId ?? null,
       user_id: user.id,
       content: input.content.trim(),
       parent_id: input.parentId ?? null,
@@ -108,6 +142,7 @@ export async function addComment(input: {
   })()
 
   revalidatePath(`/projects/${input.projectId}`)
+  if (input.boardSectionId) revalidatePath(`/projects/${input.projectId}/cadrage`)
   return { success: true }
 }
 

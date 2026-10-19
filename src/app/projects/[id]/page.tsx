@@ -14,6 +14,7 @@ import ActivityLog from '@/components/project/ActivityLog'
 import CommentSection from '@/components/project/CommentSection'
 import DangerZone from '@/components/project/DangerZone'
 import ShareTokenManager from '@/components/project/ShareTokenManager'
+import QuickNote from '@/components/board/QuickNote'
 
 interface ProjectPageProps {
   params: { id: string }
@@ -92,7 +93,11 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           phases={phases}
           subPhasesByPhase={subPhasesByPhase}
           hrefForPhase={(phase) => `/projects/${project.id}/phases/${phase.id}`}
+          cadrage={{ href: `/projects/${project.id}/cadrage` }}
         />
+
+        {/* Noter en call : tout atterrit dans « À trier » du Cadrage. */}
+        <QuickNote projectId={project.id} />
 
         {/* Rangée 1 — l'état du projet à gauche, les leviers admin à droite. */}
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">

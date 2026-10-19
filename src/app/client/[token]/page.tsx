@@ -2,6 +2,10 @@ import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import ClientProjectView from '@/components/client/ClientProjectView'
 import ContactManager from '@/components/client/ContactManager'
+import ClientPhaseContent from '@/components/client/ClientPhaseContent'
+import Board from '@/components/board/Board'
+import { getCurrentProfile } from '@/lib/auth'
+import { loadBoard, loadBoardComments } from '@/lib/board'
 import type { Profile, Project, ProjectPhase, SubPhase } from '@/lib/types'
 
 // Toujours lire l'état réel : le client doit voir les ajouts/suppressions/démarrages
@@ -80,8 +84,42 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
     projectManager = rawPm as Profile | null
   }
 
+  // 5. Contenu principal : l'étape en cours, sinon le Cadrage (avant le R3,
+  //    aucune étape n'a démarré — c'est là que se construit la vision commune).
+  const current =
+    phases.find((p) => p.status === 'in_review') ??
+    phases.find((p) => p.status === 'in_progress') ??
+    null
+
+  let main: React.ReactNode
+  if (current) {
+    main = (
+      <ClientPhaseContent
+        params={{ token: params.token, phaseId: current.id }}
+        searchParams={{}}
+        embedded
+      />
+    )
+  } else {
+    const [profile, board, comments] = await Promise.all([
+      getCurrentProfile(),
+      loadBoard(admin, project.id, { withInbox: false }),
+      loadBoardComments(admin, project.id),
+    ])
+    main = (
+      <div className="space-y-4">
+        <div>
+          <p className="mono-label text-faint">Cadrage</p>
+          <h2 className="mt-1.5 text-[1.375rem] leading-tight text-ink">La vision commune du projet</h2>
+        </div>
+        <Board projectId={project.id} board={board} comments={comments} editable={false} canComment={!!profile} />
+      </div>
+    )
+  }
+
   return (
     <ClientProjectView
+      main={main}
       project={project}
       phases={phases}
       subPhasesByPhase={subPhasesByPhase}

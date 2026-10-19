@@ -140,3 +140,39 @@ export async function loadBoard(
     inbox: inbox.reverse(),
   }
 }
+
+// ── Commentaires ─────────────────────────────────────────────────
+
+export interface BoardComment {
+  id: string
+  board_section_id: string | null
+  board_item_id: string | null
+  user_id: string
+  content: string
+  is_resolved: boolean
+  created_at: string
+  author: { id: string; full_name: string; avatar_url: string | null; is_admin: boolean } | null
+}
+
+/** Commentaires du Cadrage d'un projet, du plus ancien au plus récent. */
+export async function loadBoardComments(client: Client, projectId: string): Promise<BoardComment[]> {
+  const { data: rawComments } = await client
+    .from('comments')
+    .select('id, board_section_id, board_item_id, user_id, content, is_resolved, created_at')
+    .eq('project_id', projectId)
+    .not('board_section_id', 'is', null)
+    .order('created_at', { ascending: true })
+
+  const comments = (rawComments as Omit<BoardComment, 'author'>[] | null) ?? []
+  const authorIds = [...new Set(comments.map((c) => c.user_id))]
+  const authors = new Map<string, NonNullable<BoardComment['author']>>()
+  if (authorIds.length > 0) {
+    const { data: rawAuthors } = await client
+      .from('profiles')
+      .select('id, full_name, avatar_url, is_admin')
+      .in('id', authorIds)
+    for (const a of (rawAuthors as NonNullable<BoardComment['author']>[] | null) ?? []) authors.set(a.id, a)
+  }
+
+  return comments.map((c) => ({ ...c, author: authors.get(c.user_id) ?? null }))
+}

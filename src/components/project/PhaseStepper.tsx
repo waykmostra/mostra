@@ -27,6 +27,11 @@ interface Props {
   currentPhaseId?: string
   /** Les étapes verrouillées ne sont pas cliquables (vue client). */
   lockPending?: boolean
+  /**
+   * Cadrage (migration 037) : première étape, toujours ouverte, hors pipeline
+   * (ni statut ni validation). Omis → pas de cellule Cadrage.
+   */
+  cadrage?: { href: string; active?: boolean }
 }
 
 /** L'icône dit le métier de l'étape, pas son état. */
@@ -67,12 +72,36 @@ export default function PhaseStepper({
   hrefForPhase,
   currentPhaseId,
   lockPending = false,
+  cadrage,
 }: Props) {
-  if (phases.length === 0) return null
+  if (phases.length === 0 && !cadrage) return null
   const sorted = [...phases].sort((a, b) => a.sort_order - b.sort_order)
 
   return (
     <ol className="surface flex w-full items-stretch overflow-x-auto">
+      {cadrage && (
+        <li className="flex flex-1 items-stretch">
+          <Link
+            href={cadrage.href}
+            aria-current={cadrage.active ? 'step' : undefined}
+            className="flex min-w-[168px] flex-1 items-center gap-3 rounded-md px-4 py-4 text-left transition-colors duration-[160ms] hover:bg-surface-2"
+          >
+            <span
+              className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full transition-colors duration-[160ms] ${
+                cadrage.active ? 'bg-brand/10 text-brand-text ring-[1.5px] ring-brand' : 'bg-surface-2 text-dim ring-1 ring-line-strong'
+              }`}
+            >
+              <ClipboardList className="h-[18px] w-[18px]" strokeWidth={1.75} />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-display text-[14px] leading-tight text-ink">Cadrage</span>
+              <span className={`mono-label mt-1 block truncate ${cadrage.active ? 'text-brand-text' : 'text-faint'}`}>
+                Toujours ouvert
+              </span>
+            </span>
+          </Link>
+        </li>
+      )}
       {sorted.map((phase, i) => {
         const status = phase.status as PhaseStatus
         const done = isDone(status)
@@ -134,7 +163,7 @@ export default function PhaseStepper({
 
         return (
           <li key={phase.id} className="flex flex-1 items-stretch">
-            {i > 0 && (
+            {(i > 0 || cadrage) && (
               <span
                 aria-hidden="true"
                 className="my-auto h-px w-6 flex-shrink-0 border-t border-dashed border-line-strong"
