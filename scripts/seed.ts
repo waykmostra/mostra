@@ -63,7 +63,7 @@ async function run() {
   // ── 1. Utilisateurs ────────────────────────────────────────────
   console.log('👤  Création des utilisateurs...')
   await createUser(USER_SUPER,  'superadmin@mostra.io',  'Super Admin')
-  await createUser(USER_ADMIN,  'admin@mostra.io',       'Tarik Lebailly')
+  await createUser(USER_ADMIN,  'admin@mostra.io',       'Kylian Mansa Barré')
   await createUser(USER_CREA_1, 'creative1@mostra.io',   'Lucas Martin')
   await createUser(USER_CREA_2, 'creative2@mostra.io',   'Sofia Benali')
   await createUser(USER_CLIENT, 'client@techvision.io',  'Alex Chen')
@@ -77,7 +77,7 @@ async function run() {
   console.log('📝  Upsert des profils...')
   const { error: profilesErr } = await supabase.from('profiles').upsert([
     { id: USER_SUPER,  email: 'superadmin@mostra.io', full_name: 'Super Admin',    contact_method: 'email' },
-    { id: USER_ADMIN,  email: 'admin@mostra.io',      full_name: 'Tarik Lebailly', contact_method: 'email' },
+    { id: USER_ADMIN,  email: 'admin@mostra.io',      full_name: 'Kylian Mansa Barré', contact_method: 'email' },
     { id: USER_CREA_1, email: 'creative1@mostra.io',  full_name: 'Lucas Martin',   contact_method: 'email' },
     { id: USER_CREA_2, email: 'creative2@mostra.io',  full_name: 'Sofia Benali',   contact_method: 'whatsapp' },
     { id: USER_CLIENT, email: 'client@techvision.io', full_name: 'Alex Chen',      contact_method: 'email' },

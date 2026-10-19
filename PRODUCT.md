@@ -8,19 +8,19 @@ web
 
 ## Users
 
-**Tarik (admin, utilisateur unique côté agence).** Travaille sur desktop, l'app est son outil de production principal. Il y passe la journée : suivi de l'avancement des projets vidéo, remplissage des livrables par phase (script, moodboard, storyboard, audio, design, vidéo), mise en review, relance des clients.
+**Kylian (admin, utilisateur unique côté agence).** Travaille sur desktop, l'app est son outil de production principal. Il y passe la journée : suivi de l'avancement des projets vidéo, remplissage des livrables par phase (script, moodboard, storyboard, audio, design, vidéo), mise en review, relance des clients.
 
-**Les clients (externes, comptes individuels).** Passent ponctuellement et majoritairement depuis leur téléphone. Job : consulter où en est leur vidéo, ouvrir un livrable, commenter, approuver ou demander des révisions. Ils ne vivent pas dans l'app — ils y entrent via une notification ou un lien envoyé par Tarik, font une chose, et repartent.
+**Les clients (externes, comptes individuels).** Passent ponctuellement et majoritairement depuis leur téléphone. Job : consulter où en est leur vidéo, ouvrir un livrable, commenter, approuver ou demander des révisions. Ils ne vivent pas dans l'app — ils y entrent via une notification ou un lien envoyé par Kylian, font une chose, et repartent.
 
 **Anonymes.** Peuvent lire un projet en lecture seule via le `share_token` du lien public, sans compte.
 
-Les deux expériences (desktop dense pour Tarik, mobile ponctuel pour les clients) sont à traiter séparément, pas comme un seul responsive.
+Les deux expériences (desktop dense pour Kylian, mobile ponctuel pour les clients) sont à traiter séparément, pas comme un seul responsive.
 
 ## Product Purpose
 
-App privée de gestion de production vidéo. Elle remplace les allers-retours WhatsApp/Drive/mail entre Tarik et ses clients par un pipeline unique où chaque phase a un état, un contenu typé et une décision client explicite.
+App privée de gestion de production vidéo. Elle remplace les allers-retours WhatsApp/Drive/mail entre Kylian et ses clients par un pipeline unique où chaque phase a un état, un contenu typé et une décision client explicite.
 
-Le succès : Tarik sait en un coup d'œil ce qui l'attend et ce qui attend le client ; le client comprend où en est sa vidéo et peut approuver sans appeler.
+Le succès : Kylian sait en un coup d'œil ce qui l'attend et ce qui attend le client ; le client comprend où en est sa vidéo et peut approuver sans appeler.
 
 ## Positioning
 
@@ -29,11 +29,11 @@ Ce n'est pas un outil de gestion de projet générique. Le pipeline est modelé 
 ## Operating Context
 
 - Un projet = un client + un PM admin + un `share_token` permanent régénérable.
-- Phases instanciées depuis des `phase_templates` globaux, éditables par Tarik dans les settings.
+- Phases instanciées depuis des `phase_templates` globaux, éditables par Kylian dans les settings.
 - Chaque phase : `pending` → `in_progress` → `in_review` → approuvée (débloque la suivante) ou renvoyée en révision.
 - Fichiers versionnés par phase (`v1`, `v2`…), 500 MB max, dans un bucket privé sous RLS.
 - Notifications sur 3 canaux : in-app (Realtime), email (Resend), toast (Sonner).
-- Création de compte client : Tarik génère un lien `setup-password`, le transmet **manuellement** (WhatsApp, mail perso). Pas d'envoi automatique.
+- Création de compte client : Kylian génère un lien `setup-password`, le transmet **manuellement** (WhatsApp, mail perso). Pas d'envoi automatique.
 - Realtime actif sur commentaires, logs d'activité, statuts de phase, fichiers, notifications.
 
 ## Capabilities and Constraints
@@ -67,7 +67,7 @@ L'app porte **trois systèmes de tokens concurrents empilés** : les `--mostra-*
 ## Product Principles
 
 1. **Le pipeline est le produit.** L'état d'avancement et la décision client attendue sont l'information la plus importante de chaque écran ; tout le reste est secondaire.
-2. **Deux publics, deux densités.** Tarik veut de la densité et de la scanabilité sur desktop. Le client veut une chose claire à faire sur mobile. Ne jamais servir l'un au détriment de l'autre.
+2. **Deux publics, deux densités.** Kylian veut de la densité et de la scanabilité sur desktop. Le client veut une chose claire à faire sur mobile. Ne jamais servir l'un au détriment de l'autre.
 3. **L'espace client est une vitrine.** C'est la seule partie de l'app que voient les clients de l'agence ; sa qualité perçue engage la crédibilité de Mostra.
 4. **Un seul système.** Un jeu de tokens, une famille de composants. Toute cohabitation de systèmes concurrents est une régression.
 5. **Pas de friction inventée.** L'app supprime des allers-retours ; elle n'en ajoute pas sous prétexte de rigueur.

@@ -133,6 +133,7 @@ export default async function ClientPhasePage({ params, searchParams }: ClientPh
         completedAt={phase.completed_at}
         isAuthenticated={isAuthenticated}
         loginHref="/login"
+        hasSubPhases={subPhases.length > 0}
       />
     </div>
   )

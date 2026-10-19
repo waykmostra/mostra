@@ -2,7 +2,7 @@ import type { UserRole } from '@/lib/types'
 
 // ============================================================
 // Matrice de permissions MOSTRA
-// 2 rôles : admin (Tarik) + client (lecture seule via lien).
+// 2 rôles : admin (Kylian) + client (lecture seule via lien).
 // ============================================================
 
 // ----------------------------------------------------------

@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner'
 import StatusBadge from '@/components/shared/StatusBadge'
 import FileUpload from '@/components/project/FileUpload'
+import SubPhaseManager from '@/components/project/SubPhaseManager'
 import FileVersionHistory from '@/components/project/FileVersionHistory'
 import { formatDate } from '@/lib/utils/dates'
 import { startPhase, sendToReview, completePhase, unapprovePhase, deleteProjectPhase, renameProjectPhase } from '@/app/projects/phase-actions'
@@ -325,6 +326,11 @@ export default function PhaseCard({
               canAct={canAct}
               isAdmin={isAdmin}
             />
+          )}
+
+          {/* Structure de l'étape — ajout / renommage / suppression des sous-étapes */}
+          {editMode && isAdmin && (
+            <SubPhaseManager phaseId={phase.id} subPhases={subPhases} />
           )}
 
           {/* Actions : comportement différent selon présence ou non de sous-phases */}

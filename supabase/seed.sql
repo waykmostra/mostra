@@ -59,7 +59,7 @@ VALUES
   (user_super_admin, 'superadmin@mostra.io', crypt('password123', gen_salt('bf')), now(), now(), now(),
    '{"full_name": "Super Admin"}'),
   (user_admin,       'admin@mostra.io',      crypt('password123', gen_salt('bf')), now(), now(), now(),
-   '{"full_name": "Tarik Lebailly"}'),
+   '{"full_name": "Kylian Mansa Barré"}'),
   (user_creative_1,  'creative1@mostra.io',  crypt('password123', gen_salt('bf')), now(), now(), now(),
    '{"full_name": "Lucas Martin"}'),
   (user_creative_2,  'creative2@mostra.io',  crypt('password123', gen_salt('bf')), now(), now(), now(),
@@ -75,7 +75,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO profiles (id, email, full_name, contact_method)
 VALUES
   (user_super_admin, 'superadmin@mostra.io', 'Super Admin',    'email'),
-  (user_admin,       'admin@mostra.io',      'Tarik Lebailly', 'email'),
+  (user_admin,       'admin@mostra.io',      'Kylian Mansa Barré', 'email'),
   (user_creative_1,  'creative1@mostra.io',  'Lucas Martin',   'email'),
   (user_creative_2,  'creative2@mostra.io',  'Sofia Benali',   'whatsapp'),
   (user_client,      'client@techvision.io', 'Alex Chen',      'email')

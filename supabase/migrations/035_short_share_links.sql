@@ -6,7 +6,7 @@
 -- lisible basé sur le nom du projet + un petit suffixe unique :
 --   ex. « flowride-video-a3f2c1 »  →  /client/flowride-video-a3f2c1
 --
--- Choix produit (Tarik) : sécurité légère assumée, priorité à la lisibilité et
+-- Choix produit (Kylian) : sécurité légère assumée, priorité à la lisibilité et
 -- à la brièveté. Les anciens liens longs cessent de fonctionner (remplacés).
 --
 -- IMPORTANT : à exécuter dans le SQL Editor Supabase (une fois). Idempotent

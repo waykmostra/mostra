@@ -2,7 +2,7 @@
 // MOSTRA — Auth helpers (Server only)
 // ============================================================
 // Pattern centralisé pour les Server Actions et Server Components.
-// 2 rôles : admin (Tarik) + client.
+// 2 rôles : admin (Kylian) + client.
 //
 // Utilisation :
 //   const auth = await requireAdmin()

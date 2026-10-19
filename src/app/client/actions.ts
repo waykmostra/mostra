@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { recalcProjectProgress, startNextPhase } from '@/lib/phaseSync'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
 import { requireProjectAccess } from '@/lib/auth'
@@ -28,30 +29,6 @@ async function resolveByToken(token: string): Promise<Project | null> {
     .eq('share_token', token)
     .maybeSingle()
   return data as Project | null
-}
-
-// ── recalcProgress ───────────────────────────────────────────────
-
-async function recalcProgress(
-  admin: ReturnType<typeof createAdminClient>,
-  projectId: string,
-): Promise<void> {
-  const { data: rawPhases } = await db(admin)
-    .from('project_phases')
-    .select('id, status')
-    .eq('project_id', projectId)
-
-  const phases = (rawPhases as Pick<ProjectPhase, 'id' | 'status'>[] | null) ?? []
-  if (phases.length === 0) return
-
-  const doneCount = phases.filter((p) => p.status === 'completed' || p.status === 'approved').length
-  const progress = Math.round((doneCount / phases.length) * 100)
-  const allDone = phases.every((p) => p.status === 'completed' || p.status === 'approved')
-
-  const projectUpdate: Record<string, unknown> = { progress }
-  if (allDone) projectUpdate.status = 'completed'
-
-  await db(admin).from('projects').update(projectUpdate).eq('id', projectId)
 }
 
 // ── approveAsClient (auth requise) ───────────────────────────────
@@ -82,7 +59,10 @@ export async function approveAsClient(projectId: string, phaseId: string): Promi
 
   if (error) return { success: false, error: error.message }
 
-  await recalcProgress(admin, projectId)
+  // Phase sans sous-étape (Animation, Rendu) : on débloque la suivante, sinon
+  // le client valide et se retrouve devant un projet qui n'avance plus.
+  await startNextPhase(admin, projectId, phase.sort_order)
+  await recalcProjectProgress(admin, projectId)
 
   await db(admin)
     .from('activity_logs')

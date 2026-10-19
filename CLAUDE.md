@@ -8,7 +8,7 @@ Doc de référence pour les sessions Claude Code sur l'app MOSTRA. À lire avant
 
 ## TL;DR de l'app
 
-App privée Next.js 14 + Supabase pour Tarik (agence Mostra). 2 rôles uniquement : `admin` (Tarik) et `client` (externes). Pas de multi-agence, pas de codes d'invitation, pas de validation password forte. Voir [README.md](./README.md) pour le setup.
+App privée Next.js 14 + Supabase pour Kylian (agence Mostra). 2 rôles uniquement : `admin` (Kylian) et `client` (externes). Pas de multi-agence, pas de codes d'invitation, pas de validation password forte. Voir [README.md](./README.md) pour le setup.
 
 ## Règles d'or
 

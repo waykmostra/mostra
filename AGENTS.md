@@ -18,7 +18,7 @@
 
 ## Architecture en 1 phrase
 
-App privée pour Tarik (admin) et ses clients externes. Stack Next.js 14 + Supabase. 2 rôles via `profiles.is_admin`. Lien client public via `share_token` (lecture seule), interactif via login.
+App privée pour Kylian (admin) et ses clients externes. Stack Next.js 14 + Supabase. 2 rôles via `profiles.is_admin`. Lien client public via `share_token` (lecture seule), interactif via login.
 
 ## Outils
 

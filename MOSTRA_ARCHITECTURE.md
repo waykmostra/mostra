@@ -8,7 +8,7 @@
 
 ## 1. Vision produit
 
-Mostra est une **app privée de gestion de production** utilisée par Tarik (admin) pour suivre les projets vidéo de ses clients externes. Pas un SaaS public — pas de notion d'agence ni de plusieurs admins (le schéma supporte plusieurs admins mais l'usage est mono-utilisateur).
+Mostra est une **app privée de gestion de production** utilisée par Kylian (admin) pour suivre les projets vidéo de ses clients externes. Pas un SaaS public — pas de notion d'agence ni de plusieurs admins (le schéma supporte plusieurs admins mais l'usage est mono-utilisateur).
 
 Le cœur du produit :
 - Pipeline de phases configurable (Analyse → Design → Audio → Animation → Rendu)

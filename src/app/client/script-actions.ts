@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
+import { syncPhaseFromSubPhases } from '@/lib/phaseSync'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
 import { createNotifications, getProjectRecipients, notifyClientValidation } from '@/lib/notifications'
@@ -211,24 +212,7 @@ export async function approveScriptSubPhase(
 
   if (error) return { success: false, error: error.message }
 
-  // Auto-complete parent phase if all sub_phases are done
-  const { data: rawAllSps } = await admin
-    .from('sub_phases')
-    .select('id, status')
-    .eq('phase_id', phase.id)
-
-  const allSps = (rawAllSps as Pick<SubPhase, 'id' | 'status'>[] | null) ?? []
-  const updatedSps = allSps.map((s) =>
-    s.id === subPhaseId ? { ...s, status: 'completed' as const } : s,
-  )
-  const allDone = updatedSps.every((s) => s.status === 'completed' || s.status === 'approved')
-
-  if (allDone) {
-    await db(admin)
-      .from('project_phases')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', phase.id)
-  }
+  await syncPhaseFromSubPhases(admin, phase.id)
 
   const clientUserId = await resolveClientUserId(admin, project)
   if (clientUserId) {
@@ -287,21 +271,7 @@ export async function selectScript(
     .eq('id', script.sub_phase_id)
   if (error) return { success: false, error: error.message }
 
-  // Auto-complete la phase parente si toutes les sous-phases sont terminées.
-  const { data: rawAllSps } = await admin
-    .from('sub_phases')
-    .select('id, status')
-    .eq('phase_id', phase.id)
-  const allSps = (rawAllSps as Pick<SubPhase, 'id' | 'status'>[] | null) ?? []
-  const updatedSps = allSps.map((s) =>
-    s.id === script.sub_phase_id ? { ...s, status: 'completed' as const } : s,
-  )
-  if (updatedSps.every((s) => s.status === 'completed' || s.status === 'approved')) {
-    await db(admin)
-      .from('project_phases')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', phase.id)
-  }
+  await syncPhaseFromSubPhases(admin, phase.id)
 
   const clientUserId = await resolveClientUserId(admin, project)
   if (clientUserId) {
@@ -346,6 +316,10 @@ export async function requestScriptRevisions(
     .eq('id', subPhaseId)
 
   if (spErr) return { success: false, error: spErr.message }
+
+  // La phase repasse en cours : sans ça elle reste « en review » et le client
+  // continue de voir une demande de validation qu'il vient justement de rejeter.
+  await syncPhaseFromSubPhases(admin, phase.id)
 
   if (message.trim()) {
     await db(admin).from('comments').insert({

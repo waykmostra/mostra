@@ -22,7 +22,7 @@ export default async function DashboardPage() {
     getWeeklyKpiData(supabase),
   ])
 
-  const firstName = (profile.full_name ?? '').split(' ')[0] || 'Tarik'
+  const firstName = (profile.full_name ?? '').split(' ')[0] || 'Kylian'
 
   return <DashboardClient projects={projects} kpi={kpi} userName={firstName} />
 }

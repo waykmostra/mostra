@@ -1,5 +1,6 @@
 'use server'
 
+import { recalcProjectProgress, startNextPhase } from '@/lib/phaseSync'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/supabase/helpers'
@@ -154,28 +155,9 @@ export async function completePhase(phaseId: string): Promise<PhaseActionResult>
 
   if (error) return { success: false, error: error.message }
 
-  // Recalcule progression
-  const { data: rawAllPhases } = await supabase
-    .from('project_phases')
-    .select('id, status')
-    .eq('project_id', phase.project_id)
-
-  const allPhases = (rawAllPhases as Pick<ProjectPhase, 'id' | 'status'>[] | null) ?? []
-  const updated = allPhases.map((p) =>
-    p.id === phaseId ? { ...p, status: 'completed' as const } : p,
-  )
-
-  const doneCount = updated.filter(
-    (p) => p.status === 'completed' || p.status === 'approved',
-  ).length
-
-  const progress = allPhases.length > 0 ? Math.round((doneCount / allPhases.length) * 100) : 0
-  const allDone = updated.every((p) => p.status === 'completed' || p.status === 'approved')
-
-  const projectUpdate: Record<string, unknown> = { progress }
-  if (allDone) projectUpdate.status = 'completed'
-
-  await db(supabase).from('projects').update(projectUpdate).eq('id', phase.project_id)
+  // L'étape suivante démarre, puis l'avancement du projet est recalculé.
+  await startNextPhase(supabase, phase.project_id, phase.sort_order)
+  await recalcProjectProgress(supabase, phase.project_id)
 
   await db(supabase)
     .from('activity_logs')

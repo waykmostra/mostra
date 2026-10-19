@@ -16,6 +16,9 @@ interface ApprovalPanelProps {
   completedAt: string | null
   isAuthenticated: boolean
   loginHref?: string
+  /** Une étape à sous-étapes se valide sous-étape par sous-étape : le panneau
+   *  de phase ferait doublon et rouvrirait une validation déjà faite. */
+  hasSubPhases?: boolean
 }
 
 export default function ApprovalPanel({
@@ -26,7 +29,11 @@ export default function ApprovalPanel({
   completedAt,
   isAuthenticated,
   loginHref = '/login',
+  hasSubPhases = false,
 }: ApprovalPanelProps) {
+  // Les sous-étapes portent leur propre validation.
+  if (hasSubPhases) return null
+
   // ── Phase approuvée / terminée : badge simple ─────────────────
   if (status === 'approved' || status === 'completed') {
     return (

@@ -15,7 +15,7 @@ const PUBLIC_ROUTES = ['/login']
 // - /setup-password/{token} : flow initial pour définir le mot de passe
 const PUBLIC_PREFIXES = ['/client/', '/setup-password/']
 
-// Routes réservées à l'admin (Tarik).
+// Routes réservées à l'admin (Kylian).
 // Un client connecté qui tente d'y accéder est redirigé vers /client/dashboard.
 const ADMIN_PREFIXES = ['/dashboard', '/projects', '/settings', '/clients', '/team']
 

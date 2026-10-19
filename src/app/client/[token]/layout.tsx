@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from 'next/cache'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import ClientProjectRail, { type RailPhase } from '@/components/client/ClientProjectRail'
@@ -13,6 +14,11 @@ export default async function ClientProjectLayout({
   children: React.ReactNode
   params: { token: string }
 }) {
+  // Le rail affiche l'avancement et l'état de chaque étape : sans ça, Next sert
+  // le rendu du layout depuis son cache de données et le client voit encore
+  // l'état d'avant sa validation, alors que la page, elle, est à jour.
+  noStore()
+
   // share_token est un accès public légitime : on bypasse RLS volontairement.
   const admin = createAdminClient()
 

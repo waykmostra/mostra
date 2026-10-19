@@ -102,7 +102,7 @@ export interface Profile {
   avatar_url: string | null
   phone: string | null
   contact_method: ContactMethod
-  /** Si true → admin (Tarik). Si false → client externe. */
+  /** Si true → admin (Kylian). Si false → client externe. */
   is_admin: boolean
   created_at: string
   updated_at: string

@@ -1,6 +1,6 @@
 # MOSTRA
 
-App privée de gestion de production vidéo pour l'agence Mostra. Permet de suivre les projets clients à travers un pipeline de phases (Analyse → Design → Audio → Animation → Rendu), avec un espace admin pour Tarik et un espace client pour les clients externes.
+App privée de gestion de production vidéo pour l'agence Mostra. Permet de suivre les projets clients à travers un pipeline de phases (Analyse → Design → Audio → Animation → Rendu), avec un espace admin pour Kylian et un espace client pour les clients externes.
 
 > **App privée — pas de SaaS public.** Architecture simplifiée : 2 rôles (admin/client), pas de multi-agence.
 

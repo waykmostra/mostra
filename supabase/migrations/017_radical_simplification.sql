@@ -579,9 +579,9 @@ ALTER FUNCTION handle_new_user() OWNER TO postgres;
 
 
 -- ============================================================================
--- 13. PROMOTE L'UTILISATEUR ACTUEL (TARIK) EN ADMIN
+-- 13. PROMOTE L'UTILISATEUR ACTUEL (KYLIAN) EN ADMIN
 -- ============================================================================
--- ⚠️ À ADAPTER : remplace 'tarik@mostra.io' par ton vrai email avant d'exécuter.
+-- ⚠️ À ADAPTER : remplace 'kylian@mostra.agency' par ton vrai email avant d'exécuter.
 -- Sans ça, plus personne ne sera admin et tu seras bloqué.
 
 UPDATE profiles
