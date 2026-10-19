@@ -89,6 +89,32 @@ export async function updateBoardColumnWidth(columnId: string, width: number): P
   return { success: true }
 }
 
+/**
+ * Fixe plusieurs largeurs d'un coup : déplacer la frontière entre deux
+ * colonnes grandit l'une et réduit l'autre (les largeurs sont des poids).
+ */
+export async function setBoardColumnWidths(
+  projectId: string,
+  widths: { id: string; width: number }[],
+): Promise<BoardActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase } = auth
+
+  const { data } = await supabase.from('board_columns').select('id').eq('project_id', projectId)
+  const owned = new Set(((data as { id: string }[] | null) ?? []).map((c) => c.id))
+  if (widths.some((w) => !owned.has(w.id))) return { success: false, error: 'Colonne étrangère au projet' }
+
+  const results = await Promise.all(
+    widths.map((w) => db(supabase).from('board_columns').update({ width: clampWidth(w.width) }).eq('id', w.id)),
+  )
+  const failed = results.find((r) => r.error)
+  if (failed?.error) return { success: false, error: failed.error.message }
+
+  revalidateBoard(projectId)
+  return { success: true }
+}
+
 /** Supprime une colonne. Ses sections partent avec ; leurs éléments retombent dans « À trier ». */
 export async function deleteBoardColumn(columnId: string): Promise<BoardActionResult> {
   const auth = await requireAdmin()
@@ -416,7 +442,7 @@ export async function uploadBoardFile(formData: FormData): Promise<BoardCreateRe
 /** Modifie le contenu d'un élément (texte, légende, titre/note d'un lien). */
 export async function updateBoardItem(
   itemId: string,
-  patch: { text?: string; caption?: string; title?: string; note?: string; url?: string },
+  patch: { text?: string; caption?: string; title?: string; note?: string; url?: string; w?: number },
 ): Promise<BoardActionResult> {
   const auth = await requireAdmin()
   if ('error' in auth) return { success: false, error: auth.error }
@@ -429,6 +455,8 @@ export async function updateBoardItem(
   const content = { ...((item.content ?? {}) as Record<string, unknown>) }
   if (item.kind === 'text' && patch.text !== undefined) content.text = patch.text
   if (isFileKind(item.kind) && patch.caption !== undefined) content.caption = patch.caption.trim() || undefined
+  // Largeur d'un média dans sa section, sur une base de 6 (voir BoardMediaGrid).
+  if (patch.w !== undefined) content.w = Math.min(6, Math.max(1, Math.round(patch.w)))
   if (item.kind === 'link') {
     if (patch.url !== undefined) {
       const url = normalizeUrl(patch.url)

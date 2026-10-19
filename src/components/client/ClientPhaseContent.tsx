@@ -1,4 +1,6 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { ArrowRight } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/lib/auth'
 import { getClientPhaseViewData, getClientSignedUrl } from '@/app/client/actions'
@@ -36,8 +38,20 @@ export default async function ClientPhaseContent({
   embedded = false,
 }: ClientPhaseContentProps) {
   // Hors page dédiée, une étape introuvable ou fermée ne s'affiche pas.
+  // Intégré à la vue d'ensemble, on ne laisse jamais un trou : à défaut du
+  // contenu, un lien vers l'étape.
   const leave = () => {
-    if (embedded) return null
+    if (embedded) {
+      return (
+        <Link
+          href={`/client/${params.token}/phases/${params.phaseId}`}
+          className="surface flex items-center justify-between gap-3 px-5 py-4 text-[14px] font-medium text-ink transition-colors hover:bg-surface-2"
+        >
+          Ouvrir l’étape en cours
+          <ArrowRight className="h-4 w-4 text-faint" />
+        </Link>
+      )
+    }
     redirect(`/client/${params.token}`)
   }
 

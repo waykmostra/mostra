@@ -1,15 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   ArrowDown,
   ArrowUp,
   Download,
   ExternalLink,
   FileText,
+  GripVertical,
   Link2,
   MessageCircle,
   MoveRight,
+  Play,
   Trash2,
 } from 'lucide-react'
 import AutoGrowTextarea from '@/components/shared/AutoGrowTextarea'
@@ -26,9 +28,17 @@ interface Props {
   /** Nombre de commentaires sur l'élément. */
   commentCount?: number
   onComment?: () => void
-  /** Ouvre une image dans la visionneuse. */
-  onOpenImage?: () => void
+  /** Ouvre l'image ou la vidéo dans la visionneuse plein écran. */
+  onOpen?: () => void
+  /**
+   * Toute la carte se glisse (« À trier ») : le texte n'y est alors pas
+   * éditable, pour ne pas confondre sélection et glisser. Sinon, une poignée.
+   */
+  dragWhole?: boolean
 }
+
+/** Type MIME du glisser-déposer d'un élément du Cadrage. */
+export const BOARD_ITEM_MIME = 'application/x-mostra-board-item'
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v : ''
@@ -54,22 +64,37 @@ function hostOf(url: string): string {
  * fichier), quelle que soit la section qui l'accueille : une note rangée
  * depuis « À trier » s'affiche toujours correctement.
  */
-export default function BoardItemCard({ item, sectionId, siblingIds, commentCount = 0, onComment, onOpenImage }: Props) {
+export default function BoardItemCard({
+  item,
+  sectionId,
+  siblingIds,
+  commentCount = 0,
+  onComment,
+  onOpen,
+  dragWhole = false,
+}: Props) {
   const { editable, canComment } = useBoard()
   const c = item.content
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  function onDragStart(e: React.DragEvent) {
+    e.dataTransfer.setData(BOARD_ITEM_MIME, item.id)
+    e.dataTransfer.effectAllowed = 'move'
+    if (cardRef.current) e.dataTransfer.setDragImage(cardRef.current, 16, 16)
+  }
 
   const body = (() => {
     switch (item.kind) {
       case 'text':
-        return <TextBody item={item} />
+        return <TextBody item={item} readOnly={dragWhole} />
       case 'image':
         return item.url ? (
           <figure>
-            <button type="button" onClick={onOpenImage} className="block w-full overflow-hidden rounded-md bg-surface-2">
+            <button type="button" onClick={onOpen} className="block w-full overflow-hidden rounded-md bg-surface-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.url} alt={str(c.caption) || str(c.file_name)} className="h-auto w-full object-cover" loading="lazy" />
+              <img src={item.url} alt={str(c.caption) || str(c.file_name)} className="h-auto w-full object-cover" loading="lazy" draggable={false} />
             </button>
-            <Caption item={item} />
+            <Caption item={item} readOnly={dragWhole} />
           </figure>
         ) : (
           <MissingFile name={str(c.file_name)} />
@@ -77,8 +102,17 @@ export default function BoardItemCard({ item, sectionId, siblingIds, commentCoun
       case 'video':
         return item.url ? (
           <figure>
-            <video src={item.url} controls playsInline preload="metadata" className="w-full rounded-md bg-chrome" />
-            <Caption item={item} />
+            {/* Vignette : la lecture se fait dans la visionneuse, avec le lecteur de l'app. */}
+            <button type="button" onClick={onOpen} className="relative block w-full overflow-hidden rounded-md bg-black" aria-label="Lire la vidéo">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video src={`${item.url}#t=0.1`} muted playsInline preload="metadata" className="pointer-events-none aspect-video w-full object-cover" />
+              <span className="absolute inset-0 flex items-center justify-center">
+                <span className="rounded-full bg-black/55 p-3 transition-transform group-hover/item:scale-105">
+                  <Play className="h-5 w-5 fill-white text-white" />
+                </span>
+              </span>
+            </button>
+            <Caption item={item} readOnly={dragWhole} />
           </figure>
         ) : (
           <MissingFile name={str(c.file_name)} />
@@ -120,10 +154,25 @@ export default function BoardItemCard({ item, sectionId, siblingIds, commentCoun
   const showTools = editable || (canComment && onComment)
 
   return (
-    <div className="group/item relative">
+    <div
+      ref={cardRef}
+      className={`group/item relative ${editable && dragWhole ? 'cursor-grab active:cursor-grabbing' : ''}`}
+      draggable={editable && dragWhole}
+      onDragStart={editable && dragWhole ? onDragStart : undefined}
+    >
       {body}
       {showTools && (
         <div className="absolute right-1 top-1 flex items-center gap-0.5 rounded-md bg-surface/95 p-0.5 opacity-0 shadow-sm ring-1 ring-line transition-opacity focus-within:opacity-100 group-hover/item:opacity-100">
+          {editable && !dragWhole && (
+            <span
+              draggable
+              onDragStart={onDragStart}
+              title="Glisser vers une autre section"
+              className="inline-flex h-7 w-6 cursor-grab items-center justify-center text-faint hover:text-ink active:cursor-grabbing"
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </span>
+          )}
           {canComment && onComment && (
             <ToolButton label="Commenter" onClick={onComment}>
               <MessageCircle className="h-3.5 w-3.5" />
@@ -143,8 +192,9 @@ export default function BoardItemCard({ item, sectionId, siblingIds, commentCoun
   )
 }
 
-function TextBody({ item }: { item: BoardItemView }) {
-  const { editable } = useBoard()
+function TextBody({ item, readOnly }: { item: BoardItemView; readOnly: boolean }) {
+  const { editable: canEdit } = useBoard()
+  const editable = canEdit && !readOnly
   const { run } = useBoardAction()
   const saved = str(item.content.text)
   const [draft, setDraft] = useState(saved)
@@ -170,8 +220,9 @@ function TextBody({ item }: { item: BoardItemView }) {
   )
 }
 
-function Caption({ item }: { item: BoardItemView }) {
-  const { editable } = useBoard()
+function Caption({ item, readOnly }: { item: BoardItemView; readOnly: boolean }) {
+  const { editable: canEdit } = useBoard()
+  const editable = canEdit && !readOnly
   const { run } = useBoardAction()
   const saved = str(item.content.caption)
   const [draft, setDraft] = useState(saved)

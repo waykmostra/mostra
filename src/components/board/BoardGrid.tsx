@@ -8,6 +8,7 @@ import {
   deleteBoardColumn,
   reorderBoardColumns,
   seedBoardTemplate,
+  setBoardColumnWidths,
   updateBoardColumnWidth,
 } from '@/app/projects/board-actions'
 import BoardSectionCard, { SECTION_META } from './BoardSectionCard'
@@ -19,8 +20,10 @@ import type { BoardSectionType } from '@/lib/types'
 const GAP_PX = 16
 
 /**
- * La grille « bento » du Cadrage : des colonnes sur 12 (desktop), des sections
- * empilées dans chaque colonne. Sous `lg`, tout s'empile en une colonne.
+ * La grille « bento » du Cadrage : des colonnes côte à côte qui se partagent
+ * toute la largeur, des sections empilées dans chaque colonne. Les largeurs
+ * sont des proportions : réduire une colonne élargit les autres, sans trou.
+ * Sous `lg`, tout s'empile en une colonne.
  */
 export default function BoardGrid({ columns }: { columns: BoardColumnView[] }) {
   const { editable, projectId } = useBoard()
@@ -29,7 +32,8 @@ export default function BoardGrid({ columns }: { columns: BoardColumnView[] }) {
   // Largeurs pendant un redimensionnement (aperçu local avant enregistrement).
   const [dragWidths, setDragWidths] = useState<Record<string, number>>({})
 
-  const used = columns.reduce((sum, c) => sum + (dragWidths[c.id] ?? c.width), 0)
+  const widthOf = (c: BoardColumnView) => dragWidths[c.id] ?? c.width
+  const total = columns.reduce((sum, c) => sum + widthOf(c), 0)
 
   if (columns.length === 0) {
     if (!editable) {
@@ -60,30 +64,33 @@ export default function BoardGrid({ columns }: { columns: BoardColumnView[] }) {
     )
   }
 
-  function startResize(e: React.PointerEvent, column: BoardColumnView) {
+  /** Déplace la frontière entre la colonne `idx` et sa voisine de droite. */
+  function startResize(e: React.PointerEvent, idx: number) {
     const grid = gridRef.current
-    if (!grid) return
+    const left = columns[idx]
+    const right = columns[idx + 1]
+    if (!grid || !left || !right) return
     e.preventDefault()
-    const unit = (grid.getBoundingClientRect().width + GAP_PX) / 12
+    const free = grid.getBoundingClientRect().width - GAP_PX * (columns.length - 1)
+    const unit = free / total
     const startX = e.clientX
-    const startW = column.width
-    let current = startW
+    const pair = left.width + right.width
+    let nextLeft = left.width
 
     const onMove = (ev: PointerEvent) => {
-      current = Math.min(12, Math.max(1, startW + Math.round((ev.clientX - startX) / unit)))
-      setDragWidths((w) => ({ ...w, [column.id]: current }))
+      nextLeft = Math.min(pair - 1, Math.max(1, left.width + Math.round((ev.clientX - startX) / unit)))
+      setDragWidths({ [left.id]: nextLeft, [right.id]: pair - nextLeft })
     }
     const onUp = () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
-      const done = () =>
-        setDragWidths((w) => {
-          const next = { ...w }
-          delete next[column.id]
-          return next
-        })
-      if (current === startW) return done()
-      void run(() => updateBoardColumnWidth(column.id, current)).then(done)
+      if (nextLeft === left.width) return setDragWidths({})
+      void run(() =>
+        setBoardColumnWidths(projectId, [
+          { id: left.id, width: nextLeft },
+          { id: right.id, width: pair - nextLeft },
+        ]),
+      ).then(() => setDragWidths({}))
     }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
@@ -100,13 +107,13 @@ export default function BoardGrid({ columns }: { columns: BoardColumnView[] }) {
     <div className="space-y-3">
       {editable && (
         <div className="flex items-center justify-between gap-3">
-          <p className={`mono-label tnum ${used > 12 ? 'text-soon' : 'text-faint'}`}>
-            {used}/12 colonnes{used > 12 && ' — la grille passe à la ligne'}
+          <p className="mono-label text-faint">
+            {columns.length} colonne{columns.length > 1 ? 's' : ''} · glisser une frontière pour répartir la largeur
           </p>
           <button
             type="button"
             disabled={isPending}
-            onClick={() => void run(() => addBoardColumn(projectId, Math.max(3, Math.min(6, 12 - used || 6))))}
+            onClick={() => void run(() => addBoardColumn(projectId, 4))}
             className="btn-ghost min-h-[32px] text-[12.5px]"
           >
             <Plus className="h-3.5 w-3.5" /> Colonne
@@ -114,9 +121,10 @@ export default function BoardGrid({ columns }: { columns: BoardColumnView[] }) {
         </div>
       )}
 
-      <div ref={gridRef} className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
+      <div ref={gridRef} className="flex flex-col gap-4 lg:flex-row lg:items-start">
         {columns.map((column, idx) => {
-          const width = dragWidths[column.id] ?? column.width
+          const width = widthOf(column)
+          const percent = Math.round((width / total) * 100)
           const prev = columns[idx - 1]
           const next = columns[idx + 1]
           const sectionIds = column.sections.map((s) => s.id)
@@ -124,15 +132,15 @@ export default function BoardGrid({ columns }: { columns: BoardColumnView[] }) {
           return (
             <div
               key={column.id}
-              style={{ '--span': width } as React.CSSProperties}
-              className="relative min-w-0 space-y-4 lg:[grid-column:span_var(--span)/span_var(--span)]"
+              style={{ '--w': width } as React.CSSProperties}
+              className="relative min-w-0 space-y-4 lg:[flex:var(--w)_1_0%]"
             >
               {editable && (
                 <div className="flex items-center gap-0.5 rounded-md border border-dashed border-line px-1 py-0.5">
-                  <ToolButton label="Réduire" onClick={() => void run(() => updateBoardColumnWidth(column.id, width - 1))} disabled={isPending || width <= 1}>
+                  <ToolButton label="Réduire (les autres colonnes s’élargissent)" onClick={() => void run(() => updateBoardColumnWidth(column.id, width - 1))} disabled={isPending || width <= 1}>
                     <Minus className="h-3.5 w-3.5" />
                   </ToolButton>
-                  <span className="mono-label tnum px-1 text-faint">{width}/12</span>
+                  <span className="mono-label tnum px-1 text-faint">{percent}%</span>
                   <ToolButton label="Élargir" onClick={() => void run(() => updateBoardColumnWidth(column.id, width + 1))} disabled={isPending || width >= 12}>
                     <Plus className="h-3.5 w-3.5" />
                   </ToolButton>
@@ -164,13 +172,13 @@ export default function BoardGrid({ columns }: { columns: BoardColumnView[] }) {
 
               {editable && <AddSection columnId={column.id} />}
 
-              {/* Poignée de largeur : glisser le bord droit de la colonne. */}
-              {editable && (
+              {/* Frontière avec la colonne de droite : la glisser répartit la largeur entre les deux. */}
+              {editable && next && (
                 <div
                   role="separator"
                   aria-orientation="vertical"
-                  title="Glisser pour régler la largeur"
-                  onPointerDown={(e) => startResize(e, column)}
+                  title="Glisser pour répartir la largeur entre ces deux colonnes"
+                  onPointerDown={(e) => startResize(e, idx)}
                   className="group/handle absolute -right-[10px] top-0 hidden h-full w-[8px] cursor-ew-resize justify-center lg:flex"
                 >
                   <span className="h-full w-px bg-transparent transition-colors group-hover/handle:bg-brand" />

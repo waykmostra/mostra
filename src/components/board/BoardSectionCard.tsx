@@ -18,16 +18,18 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { LucideIcon } from 'lucide-react'
-import ImageLightbox from '@/components/shared/ImageLightbox'
 import {
   addBoardLink,
   addBoardText,
   arrangeBoardSections,
   deleteBoardSection,
+  moveBoardItem,
   updateBoardSection,
   uploadBoardFile,
 } from '@/app/projects/board-actions'
-import BoardItemCard, { ToolButton } from './BoardItemCard'
+import BoardItemCard, { BOARD_ITEM_MIME, ToolButton } from './BoardItemCard'
+import BoardMediaGrid from './BoardMediaGrid'
+import BoardMediaLightbox from './BoardMediaLightbox'
 import BoardComments from './BoardComments'
 import { useBoard, useBoardAction } from './BoardContext'
 import type { BoardSectionView } from '@/lib/board'
@@ -69,7 +71,13 @@ export default function BoardSectionCard({ section, columnSectionIds, prevColumn
   const thread = comments.filter((c) => c.board_section_id === section.id)
   const openCount = thread.filter((c) => !c.is_resolved).length
   const itemIds = section.items.map((i) => i.id)
-  const images = section.items.filter((i) => i.kind === 'image' && i.url)
+  // Ce que la visionneuse fait défiler : images et vidéos de la section.
+  const media = section.items.filter((i) => (i.kind === 'image' || i.kind === 'video') && i.url)
+  const openMedia = (itemId: string) => () => setLightbox(media.findIndex((i) => i.id === itemId))
+
+  // Dépôt d'un élément glissé (depuis « À trier » ou une autre section).
+  const [dropActive, setDropActive] = useState(false)
+  const acceptsDrop = (e: React.DragEvent) => editable && e.dataTransfer.types.includes(BOARD_ITEM_MIME)
   const idx = columnSectionIds.indexOf(section.id)
 
   function moveWithin(delta: number) {
@@ -113,12 +121,30 @@ export default function BoardSectionCard({ section, columnSectionIds, prevColumn
   return (
     <section
       ref={cardRef}
-      className="surface group relative flex flex-col p-4"
+      className={`surface group relative flex flex-col p-4 transition-shadow ${
+        dropActive ? 'ring-2 ring-brand ring-offset-2 ring-offset-canvas' : ''
+      }`}
       style={height ? { height } : undefined}
+      onDragOver={(e) => {
+        if (!acceptsDrop(e)) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+        setDropActive(true)
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropActive(false)
+      }}
+      onDrop={(e) => {
+        if (!acceptsDrop(e)) return
+        e.preventDefault()
+        setDropActive(false)
+        const itemId = e.dataTransfer.getData(BOARD_ITEM_MIME)
+        if (itemId && !itemIds.includes(itemId)) void run(() => moveBoardItem(itemId, section.id), 'Rangé ✓')
+      }}
     >
       {/* En-tête */}
-      <header className="mb-3 flex items-center gap-2">
-        <Icon className="h-4 w-4 flex-shrink-0 text-faint" strokeWidth={1.75} />
+      <header className="mb-4 flex items-center gap-2.5">
+        <Icon className="h-[18px] w-[18px] flex-shrink-0 text-faint" strokeWidth={1.75} />
         {editable ? (
           <input
             value={title}
@@ -127,10 +153,10 @@ export default function BoardSectionCard({ section, columnSectionIds, prevColumn
               if (title.trim() !== (section.title ?? '')) void run(() => updateBoardSection(section.id, { title }))
             }}
             placeholder={meta.label}
-            className="min-w-0 flex-1 rounded-sm bg-transparent px-1 py-0.5 font-display text-[15px] text-ink outline-none placeholder:text-faint focus:bg-surface-2"
+            className="min-w-0 flex-1 rounded-sm bg-transparent px-1 py-0.5 font-display text-[1.25rem] font-semibold leading-tight text-ink outline-none placeholder:text-faint focus:bg-surface-2"
           />
         ) : (
-          <h3 className="min-w-0 flex-1 truncate text-[15px] text-ink">{section.title || meta.label}</h3>
+          <h3 className="min-w-0 flex-1 truncate text-[1.25rem] leading-tight text-ink">{section.title || meta.label}</h3>
         )}
 
         {(canComment || thread.length > 0) && (
@@ -197,19 +223,19 @@ export default function BoardSectionCard({ section, columnSectionIds, prevColumn
         {section.items.length === 0 && !editable && <p className="text-[13px] text-faint">{meta.empty}</p>}
 
         {section.type === 'media' ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))]">
-            {section.items.map((item) => (
+          <BoardMediaGrid
+            items={section.items}
+            renderItem={(item) => (
               <BoardItemCard
-                key={item.id}
                 item={item}
                 sectionId={section.id}
                 siblingIds={itemIds}
                 commentCount={countFor(item.id)}
                 onComment={commentFor(item.id)}
-                onOpenImage={() => setLightbox(images.findIndex((i) => i.id === item.id))}
+                onOpen={openMedia(item.id)}
               />
-            ))}
-          </div>
+            )}
+          />
         ) : (
           // Section texte : des blocs séparés par un filet, comme des paragraphes.
           <div className={section.type === 'text' ? 'divide-y divide-line' : 'space-y-1'}>
@@ -221,7 +247,7 @@ export default function BoardSectionCard({ section, columnSectionIds, prevColumn
                   siblingIds={itemIds}
                   commentCount={countFor(item.id)}
                   onComment={commentFor(item.id)}
-                  onOpenImage={() => setLightbox(images.findIndex((i) => i.id === item.id))}
+                  onOpen={openMedia(item.id)}
                 />
               </div>
             ))}
@@ -259,13 +285,7 @@ export default function BoardSectionCard({ section, columnSectionIds, prevColumn
       )}
 
       {lightbox !== null && lightbox >= 0 && (
-        <ImageLightbox
-          images={images.map((i) => ({ src: i.url ?? '', title: typeof i.content.caption === 'string' ? i.content.caption : undefined }))}
-          currentIndex={lightbox}
-          onClose={() => setLightbox(null)}
-          onPrev={() => setLightbox((i) => (i !== null && i > 0 ? i - 1 : i))}
-          onNext={() => setLightbox((i) => (i !== null && i < images.length - 1 ? i + 1 : i))}
-        />
+        <BoardMediaLightbox items={media} index={lightbox} onIndex={setLightbox} onClose={() => setLightbox(null)} />
       )}
     </section>
   )
