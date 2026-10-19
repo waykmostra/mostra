@@ -320,6 +320,10 @@ export interface Comment {
   timecode_seconds: number | null
   /** Version de la vidéo liée au commentaire. */
   video_version: number | null
+  /** Section du Cadrage commentée (migration 037). */
+  board_section_id: string | null
+  /** Élément du Cadrage commenté (migration 037). */
+  board_item_id: string | null
   created_at: string
   updated_at: string
 }
@@ -571,6 +575,8 @@ export type CommentInsert = Omit<Comment, 'id' | 'created_at' | 'updated_at'> & 
   block_id?: string | null
   timecode_seconds?: number | null
   video_version?: number | null
+  board_section_id?: string | null
+  board_item_id?: string | null
 }
 
 export type ActivityLogInsert = Omit<ActivityLog, 'id' | 'created_at'> & {
@@ -846,6 +852,66 @@ export interface TeamMemberWithRoles extends TeamMember {
   roles: TeamRole[]
 }
 
+// ── Cadrage : page modulable du projet (migration 037) ─────────────
+
+export type BoardSectionType = 'media' | 'text' | 'documents'
+export type BoardItemKind = 'text' | 'image' | 'video' | 'link' | 'file'
+
+/** Colonne de la grille du Cadrage. `width` sur 12 (desktop). */
+export interface BoardColumn {
+  id: string
+  project_id: string
+  width: number
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+/** Section empilée dans une colonne. `height` NULL = suit son contenu. */
+export interface BoardSection {
+  id: string
+  project_id: string
+  column_id: string
+  type: BoardSectionType
+  title: string | null
+  height: number | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface BoardTextContent { text: string }
+export interface BoardFileContent { storage_path: string; file_name: string; caption?: string }
+export interface BoardLinkContent { url: string; title?: string; note?: string }
+
+export type BoardItemContentByKind = {
+  text: BoardTextContent
+  image: BoardFileContent
+  video: BoardFileContent
+  link: BoardLinkContent
+  file: BoardFileContent
+}
+
+/** Élément du Cadrage. `section_id` NULL = « À trier » (admin uniquement). */
+export interface BoardItem {
+  id: string
+  project_id: string
+  section_id: string | null
+  kind: BoardItemKind
+  content: Json
+  sort_order: number
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type BoardColumnInsert = Pick<BoardColumn, 'project_id'> & Partial<Pick<BoardColumn, 'id' | 'width' | 'sort_order'>>
+export type BoardSectionInsert = Pick<BoardSection, 'project_id' | 'column_id' | 'type'> &
+  Partial<Pick<BoardSection, 'id' | 'title' | 'height' | 'sort_order'>>
+export type BoardItemInsert = Pick<BoardItem, 'project_id' | 'kind' | 'content'> &
+  Partial<Pick<BoardItem, 'id' | 'section_id' | 'sort_order' | 'created_by'>>
+
+
 // ----------------------------------------------------------
 // Database type (structure Supabase)
 // ----------------------------------------------------------
@@ -967,6 +1033,21 @@ export interface Database {
         Row:    TeamMemberRole
         Insert: Partial<TeamMemberRole>
         Update: never
+      }
+      board_columns: {
+        Row:    BoardColumn
+        Insert: BoardColumnInsert
+        Update: Partial<Omit<BoardColumn, 'id' | 'project_id' | 'created_at'>>
+      }
+      board_sections: {
+        Row:    BoardSection
+        Insert: BoardSectionInsert
+        Update: Partial<Omit<BoardSection, 'id' | 'project_id' | 'created_at'>>
+      }
+      board_items: {
+        Row:    BoardItem
+        Insert: BoardItemInsert
+        Update: Partial<Omit<BoardItem, 'id' | 'project_id' | 'created_at'>>
       }
     }
     Functions: {
