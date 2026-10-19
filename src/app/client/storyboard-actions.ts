@@ -3,6 +3,7 @@
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
+import { syncPhaseFromSubPhases } from '@/lib/phaseSync'
 import { createNotifications, getProjectRecipients, notifyClientValidation } from '@/lib/notifications'
 import { requireAssignedClient } from '@/lib/auth'
 import { sendEmail } from '@/lib/email/send'
@@ -242,24 +243,9 @@ export async function approveStoryboardSubPhase(
 
   if (error) return { success: false, error: error.message }
 
-  // Auto-complete parent phase if all sub_phases done
-  const { data: rawAllSps } = await admin
-    .from('sub_phases')
-    .select('id, status')
-    .eq('phase_id', phase.id)
-
-  const allSps = (rawAllSps as Pick<SubPhase, 'id' | 'status'>[] | null) ?? []
-  const updatedSps = allSps.map((s) =>
-    s.id === subPhaseId ? { ...s, status: 'completed' as const } : s,
-  )
-  const allDone = updatedSps.every((s) => s.status === 'completed' || s.status === 'approved')
-
-  if (allDone) {
-    await db(admin)
-      .from('project_phases')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', phase.id)
-  }
+  // Phase terminée si toutes ses sous-étapes le sont, puis l'étape suivante
+  // démarre et l'avancement se recalcule (même règle partout, cf. phaseSync).
+  await syncPhaseFromSubPhases(admin, phase.id)
 
   const userId = await resolveClientUserId(admin, project)
   if (userId) {

@@ -3,6 +3,7 @@
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
+import { recalcProjectProgress, startNextPhase } from '@/lib/phaseSync'
 import { requireProjectAccess } from '@/lib/auth'
 import { createNotifications, getProjectRecipients, notifyClientValidation } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
@@ -233,7 +234,7 @@ export async function approveAnimationPhase(
 
   const { data: rawPhase } = await admin
     .from('project_phases')
-    .select('id, project_id, name, status')
+    .select('id, project_id, name, status, sort_order')
     .eq('id', phaseId)
     .maybeSingle()
   const phase = rawPhase as ProjectPhase | null
@@ -250,24 +251,10 @@ export async function approveAnimationPhase(
     .eq('id', phaseId)
   if (error) return { success: false, error: error.message }
 
-  // Recalc progress
-  const { data: rawAllPhases } = await admin
-    .from('project_phases')
-    .select('id, status')
-    .eq('project_id', projectId)
-  const allPhases = (rawAllPhases as Pick<ProjectPhase, 'id' | 'status'>[] | null) ?? []
-  const updated = allPhases.map((p) =>
-    p.id === phaseId ? { ...p, status: 'approved' as const } : p,
-  )
-  const doneCount = updated.filter(
-    (p) => p.status === 'completed' || p.status === 'approved',
-  ).length
-  const progress = allPhases.length > 0 ? Math.round((doneCount / allPhases.length) * 100) : 0
-  const allDone = updated.every((p) => p.status === 'completed' || p.status === 'approved')
-  await db(admin)
-    .from('projects')
-    .update({ progress, ...(allDone ? { status: 'completed' } : {}) })
-    .eq('id', projectId)
+  // L'étape suivante démarre (Rendu après Animation), puis l'avancement se
+  // recalcule et le projet se clôt s'il est complet (cf. phaseSync).
+  await startNextPhase(admin, projectId, phase.sort_order)
+  await recalcProjectProgress(admin, projectId)
 
   await db(admin).from('activity_logs').insert({
     project_id: projectId,
