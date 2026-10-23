@@ -17,6 +17,7 @@ import {
   Type,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { putToSignedUrl } from '@/lib/uploadDirect'
 import type { LucideIcon } from 'lucide-react'
 import {
   addBoardLink,
@@ -25,7 +26,8 @@ import {
   deleteBoardSection,
   moveBoardItem,
   updateBoardSection,
-  uploadBoardFile,
+  createBoardUploadUrl,
+  recordBoardFile,
 } from '@/app/projects/board-actions'
 import BoardItemCard, { BOARD_ITEM_MIME, ToolButton } from './BoardItemCard'
 import BoardMediaGrid from './BoardMediaGrid'
@@ -306,11 +308,29 @@ function AddControls({ section }: { section: BoardSectionView }) {
     const list = Array.from(files)
     setUploading(list.length)
     for (const file of list) {
-      const fd = new FormData()
-      fd.set('projectId', projectId)
-      fd.set('sectionId', section.id)
-      fd.set('file', file)
-      const ok = await run(() => uploadBoardFile(fd))
+      // Envoi direct navigateur → Supabase : pas de limite de taille Vercel.
+      const ok = await run(async () => {
+        const signed = await createBoardUploadUrl({
+          projectId,
+          sectionId: section.id,
+          fileName: file.name,
+          fileSize: file.size,
+        })
+        if (!signed?.success) return signed ?? { success: false, error: 'Réponse serveur vide' }
+        const mimeType = file.type || 'application/octet-stream'
+        try {
+          await putToSignedUrl(signed.uploadUrl, file, mimeType)
+        } catch (err) {
+          return { success: false, error: err instanceof Error ? err.message : 'Upload échoué' }
+        }
+        return recordBoardFile({
+          projectId,
+          sectionId: section.id,
+          storagePath: signed.storagePath,
+          fileName: file.name,
+          mimeType,
+        })
+      })
       if (!ok) toast.error(`« ${file.name} » n’a pas pu être ajouté`)
       setUploading((n) => n - 1)
     }

@@ -391,51 +391,74 @@ export async function addBoardLink(
 }
 
 /**
- * Upload d'un fichier (FormData : projectId, sectionId?, file, caption?).
- * Le type d'élément se déduit du MIME : image, vidéo ou fichier.
+ * Upload d'un fichier, étape 1 : URL d'upload signée. Le navigateur envoie
+ * ensuite le fichier directement à Supabase (src/lib/uploadDirect.ts) — une
+ * Server Action ne passe pas au-delà de 4,5 Mo sur Vercel.
  */
-export async function uploadBoardFile(formData: FormData): Promise<BoardCreateResult> {
+export async function createBoardUploadUrl(input: {
+  projectId: string
+  sectionId: string | null
+  fileName: string
+  fileSize: number
+}): Promise<{ success: true; uploadUrl: string; storagePath: string } | { success: false; error: string }> {
   const auth = await requireAdmin()
   if ('error' in auth) return { success: false, error: auth.error }
-  const { supabase, user } = auth
+  const { supabase } = auth
 
-  const projectId = formData.get('projectId') as string | null
-  const sectionId = (formData.get('sectionId') as string | null) || null
-  const caption = ((formData.get('caption') as string | null) ?? '').trim()
-  const file = formData.get('file') as File | null
-
-  if (!projectId) return { success: false, error: 'Projet manquant' }
-  if (!file || file.size === 0) return { success: false, error: 'Fichier requis' }
-  if (file.size > MAX_FILE_SIZE) return { success: false, error: 'Fichier trop lourd — 500 MB maximum' }
+  const { projectId, sectionId, fileName, fileSize } = input
+  if (!projectId || !fileName) return { success: false, error: 'Données manquantes' }
+  if (fileSize > MAX_FILE_SIZE) return { success: false, error: 'Fichier trop lourd — 500 MB maximum' }
 
   const bad = await assertSectionInProject(supabase, projectId, sectionId)
   if (bad) return { success: false, error: bad }
 
-  const kind: BoardItemKind = file.type.startsWith('image/')
-    ? 'image'
-    : file.type.startsWith('video/')
-      ? 'video'
-      : 'file'
-
-  const admin = createAdminClient()
-  const ext = (file.name.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin'
+  const ext = (fileName.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin'
   const storagePath = `${projectId}/cadrage/${crypto.randomUUID()}.${ext}`
 
-  const { error: uploadErr } = await admin.storage
-    .from(BOARD_BUCKET)
-    .upload(storagePath, await file.arrayBuffer(), {
-      contentType: file.type || 'application/octet-stream',
-      upsert: false,
-    })
-  if (uploadErr) return { success: false, error: `Upload échoué : ${uploadErr.message}` }
+  const { data, error } = await createAdminClient().storage.from(BOARD_BUCKET).createSignedUploadUrl(storagePath)
+  if (error || !data?.signedUrl) {
+    return { success: false, error: `Impossible de créer l'URL d'upload : ${error?.message ?? 'erreur inconnue'}` }
+  }
+  return { success: true, uploadUrl: data.signedUrl, storagePath }
+}
+
+/**
+ * Upload d'un fichier, étape 3 : le fichier est dans le bucket, on crée
+ * l'élément. Le type (image, vidéo, fichier) se déduit du MIME.
+ */
+export async function recordBoardFile(input: {
+  projectId: string
+  sectionId: string | null
+  storagePath: string
+  fileName: string
+  mimeType: string
+  caption?: string
+}): Promise<BoardCreateResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
+
+  const { projectId, sectionId, storagePath, fileName, mimeType } = input
+  // Seul un chemin signé pour ce projet est accepté.
+  const prefix = `${projectId}/cadrage/`
+  const rest = storagePath.startsWith(prefix) ? storagePath.slice(prefix.length) : ''
+  if (!/^[0-9a-f-]{36}\.[a-z0-9]+$/.test(rest)) {
+    return { success: false, error: 'Chemin de fichier invalide' }
+  }
+
+  const bad = await assertSectionInProject(supabase, projectId, sectionId)
+  if (bad) return { success: false, error: bad }
+
+  const kind: BoardItemKind = mimeType.startsWith('image/') ? 'image' : mimeType.startsWith('video/') ? 'video' : 'file'
+  const caption = input.caption?.trim()
 
   const res = await insertItem(supabase, user.id, projectId, sectionId, kind, {
     storage_path: storagePath,
-    file_name: file.name,
+    file_name: fileName,
     ...(caption ? { caption } : {}),
   })
   // Pas d'élément → pas de fichier orphelin dans le bucket.
-  if (!res.success) await admin.storage.from(BOARD_BUCKET).remove([storagePath])
+  if (!res.success) await createAdminClient().storage.from(BOARD_BUCKET).remove([storagePath])
   return res
 }
 

@@ -3,7 +3,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { UploadCloud, X, FileIcon } from 'lucide-react'
 import { toast } from 'sonner'
-import { uploadFile } from '@/app/projects/file-actions'
+import { createPhaseFileUploadUrl, recordPhaseFileUpload } from '@/app/projects/file-actions'
+import { putToSignedUrl } from '@/lib/uploadDirect'
 import { formatFileSize } from '@/lib/utils/files'
 
 // ── Types MIME acceptés ───────────────────────────────────────────
@@ -19,7 +20,7 @@ const ACCEPTED_MIME: Record<string, string[]> = {
 }
 
 const ACCEPT_ATTR = Object.keys(ACCEPTED_MIME).join(',')
-const MAX_BYTES = 100 * 1024 * 1024 // 100 MB
+const MAX_BYTES = 500 * 1024 * 1024 // 500 MB — upload direct vers Supabase
 
 // ── Props ─────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ export default function FileUpload({ phaseId, projectId, phaseSlug, onComplete }
 
   const pickFile = useCallback((file: File) => {
     if (file.size > MAX_BYTES) {
-      toast.error(`Fichier trop volumineux (max 100 MB) — ${formatFileSize(file.size)}`)
+      toast.error(`Fichier trop volumineux (max 500 MB) — ${formatFileSize(file.size)}`)
       return
     }
     if (!Object.keys(ACCEPTED_MIME).includes(file.type) && file.type !== '') {
@@ -73,32 +74,40 @@ export default function FileUpload({ phaseId, projectId, phaseSlug, onComplete }
     const { file } = state
 
     setState({ status: 'uploading', file, progress: 0 })
-
-    // Progression simulée — la Server Action ne streame pas de progression
-    let pct = 0
-    const interval = setInterval(() => {
-      pct = Math.min(pct + Math.random() * 12, 88)
-      setState((s) => (s.status === 'uploading' ? { ...s, progress: Math.round(pct) } : s))
-    }, 250)
+    const setProgress = (progress: number) =>
+      setState((s) => (s.status === 'uploading' ? { ...s, progress } : s))
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('phaseId', phaseId)
-      formData.append('projectId', projectId)
-      formData.append('phaseSlug', phaseSlug)
+      // 1. URL d'upload signée (action légère, sans le fichier)
+      const signed = await createPhaseFileUploadUrl({
+        phaseId,
+        projectId,
+        phaseSlug,
+        fileName: file.name,
+        fileSize: file.size,
+      })
+      if (!signed?.success) throw new Error(signed?.error ?? 'Réponse serveur vide')
 
-      const result = await uploadFile(formData)
+      // 2. Envoi direct navigateur → Supabase, avec la vraie progression
+      const contentType = file.type || 'application/octet-stream'
+      await putToSignedUrl(signed.uploadUrl, file, contentType, (pct) => setProgress(Math.min(pct, 99)))
 
-      clearInterval(interval)
-
-      if (!result.success) throw new Error(result.error)
+      // 3. Enregistrement de la version
+      const result = await recordPhaseFileUpload({
+        phaseId,
+        projectId,
+        storagePath: signed.storagePath,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        version: signed.version,
+      })
+      if (!result?.success) throw new Error(result?.error ?? 'Réponse serveur vide')
 
       setState({ status: 'done', version: result.file.version })
       toast.success(`${file.name} uploadé avec succès (v${result.file.version})`)
       setTimeout(onComplete, 600)
     } catch (err) {
-      clearInterval(interval)
       const msg = err instanceof Error ? err.message : 'Erreur inconnue'
       setState({ status: 'error', message: msg })
       toast.error(`Upload échoué : ${msg}`)

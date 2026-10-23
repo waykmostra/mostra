@@ -1,31 +1,52 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import type { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
 import { requireAdmin, requireProjectAccess } from '@/lib/auth'
 import type { PhaseFile } from '@/lib/types'
 
-// ─── uploadFile ──────────────────────────────────────────────────
+// ─── Upload d'un fichier d'étape ──────────────────────────────────
+// Flux direct navigateur → Supabase (voir src/lib/uploadDirect.ts) : le
+// fichier ne transite jamais par une Server Action, limitée à 4,5 Mo sur Vercel.
 
 export type UploadFileResult =
   | { success: true; file: PhaseFile }
   | { success: false; error: string }
 
-export async function uploadFile(formData: FormData): Promise<UploadFileResult> {
+const MAX_PHASE_FILE_BYTES = 500 * 1024 * 1024
+
+/** Vérifie que l'étape appartient au projet. */
+async function phaseInProject(
+  admin: ReturnType<typeof createAdminClient>,
+  phaseId: string,
+  projectId: string,
+): Promise<{ name: string } | null> {
+  const { data } = await admin.from('project_phases').select('name, project_id').eq('id', phaseId).maybeSingle()
+  const row = data as { name: string; project_id: string } | null
+  return row && row.project_id === projectId ? { name: row.name } : null
+}
+
+/** Étape 1 : version suivante + URL d'upload signée. */
+export async function createPhaseFileUploadUrl(input: {
+  phaseId: string
+  projectId: string
+  phaseSlug: string
+  fileName: string
+  fileSize: number
+}): Promise<
+  | { success: true; uploadUrl: string; storagePath: string; version: number }
+  | { success: false; error: string }
+> {
   const auth = await requireAdmin()
   if ('error' in auth) return { success: false, error: auth.error }
-  const { admin, user } = auth
+  const { admin } = auth
 
-  const file = formData.get('file') as File | null
-  const phaseId = formData.get('phaseId') as string | null
-  const projectId = formData.get('projectId') as string | null
-  const phaseSlug = formData.get('phaseSlug') as string | null
+  const { phaseId, projectId, phaseSlug, fileName, fileSize } = input
+  if (!phaseId || !projectId || !phaseSlug || !fileName) return { success: false, error: 'Données manquantes' }
+  if (fileSize > MAX_PHASE_FILE_BYTES) return { success: false, error: 'Fichier trop lourd (max 500 MB)' }
+  if (!(await phaseInProject(admin, phaseId, projectId))) return { success: false, error: 'Étape introuvable' }
 
-  if (!file || !phaseId || !projectId || !phaseSlug) {
-    return { success: false, error: 'Données manquantes' }
-  }
-
-  // Version
   const { data: lastVersion } = await admin
     .from('phase_files')
     .select('version')
@@ -33,18 +54,40 @@ export async function uploadFile(formData: FormData): Promise<UploadFileResult> 
     .order('version', { ascending: false })
     .limit(1)
     .maybeSingle()
-
   const version = ((lastVersion as { version: number } | null)?.version ?? 0) + 1
 
-  // Storage
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const storagePath = `${projectId}/${phaseSlug}/v${version}/${safeName}`
+  const safeSlug = phaseSlug.replace(/[^a-zA-Z0-9_-]/g, '_')
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const storagePath = `${projectId}/${safeSlug}/v${version}/${safeName}`
 
-  const { error: storageError } = await admin.storage
-    .from('project-files')
-    .upload(storagePath, file, { cacheControl: '3600', upsert: false })
+  const { data, error } = await admin.storage.from('project-files').createSignedUploadUrl(storagePath)
+  if (error || !data?.signedUrl) {
+    return { success: false, error: `Impossible de créer l'URL d'upload : ${error?.message ?? 'erreur inconnue'}` }
+  }
+  return { success: true, uploadUrl: data.signedUrl, storagePath, version }
+}
 
-  if (storageError) return { success: false, error: `[Storage] ${storageError.message}` }
+/** Étape 3 : le fichier est dans le bucket, on l'enregistre comme version courante. */
+export async function recordPhaseFileUpload(input: {
+  phaseId: string
+  projectId: string
+  storagePath: string
+  fileName: string
+  fileType: string
+  fileSize: number
+  version: number
+}): Promise<UploadFileResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin, user } = auth
+
+  const { phaseId, projectId, storagePath, fileName, fileType, fileSize, version } = input
+  const phase = await phaseInProject(admin, phaseId, projectId)
+  if (!phase) return { success: false, error: 'Étape introuvable' }
+  // Le chemin doit être celui signé pour ce projet et cette version.
+  if (!storagePath.startsWith(`${projectId}/`) || !storagePath.includes(`/v${version}/`)) {
+    return { success: false, error: 'Chemin de fichier invalide' }
+  }
 
   await db(admin).from('phase_files').update({ is_current: false }).eq('phase_id', phaseId)
 
@@ -53,10 +96,10 @@ export async function uploadFile(formData: FormData): Promise<UploadFileResult> 
     .insert({
       phase_id: phaseId,
       uploaded_by: user.id,
-      file_name: file.name,
+      file_name: fileName,
       file_url: storagePath,
-      file_type: file.type || null,
-      file_size: file.size,
+      file_type: fileType || null,
+      file_size: fileSize,
       version,
       is_current: true,
     })
@@ -65,21 +108,13 @@ export async function uploadFile(formData: FormData): Promise<UploadFileResult> 
 
   if (dbError) return { success: false, error: `[DB] ${dbError.message}` }
 
-  const { data: phaseRow } = await admin
-    .from('project_phases')
-    .select('name')
-    .eq('id', phaseId)
-    .maybeSingle()
-
-  const phaseName = (phaseRow as { name: string } | null)?.name ?? 'phase'
-
   await db(admin)
     .from('activity_logs')
     .insert({
       project_id: projectId,
       user_id: user.id,
       action: 'file_uploaded',
-      details: { file_name: file.name, phase_name: phaseName, version },
+      details: { file_name: fileName, phase_name: phase.name, version },
     })
 
   revalidatePath(`/projects/${projectId}`)

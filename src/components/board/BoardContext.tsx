@@ -47,7 +47,14 @@ export function useBoardAction() {
     (action: () => Promise<Result>, success?: string) =>
       new Promise<boolean>((resolve) => {
         startTransition(async () => {
-          const res = await action()
+          let res: Result | undefined
+          try {
+            res = await action()
+          } catch (err) {
+            res = { success: false, error: err instanceof Error ? err.message : 'Erreur inattendue' }
+          }
+          // Une action qui échoue côté réseau peut ne rien renvoyer.
+          if (!res) res = { success: false, error: 'Le serveur n’a pas répondu' }
           if (!res.success) {
             toast.error(res.error)
             resolve(false)
