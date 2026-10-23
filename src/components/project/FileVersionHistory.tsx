@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { Download, Eye, FileText, Loader2 } from 'lucide-react'
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { Download, Eye, FileText, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { getSignedUrl } from '@/app/projects/file-actions'
+import { deletePhaseFile, getSignedUrl } from '@/app/projects/file-actions'
 import { formatFileSize } from '@/lib/utils/files'
 import { formatDate } from '@/lib/utils/dates'
 import type { PhaseFile } from '@/lib/types'
@@ -36,6 +37,22 @@ export default function FileVersionHistory({ files }: FileVersionHistoryProps) {
 
 function FileRow({ file }: { file: PhaseFile }) {
   const [loadingAction, setLoadingAction] = useState<'view' | 'download' | null>(null)
+  const router = useRouter()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [isDeleting, startDelete] = useTransition()
+
+  function remove() {
+    startDelete(async () => {
+      const res = await deletePhaseFile(file.id)
+      setConfirmDelete(false)
+      if (!res?.success) {
+        toast.error(res?.error ?? 'Suppression impossible')
+        return
+      }
+      toast.success(`v${file.version} supprimée`)
+      router.refresh()
+    })
+  }
 
   async function openUrl(action: 'view' | 'download') {
     setLoadingAction(action)
@@ -58,7 +75,7 @@ function FileRow({ file }: { file: PhaseFile }) {
     }
   }
 
-  const busy = loadingAction !== null
+  const busy = loadingAction !== null || isDeleting
   const btnClass =
     'inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] border border-line text-faint hover:text-ink hover:border-line-strong transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
 
@@ -116,6 +133,35 @@ function FileRow({ file }: { file: PhaseFile }) {
             <Download className="h-3 w-3" />
           )}
         </button>
+        {confirmDelete ? (
+          <span className="inline-flex items-center gap-1.5 pl-1">
+            <button
+              type="button"
+              onClick={remove}
+              disabled={isDeleting}
+              className="inline-flex items-center gap-1 text-[10px] font-medium text-late hover:opacity-80 disabled:opacity-50"
+            >
+              {isDeleting && <Loader2 className="h-3 w-3 animate-spin" />}
+              Supprimer
+            </button>
+            {!isDeleting && (
+              <button type="button" onClick={() => setConfirmDelete(false)} className="text-[10px] text-dim hover:text-ink">
+                Non
+              </button>
+            )}
+          </span>
+        ) : (
+          <button
+            type="button"
+            className={`${btnClass} hover:!text-late`}
+            disabled={busy}
+            onClick={() => setConfirmDelete(true)}
+            title="Supprimer cette version (et ses commentaires)"
+            aria-label="Supprimer le fichier"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
       </div>
     </div>
   )

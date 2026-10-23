@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/lib/supabase/helpers'
 import { requireAdmin, requireProjectAccess } from '@/lib/auth'
+import { deleteVideoVersion } from '@/app/projects/video-actions'
 import type { PhaseFile } from '@/lib/types'
 
 // ─── Upload d'un fichier d'étape ──────────────────────────────────
@@ -231,4 +232,14 @@ export async function getSignedUrl(filePath: string): Promise<{ url: string } | 
 
   if (error || !data?.signedUrl) return { error: error?.message ?? 'Erreur inconnue' }
   return { url: data.signedUrl }
+}
+
+// ─── deletePhaseFile ──────────────────────────────────────────────
+// Supprime une version de fichier d'étape (vidéo ou autre). Même logique que
+// la suppression depuis le lecteur vidéo : fichier, commentaires de la
+// version, bascule sur la version précédente, retour « en cours » si plus rien.
+
+export async function deletePhaseFile(fileId: string): Promise<{ success: true } | { success: false; error: string }> {
+  const res = await deleteVideoVersion(fileId)
+  return res.success ? { success: true } : res
 }
