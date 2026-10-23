@@ -6,7 +6,7 @@ import ClientPhaseContent from '@/components/client/ClientPhaseContent'
 import Board from '@/components/board/Board'
 import { getCurrentProfile } from '@/lib/auth'
 import { loadBoard, loadBoardComments } from '@/lib/board'
-import { pickCurrentPhase } from '@/lib/currentPhase'
+import { isPhaseViewable, pickCurrentPhase } from '@/lib/currentPhase'
 import type { Profile, Project, ProjectPhase, SubPhase } from '@/lib/types'
 
 // Toujours lire l'état réel : le client doit voir les ajouts/suppressions/démarrages
@@ -44,8 +44,13 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
   //    - in_progress : formulaire en attente de remplissage
   //    - in_review, completed, approved : terminées ou à valider
   const subPhasesByPhase: Record<string, SubPhase[]> = {}
+  // Étapes qui ont des sous-étapes, quel que soit leur statut (règle d'accès).
+  const phasesWithSubs = new Set<string>()
   if (phases.length > 0) {
     const phaseIds = phases.map((p) => p.id)
+    const { data: rawAllSubs } = await admin.from('sub_phases').select('phase_id').in('phase_id', phaseIds)
+    for (const r of (rawAllSubs as { phase_id: string }[] | null) ?? []) phasesWithSubs.add(r.phase_id)
+
     const { data: rawSubPhases } = await admin
       .from('sub_phases')
       .select('*')
@@ -87,7 +92,9 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
 
   // 5. Contenu principal : l'étape en cours (ou la dernière validée), sinon le
   //    Cadrage (avant le R3, rien n'a démarré — la vision commune se construit là).
-  const current = pickCurrentPhase(phases)
+  // Une étape encore en production chez Mostra (ex. Animation sans vidéo en
+  // review) n'est pas ouvrable : on montre alors la dernière étape validée.
+  const current = pickCurrentPhase(phases, (p) => isPhaseViewable(p, phasesWithSubs.has(p.id)))
 
   let main: React.ReactNode
   if (current) {
