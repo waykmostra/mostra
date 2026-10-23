@@ -13,6 +13,7 @@ import PhaseStepper from '@/components/project/PhaseStepper'
 import SubPhaseTabs from '@/components/project/SubPhaseTabs'
 import Breadcrumb from '@/components/shared/Breadcrumb'
 import StatusBadge from '@/components/shared/StatusBadge'
+import { isPhaseViewable } from '@/lib/currentPhase'
 import type { Project, ProjectPhase, SubPhase } from '@/lib/types'
 
 interface ClientPhaseContentProps {
@@ -165,7 +166,7 @@ export default async function ClientPhaseContent({
             subPhasesByPhase={subsByPhase}
             currentPhaseId={phase.id}
             hrefForPhase={(p) => `/client/${params.token}/phases/${p.id}`}
-            lockPending
+            isLocked={(p) => !isPhaseViewable(p, !!subsByPhase[p.id]?.length)}
             cadrage={{ href: `/client/${params.token}/cadrage` }}
           />
         </>

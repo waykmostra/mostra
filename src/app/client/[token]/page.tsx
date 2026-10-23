@@ -6,8 +6,9 @@ import ClientPhaseContent from '@/components/client/ClientPhaseContent'
 import Board from '@/components/board/Board'
 import { getCurrentProfile } from '@/lib/auth'
 import { loadBoard, loadBoardComments } from '@/lib/board'
-import { isPhaseViewable, pickCurrentPhase } from '@/lib/currentPhase'
-import type { Profile, Project, ProjectPhase, SubPhase } from '@/lib/types'
+import { pickCurrentPhase } from '@/lib/currentPhase'
+import { loadClientPhases } from '@/lib/clientPhases'
+import type { Profile, Project, SubPhase } from '@/lib/types'
 
 // Toujours lire l'état réel : le client doit voir les ajouts/suppressions/démarrages
 // de phases faits côté admin (les actions admin ne revalident pas la route client).
@@ -31,25 +32,15 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
   const project = rawProject as Project | null
   if (!project) notFound()
 
-  // 2. Phases (ordonnées)
-  const { data: rawPhases } = await admin
-    .from('project_phases')
-    .select('*')
-    .eq('project_id', project.id)
-    .order('sort_order', { ascending: true })
-
-  const phases = (rawPhases as ProjectPhase[] | null) ?? []
+  // 2. Phases (ordonnées) et droit d'ouverture de chacune
+  const { phases, viewableIds } = await loadClientPhases(admin, project.id)
 
   // 3. Sous-phases visibles par le client :
   //    - in_progress : formulaire en attente de remplissage
   //    - in_review, completed, approved : terminées ou à valider
   const subPhasesByPhase: Record<string, SubPhase[]> = {}
-  // Étapes qui ont des sous-étapes, quel que soit leur statut (règle d'accès).
-  const phasesWithSubs = new Set<string>()
   if (phases.length > 0) {
     const phaseIds = phases.map((p) => p.id)
-    const { data: rawAllSubs } = await admin.from('sub_phases').select('phase_id').in('phase_id', phaseIds)
-    for (const r of (rawAllSubs as { phase_id: string }[] | null) ?? []) phasesWithSubs.add(r.phase_id)
 
     const { data: rawSubPhases } = await admin
       .from('sub_phases')
@@ -94,7 +85,7 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
   //    Cadrage (avant le R3, rien n'a démarré — la vision commune se construit là).
   // Une étape encore en production chez Mostra (ex. Animation sans vidéo en
   // review) n'est pas ouvrable : on montre alors la dernière étape validée.
-  const current = pickCurrentPhase(phases, (p) => isPhaseViewable(p, phasesWithSubs.has(p.id)))
+  const current = pickCurrentPhase(phases, (p) => viewableIds.has(p.id))
 
   let main: React.ReactNode
   if (current) {
@@ -127,6 +118,8 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
       main={main}
       project={project}
       phases={phases}
+      viewablePhaseIds={[...viewableIds]}
+      shownPhaseId={current?.id ?? null}
       subPhasesByPhase={subPhasesByPhase}
       commentedSubPhaseIds={commentedSubPhaseIds}
       token={params.token}

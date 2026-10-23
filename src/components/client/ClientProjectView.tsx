@@ -4,12 +4,16 @@ import ClientActionBanner from './ClientActionBanner'
 import PhaseStepper from '@/components/project/PhaseStepper'
 import Breadcrumb from '@/components/shared/Breadcrumb'
 import StatusBadge from '@/components/shared/StatusBadge'
-import { pickCurrentPhase } from '@/lib/currentPhase'
+import { activePhase } from '@/lib/currentPhase'
 import type { Project, ProjectPhase, SubPhase } from '@/lib/types'
 
 interface ClientProjectViewProps {
   project: Project
   phases: ProjectPhase[]
+  /** Étapes que le client peut ouvrir (les autres ne sont jamais des liens). */
+  viewablePhaseIds: string[]
+  /** Étape affichée dans le bloc principal (null = Cadrage). */
+  shownPhaseId: string | null
   subPhasesByPhase: Record<string, SubPhase[]>
   /** Sous-phases ayant des commentaires → cliquables même en révision (in_progress). */
   commentedSubPhaseIds: string[]
@@ -26,14 +30,18 @@ interface ClientProjectViewProps {
 export default function ClientProjectView({
   project,
   phases,
+  viewablePhaseIds,
+  shownPhaseId,
   token,
   subPhasesByPhase,
   aside,
   main,
 }: ClientProjectViewProps) {
   const done = phases.filter((p) => p.status === 'completed' || p.status === 'approved').length
-  const current = pickCurrentPhase(phases)
-  const currentDone = current?.status === 'completed' || current?.status === 'approved'
+  const viewable = new Set(viewablePhaseIds)
+  // Position réelle du projet (en review, sinon en cours) — même règle que la bannière.
+  const active = activePhase(phases)
+  const activeViewable = !!active && viewable.has(active.id)
 
   return (
     <div className="space-y-6">
@@ -67,8 +75,9 @@ export default function ClientProjectView({
         phases={phases}
         subPhasesByPhase={subPhasesByPhase}
         hrefForPhase={(phase) => `/client/${token}/phases/${phase.id}`}
-        lockPending
-        cadrage={{ href: `/client/${token}/cadrage`, active: !current }}
+        isLocked={(phase) => !viewable.has(phase.id)}
+        currentPhaseId={shownPhaseId ?? undefined}
+        cadrage={{ href: `/client/${token}/cadrage`, active: !shownPhaseId }}
       />
 
       {/* L'étape en cours occupe la page (75 %) ; les repères du projet à droite. */}
@@ -93,18 +102,28 @@ export default function ClientProjectView({
             </div>
           </div>
 
-          {current && (
-            <Link
-              href={`/client/${token}/phases/${current.id}`}
-              className="surface group flex items-center gap-3 px-4 py-3.5 transition-colors duration-[160ms] hover:bg-surface-2"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="mono-label block text-faint">{currentDone ? 'Dernière étape validée' : 'Étape en cours'}</span>
-                <span className="mt-1.5 block truncate text-[14px] font-medium text-ink">{current.name}</span>
-              </span>
-              <ArrowRight className="h-4 w-4 flex-shrink-0 text-faint transition-colors group-hover:text-ink" />
-            </Link>
-          )}
+          {active &&
+            (activeViewable ? (
+              <Link
+                href={`/client/${token}/phases/${active.id}`}
+                className="surface group flex items-center gap-3 px-4 py-3.5 transition-colors duration-[160ms] hover:bg-surface-2"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="mono-label block text-faint">Étape en cours</span>
+                  <span className="mt-1.5 block truncate text-[14px] font-medium text-ink">{active.name}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 flex-shrink-0 text-faint transition-colors group-hover:text-ink" />
+              </Link>
+            ) : (
+              // En production chez Mostra : rien à ouvrir pour le client.
+              <div className="surface flex items-center gap-3 px-4 py-3.5">
+                <span className="min-w-0 flex-1">
+                  <span className="mono-label block text-faint">Étape en cours</span>
+                  <span className="mt-1.5 block truncate text-[14px] font-medium text-ink">{active.name}</span>
+                  <span className="mt-0.5 block text-[12px] text-faint">En production chez Mostra</span>
+                </span>
+              </div>
+            ))}
 
           <Link
             href={`/client/${token}/cadrage`}

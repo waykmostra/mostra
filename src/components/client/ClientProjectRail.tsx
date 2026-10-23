@@ -11,6 +11,8 @@ export interface RailPhase {
   id: string
   name: string
   status: PhaseStatus
+  /** Le client peut ouvrir l'étape (sinon : pas de lien, cf. isPhaseViewable). */
+  viewable: boolean
 }
 
 interface Props {
@@ -132,7 +134,7 @@ export default function ClientProjectRail({ token, projectName, progress, phases
             </Link>
             {phases.map((phase) => {
               const done = isDone(phase.status)
-              const locked = phase.status === 'pending'
+              const locked = !phase.viewable
               const active = pathname.includes(`/phases/${phase.id}`)
               const review = phase.status === 'in_review'
 
@@ -142,8 +144,15 @@ export default function ClientProjectRail({ token, projectName, progress, phases
                     key={phase.id}
                     className="flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] text-white/25"
                   >
-                    <Lock className="h-3.5 w-3.5 flex-shrink-0" />
+                    {phase.status === 'pending' ? (
+                      <Lock className="h-3.5 w-3.5 flex-shrink-0" />
+                    ) : (
+                      <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand/60" />
+                    )}
                     <span className="truncate">{phase.name}</span>
+                    {phase.status !== 'pending' && (
+                      <span className="mono-label ml-auto flex-shrink-0 text-white/35">En prod.</span>
+                    )}
                   </div>
                 )
               }

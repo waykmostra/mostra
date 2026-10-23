@@ -9,6 +9,11 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '500mb',
     },
+    // Pas de cache routeur pour les pages dynamiques : après une validation, la
+    // vue d'ensemble doit refléter l'étape réelle, pas un rendu vieux de 30 s.
+    staleTimes: {
+      dynamic: 0,
+    },
     // Tree-shake les imports « barrel » pour alléger les bundles client.
     optimizePackageImports: [
       'lucide-react',

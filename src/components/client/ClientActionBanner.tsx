@@ -48,7 +48,8 @@ function computeAction(
           'Avant de démarrer, on a besoin de votre brief pour cadrer le projet.',
         cta: {
           label: 'Remplir le brief',
-          href: `/client/${token}/phases/${phase.id}/sub/${formInProgress.id}`,
+          // Page de l'étape à onglets : la route /sub/ isolée est réservée au partage d'une sous-étape.
+          href: `/client/${token}/phases/${phase.id}?sub=${formInProgress.id}`,
         },
       }
     }
@@ -67,7 +68,7 @@ function computeAction(
         description: `Votre retour est nécessaire pour avancer sur la phase ${phase.name}.`,
         cta: {
           label: 'Voir et valider',
-          href: `/client/${token}/phases/${phase.id}/sub/${inReview.id}`,
+          href: `/client/${token}/phases/${phase.id}?sub=${inReview.id}`,
         },
       }
     }

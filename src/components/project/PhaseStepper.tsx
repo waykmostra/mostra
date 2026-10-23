@@ -28,6 +28,12 @@ interface Props {
   /** Les étapes verrouillées ne sont pas cliquables (vue client). */
   lockPending?: boolean
   /**
+   * Vue client : étapes que le client ne peut pas encore ouvrir (à venir, ou
+   * vidéo encore en production). Elles s'affichent sans lien. Prioritaire
+   * sur `lockPending`.
+   */
+  isLocked?: (phase: Phase) => boolean
+  /**
    * Cadrage (migration 037) : première étape, toujours ouverte, hors pipeline
    * (ni statut ni validation). Omis → pas de cellule Cadrage.
    */
@@ -72,6 +78,7 @@ export default function PhaseStepper({
   hrefForPhase,
   currentPhaseId,
   lockPending = false,
+  isLocked,
   cadrage,
 }: Props) {
   if (phases.length === 0 && !cadrage) return null
@@ -107,7 +114,7 @@ export default function PhaseStepper({
         const done = isDone(status)
         const active = currentPhaseId ? phase.id === currentPhaseId : status === 'in_progress'
         const review = status === 'in_review'
-        const locked = lockPending && status === 'pending'
+        const locked = isLocked ? isLocked(phase) : lockPending && status === 'pending'
         const Icon = iconFor(phase)
         const subs = subPhasesByPhase[phase.id] ?? []
         const subsDone = subs.filter((s) => isDone(s.status as PhaseStatus)).length
@@ -136,7 +143,7 @@ export default function PhaseStepper({
             >
               {done ? (
                 <Check className="h-[18px] w-[18px]" strokeWidth={2.5} />
-              ) : locked ? (
+              ) : locked && status === 'pending' ? (
                 <Lock className="h-4 w-4" />
               ) : (
                 <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />

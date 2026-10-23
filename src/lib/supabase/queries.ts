@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database'
+import { activePhase } from '@/lib/currentPhase'
 import type {
   ActivityLog,
   Client,
@@ -97,7 +98,10 @@ export async function getProjects(
       (a, b) => a.sort_order - b.sort_order,
     )
 
+    // Même règle que le portail client (lib/currentPhase) : en review, sinon en
+    // cours ; à défaut la prochaine à venir, puis la dernière.
     const currentPhase =
+      activePhase(phases) ??
       phases.find((ph) => ph.status !== 'completed' && ph.status !== 'approved') ??
       phases[phases.length - 1] ??
       null

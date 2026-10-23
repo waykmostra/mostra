@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import ClientProjectRail, { type RailPhase } from '@/components/client/ClientProjectRail'
 import ClientTopbar from '@/components/client/ClientTopbar'
-import type { Project, ProjectPhase } from '@/lib/types'
+import { loadClientPhases } from '@/lib/clientPhases'
+import type { Project } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,14 +32,13 @@ export default async function ClientProjectLayout({
   const project = rawProject as Pick<Project, 'id' | 'name' | 'progress'> | null
   if (!project) notFound()
 
-  const { data: rawPhases } = await admin
-    .from('project_phases')
-    .select('id, name, status')
-    .eq('project_id', project.id)
-    .order('sort_order', { ascending: true })
-
-  const phases = ((rawPhases as Pick<ProjectPhase, 'id' | 'name' | 'status'>[] | null) ??
-    []) as RailPhase[]
+  const { phases: allPhases, viewableIds } = await loadClientPhases(admin, project.id)
+  const phases: RailPhase[] = allPhases.map((p) => ({
+    id: p.id,
+    name: p.name,
+    status: p.status,
+    viewable: viewableIds.has(p.id),
+  }))
 
   return (
     <>

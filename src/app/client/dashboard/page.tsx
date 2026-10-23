@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import ClientDashboardTabs from './ClientDashboardTabs'
 import type { Project, ProjectPhase } from '@/lib/types'
+import { activePhase } from '@/lib/currentPhase'
 
 // Lecture toujours fraîche (statuts/avancement des projets côté client).
 export const dynamic = 'force-dynamic'
@@ -66,10 +67,11 @@ export default async function ClientDashboardPage() {
     const phases = [...project.project_phases].sort(
       (a, b) => a.sort_order - b.sort_order,
     )
+    // Même règle que la vue d'ensemble : en review, sinon en cours ; à défaut,
+    // la prochaine à venir, puis la dernière (projet terminé).
     const currentPhase =
-      phases.find(
-        (ph) => ph.status !== 'completed' && ph.status !== 'approved',
-      ) ??
+      activePhase(phases) ??
+      phases.find((ph) => ph.status !== 'completed' && ph.status !== 'approved') ??
       phases[phases.length - 1] ??
       null
 
