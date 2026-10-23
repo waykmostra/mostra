@@ -258,38 +258,10 @@ function VideoApprovalPanel({
     })
   }
 
+  // En review et connecté : la décision, placée sous le champ de commentaire.
   return (
-    <div className="bg-[#F59E0B]/5 border border-[#F59E0B]/20 rounded-xl p-5 space-y-4">
-      <div className="flex items-start gap-3">
-        <AlertCircle className="h-4 w-4 text-[#F59E0B] mt-0.5 flex-shrink-0" />
-        <div>
-          <p className="text-sm font-semibold text-ink">Cette vidéo attend votre retour</p>
-          <p className="text-xs text-faint mt-0.5">
-            Le plus efficace : cliquez sur un moment précis de la vidéo et commentez-le. Mostra saura
-            exactement quoi corriger. Puis approuvez, ou demandez une nouvelle version.
-          </p>
-        </div>
-      </div>
-
-      {/* Action principale : commenter */}
-      {mode === 'idle' && (
-        <button
-          type="button"
-          onClick={onComment}
-          className="
-            w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
-            text-sm font-semibold bg-white text-black hover:bg-white/90 transition-colors
-          "
-        >
-          <MessageSquare className="h-4 w-4" />
-          {commentCount > 0 ? 'Ajouter un commentaire' : 'Commenter la vidéo'}
-          {commentCount > 0 && (
-            <span className="ml-0.5 text-xs bg-black/10 px-1.5 py-0.5 rounded-full tabular-nums">
-              {commentCount}
-            </span>
-          )}
-        </button>
-      )}
+    <div className="space-y-3 border-t border-line pt-3">
+      <p className="text-xs font-semibold text-faint uppercase tracking-wider">Votre décision</p>
 
       {mode === 'revision' && (
         <div className="space-y-2">
@@ -326,7 +298,7 @@ function VideoApprovalPanel({
       )}
 
       {/* Décision : approuver / demander une nouvelle version */}
-      <div className="flex items-center gap-3 flex-wrap pt-1">
+      <div className="flex items-center gap-2 flex-wrap">
         <button
           type="button"
           onClick={handleApprove}
@@ -487,7 +459,7 @@ function ClientCommentForm({
             </button>
           </p>
         ) : (
-          <p className="text-xs text-faint">Focalisez le champ pour capturer le timecode</p>
+          <p className="text-xs text-faint">Timecode capturé à l’écriture</p>
         )}
         <button
           type="submit"
@@ -777,17 +749,20 @@ export default function VideoViewerClient({
 
   return (
     <div className="space-y-5">
-      {/* Approval panel */}
-      <VideoApprovalPanel
-        projectId={projectId}
-        phaseId={phaseId}
-        status={status}
-        isAuthenticated={isAuthenticated}
-        loginHref="/login"
-        onStatusChange={setStatus}
-        commentCount={myCommentCount}
-        onComment={focusCommentBox}
-      />
+      {/* En haut : vidéo approuvée, ou invitation à se connecter. La décision
+          d'un client connecté se prend à droite de la vidéo, sous le commentaire. */}
+      {!(status === 'in_review' && isAuthenticated) && (
+        <VideoApprovalPanel
+          projectId={projectId}
+          phaseId={phaseId}
+          status={status}
+          isAuthenticated={isAuthenticated}
+          loginHref="/login"
+          onStatusChange={setStatus}
+          commentCount={myCommentCount}
+          onComment={focusCommentBox}
+        />
+      )}
 
       {/* Player + comments */}
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
@@ -942,9 +917,15 @@ export default function VideoViewerClient({
           {/* Comment form (only authenticated + in review) */}
           {status === 'in_review' && currentVideo && isAuthenticated && (
             <div className="bg-surface border border-line rounded-xl p-4 space-y-3">
-              <h3 className="text-xs font-semibold text-faint uppercase tracking-wider">
-                Laisser un commentaire
-              </h3>
+              <div className="space-y-1">
+                <h3 className="text-xs font-semibold text-faint uppercase tracking-wider">
+                  Laisser un commentaire
+                </h3>
+                <p className="text-xs leading-relaxed text-dim">
+                  Chaque commentaire est rattaché au moment de la vidéo : mettez en pause là où
+                  vous voulez un changement, puis écrivez. Le timecode est noté automatiquement.
+                </p>
+              </div>
               <ClientCommentForm
                 projectId={projectId}
                 phaseId={phaseId}
@@ -953,6 +934,16 @@ export default function VideoViewerClient({
                 onPause={pause}
                 onAdded={handleCommentAdded}
                 clientId={clientId}
+              />
+              <VideoApprovalPanel
+                projectId={projectId}
+                phaseId={phaseId}
+                status={status}
+                isAuthenticated={isAuthenticated}
+                loginHref="/login"
+                onStatusChange={setStatus}
+                commentCount={myCommentCount}
+                onComment={focusCommentBox}
               />
             </div>
           )}

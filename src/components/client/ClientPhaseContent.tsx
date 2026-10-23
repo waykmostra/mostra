@@ -171,6 +171,8 @@ export default async function ClientPhaseContent({
         </>
       )}
 
+      {/* Étape vidéo : la validation se fait dans le lecteur, à côté des commentaires. */}
+      {!isAnimation && (
       <ApprovalPanel
         projectId={project.id}
         phaseId={params.phaseId}
@@ -181,6 +183,7 @@ export default async function ClientPhaseContent({
         loginHref="/login"
         hasSubPhases={subPhases.length > 0}
       />
+      )}
     </div>
   )
 
