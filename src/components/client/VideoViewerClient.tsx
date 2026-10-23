@@ -16,7 +16,6 @@ import {
   Minimize,
   Clock,
   Check,
-  RotateCcw,
   Loader2,
   MessageSquare,
   Film,
@@ -26,6 +25,7 @@ import {
   LogIn,
   Download,
   ExternalLink,
+  SendHorizonal,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { PhaseStatus } from '@/lib/types'
@@ -53,6 +53,11 @@ function initials(name: string | null | undefined): string {
 }
 
 // ── VideoTimeline ─────────────────────────────────────────────────
+// Toujours visible. Chaque commentaire y est une bulle. Un clic (sans glisser)
+// pose un repère et ouvre une bulle de saisie juste au-dessus ; un clic
+// ailleurs la ferme. Glisser fait défiler la vidéo sans rien poser.
+
+const DRAG_THRESHOLD_PX = 4
 
 interface VideoTimelineProps {
   currentTime: number
@@ -61,6 +66,11 @@ interface VideoTimelineProps {
   selectedVersion: number | null
   onSeek: (t: number) => void
   onMarkerClick: (commentId: string, timecode: number) => void
+  /** Client connecté et vidéo en review : un clic propose de commenter. */
+  canComment: boolean
+  onPause: () => void
+  /** Publie un commentaire au timecode donné ; true si réussi. */
+  onAddComment: (timecode: number, content: string) => Promise<boolean>
 }
 
 function VideoTimeline({
@@ -70,12 +80,19 @@ function VideoTimeline({
   selectedVersion,
   onSeek,
   onMarkerClick,
+  canComment,
+  onPause,
+  onAddComment,
 }: VideoTimelineProps) {
+  const wrapRef = useRef<HTMLDivElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
-  const [isDragging, setIsDragging] = useState(false)
   const [hoveredMarker, setHoveredMarker] = useState<string | null>(null)
+  const [draftTime, setDraftTime] = useState<number | null>(null)
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
+  const pct = (t: number) => (duration > 0 ? Math.min(100, Math.max(0, (t / duration) * 100)) : 0)
 
   const filteredComments = comments.filter(
     (c) =>
@@ -83,77 +100,160 @@ function VideoTimeline({
       (selectedVersion === null || c.video_version === selectedVersion),
   )
 
-  function getTimeFromEvent(e: React.MouseEvent | MouseEvent): number {
+  function timeAt(clientX: number): number {
     if (!barRef.current || duration <= 0) return 0
     const rect = barRef.current.getBoundingClientRect()
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width))
     return (x / rect.width) * duration
   }
 
-  function handleMouseDown(e: React.MouseEvent) {
-    setIsDragging(true)
-    onSeek(getTimeFromEvent(e))
+  function handlePointerDown(e: React.PointerEvent) {
+    if (e.button !== 0) return
+    const startX = e.clientX
+    let dragged = false
+    onSeek(timeAt(startX))
+
+    const onMove = (ev: PointerEvent) => {
+      if (!dragged && Math.abs(ev.clientX - startX) > DRAG_THRESHOLD_PX) {
+        dragged = true
+        setDraftTime(null) // glisser = défiler, jamais de bulle
+      }
+      if (dragged) onSeek(timeAt(ev.clientX))
+    }
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      if (dragged || !canComment) return
+      const t = timeAt(ev.clientX)
+      onPause()
+      onSeek(t)
+      setDraftTime(t)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
   }
 
+  // Un clic n'importe où ailleurs (hors timeline et bulle) ferme la bulle.
   useEffect(() => {
-    if (!isDragging) return
-    function onMouseMove(e: MouseEvent) { onSeek(getTimeFromEvent(e)) }
-    function onMouseUp() { setIsDragging(false) }
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
-    return () => {
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
+    if (draftTime === null) return
+    const onDown = (e: PointerEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setDraftTime(null)
     }
-  }, [isDragging]) // eslint-disable-line react-hooks/exhaustive-deps
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [draftTime])
+
+  async function submit() {
+    const content = draft.trim()
+    if (!content || draftTime === null || sending) return
+    setSending(true)
+    const ok = await onAddComment(draftTime, content)
+    setSending(false)
+    if (ok) {
+      setDraft('')
+      setDraftTime(null)
+    }
+  }
+
+  const draftPct = draftTime !== null ? pct(draftTime) : 0
 
   return (
-    <div className="relative w-full h-8 flex items-center group">
+    <div ref={wrapRef} className="relative w-full pt-4 pb-1">
+      {/* Bulle de saisie, juste au-dessus du point cliqué (recadrée près des bords) */}
+      {draftTime !== null && (
+        <div
+          className="absolute bottom-full z-30 mb-1 w-72 max-w-[80vw]"
+          style={
+            draftPct < 18
+              ? { left: 0 }
+              : draftPct > 82
+                ? { right: 0 }
+                : { left: `${draftPct}%`, transform: 'translateX(-50%)' }
+          }
+        >
+          <div className="rounded-xl border border-line bg-surface p-2.5 shadow-xl">
+            <p className="mb-1.5 px-0.5 text-[11.5px] text-faint">
+              Commenter à <span className="font-mono text-[#F59E0B]">{formatTime(draftTime)}</span>
+            </p>
+            <div className="relative">
+              <textarea
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    void submit()
+                  }
+                  if (e.key === 'Escape') setDraftTime(null)
+                }}
+                rows={2}
+                placeholder="Qu’est-ce qui doit changer ici ?"
+                className="w-full resize-none rounded-lg border border-line bg-surface py-2 pl-3 pr-11 text-sm text-ink placeholder-faint focus:border-line-strong focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => void submit()}
+                disabled={sending || !draft.trim()}
+                aria-label="Envoyer le commentaire"
+                className="absolute bottom-2.5 right-2 flex h-7 w-7 items-center justify-center rounded-md bg-brand text-[#020302] transition-opacity disabled:opacity-35"
+              >
+                {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendHorizonal className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         ref={barRef}
-        onMouseDown={handleMouseDown}
-        className="relative w-full h-1 bg-[rgb(var(--c-border))] rounded-full cursor-pointer group-hover:h-1.5 transition-all"
+        onPointerDown={handlePointerDown}
+        className="relative h-1.5 w-full cursor-pointer touch-none rounded-full bg-[rgb(var(--c-border))]"
+        title={canComment ? 'Cliquez pour commenter ce moment, glissez pour avancer' : undefined}
       >
-        <div className="absolute inset-y-0 left-0 bg-brand rounded-full" style={{ width: `${progress}%` }} />
+        <div className="absolute inset-y-0 left-0 rounded-full bg-brand" style={{ width: `${progress}%` }} />
 
+        {/* Tête de lecture */}
+        <div
+          className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink"
+          style={{ left: `${progress}%` }}
+        />
+
+        {/* Bulles des commentaires */}
         {filteredComments.map((c) => {
-          const pos = duration > 0 && c.timecode_seconds !== null ? (c.timecode_seconds / duration) * 100 : 0
           const color = c.is_resolved ? '#22C55E' : '#F59E0B'
           return (
-            <div
+            <button
               key={c.id}
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={() => setHoveredMarker(c.id)}
               onMouseLeave={() => setHoveredMarker(null)}
-              onClick={(e) => {
-                e.stopPropagation()
+              onClick={() => {
                 if (c.timecode_seconds !== null) onMarkerClick(c.id, c.timecode_seconds)
               }}
-              style={{ left: `${pos}%`, borderColor: color }}
-              className="
-                absolute top-1/2 -translate-y-1/2 -translate-x-1/2
-                w-2.5 h-2.5 rounded-full border-2 bg-surface cursor-pointer
-                hover:scale-150 transition-transform z-10
-              "
+              aria-label={`Commentaire à ${formatTime(c.timecode_seconds ?? 0)}`}
+              style={{ left: `${pct(c.timecode_seconds ?? 0)}%`, backgroundColor: color }}
+              className="absolute -top-3.5 z-10 flex h-3.5 w-3.5 -translate-x-1/2 items-center justify-center rounded-full rounded-bl-none shadow-sm ring-2 ring-surface transition-transform hover:scale-125"
             >
               {hoveredMarker === c.id && (
-                <div className="
-                  absolute bottom-5 left-1/2 -translate-x-1/2
-                  bg-surface-2 border border-line rounded px-2 py-1
-                  text-xs text-ink whitespace-nowrap z-20 pointer-events-none
-                ">
+                <span className="pointer-events-none absolute bottom-5 left-1/2 z-20 max-w-56 -translate-x-1/2 truncate whitespace-nowrap rounded border border-line bg-surface px-2 py-1 text-xs text-ink shadow-sm">
                   <span className="text-dim">{formatTime(c.timecode_seconds ?? 0)}</span>
                   {' · '}
-                  {c.author?.full_name ?? 'Inconnu'}
-                </div>
+                  {c.content}
+                </span>
               )}
-            </div>
+            </button>
           )
         })}
 
-        <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-ink opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ left: `${progress}%` }}
-        />
+        {/* Repère posé par le clic */}
+        {draftTime !== null && (
+          <div
+            className="pointer-events-none absolute -top-3.5 z-20 h-3.5 w-3.5 -translate-x-1/2 rounded-full rounded-bl-none bg-brand ring-2 ring-surface"
+            style={{ left: `${draftPct}%` }}
+          />
+        )}
       </div>
     </div>
   )
@@ -258,106 +358,92 @@ function VideoApprovalPanel({
     })
   }
 
-  // En review et connecté : la décision, placée sous le champ de commentaire.
+  // En review et connecté : la décision. Elle découle des commentaires — avec
+  // des retours, on les envoie ; sans retour, on approuve.
+  const hasFeedback = commentCount > 0
   return (
-    <div className="space-y-3 border-t border-line pt-3">
-      <p className="text-xs font-semibold text-faint uppercase tracking-wider">Votre décision</p>
+    <div className="space-y-3 rounded-xl border border-line bg-surface p-4">
+      <div>
+        <h3 className="text-[15px] font-semibold text-ink">
+          {hasFeedback ? 'Envoyer vos retours à Mostra' : 'Tout vous convient ?'}
+        </h3>
+        <p className="mt-1 text-xs leading-relaxed text-dim">
+          {hasFeedback ? (
+            <>
+              Vous avez laissé <span className="font-medium text-ink tabular-nums">{commentCount}</span>{' '}
+              commentaire{commentCount > 1 ? 's' : ''} sur cette version. Mostra préparera une nouvelle
+              version à partir de vos retours.
+            </>
+          ) : (
+            'Approuvez la vidéo pour passer à l’étape suivante. Une correction ? Commentez d’abord le moment concerné sur la timeline.'
+          )}
+        </p>
+      </div>
 
       {mode === 'revision' && (
-        <div className="space-y-2">
-          {commentCount > 0 ? (
-            <p className="text-xs text-dim">
-              Vos <span className="text-ink font-medium tabular-nums">{commentCount}</span>{' '}
-              remarque{commentCount > 1 ? 's' : ''} sur la vidéo seront transmises à Mostra.
-              <span className="text-faint"> Ajoutez un résumé si besoin (optionnel) :</span>
-            </p>
-          ) : (
-            <p className="text-xs text-[#F59E0B]">
-              Astuce : pour des corrections précises, annulez et cliquez sur un moment de la vidéo
-              pour le commenter. Sinon, décrivez globalement les modifications :
-            </p>
-          )}
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder={
-              commentCount > 0
-                ? 'Résumé (optionnel)…'
-                : "Ex : Modifier la couleur du texte, ajuster la durée de l'intro…"
-            }
-            rows={3}
-            disabled={isPending}
-            className="
-              w-full bg-surface border border-line rounded-lg px-3 py-2
-              text-xs text-ink placeholder-faint resize-none
-              focus:outline-none focus:border-[#F59E0B]/40 transition-colors
-              disabled:opacity-50
-            "
-          />
-        </div>
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={hasFeedback ? 'Un mot d’ensemble (facultatif)…' : 'Décrivez les modifications souhaitées…'}
+          rows={3}
+          disabled={isPending}
+          className="w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 text-xs text-ink placeholder-faint transition-colors focus:border-[#F59E0B]/40 focus:outline-none disabled:opacity-50"
+        />
       )}
 
-      {/* Décision : approuver / demander une nouvelle version */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={handleApprove}
-          disabled={isPending || mode === 'revision'}
-          className="
-            inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
-            bg-[#22C55E]/10 border border-[#22C55E]/25 text-[#22C55E]
-            hover:bg-[#22C55E]/20 transition-colors
-            disabled:opacity-40 disabled:cursor-not-allowed
-          "
-        >
-          {isPending && mode === 'idle' ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <CheckCircle2 className="h-4 w-4" />
-          )}
-          Approuver
-        </button>
+      <div className="flex flex-col gap-2">
+        {hasFeedback || mode === 'revision' ? (
+          <button
+            type="button"
+            onClick={handleRevision}
+            disabled={isPending || (!message.trim() && !hasFeedback)}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#F59E0B] px-4 py-2.5 text-sm font-semibold text-black transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
+            {hasFeedback
+              ? `Envoyer mes ${commentCount} retour${commentCount > 1 ? 's' : ''}`
+              : 'Envoyer la demande'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleApprove}
+            disabled={isPending}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-[#020302] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+            Approuver la vidéo
+          </button>
+        )}
 
-        {mode === 'idle' ? (
+        {/* L'autre choix, en retrait */}
+        {mode === 'revision' && !hasFeedback ? (
+          <button
+            type="button"
+            onClick={() => { setMode('idle'); setMessage('') }}
+            disabled={isPending}
+            className="text-xs text-faint transition-colors hover:text-ink"
+          >
+            Annuler
+          </button>
+        ) : hasFeedback ? (
+          <button
+            type="button"
+            onClick={handleApprove}
+            disabled={isPending}
+            className="text-xs text-faint transition-colors hover:text-ink disabled:opacity-40"
+          >
+            Approuver quand même
+          </button>
+        ) : (
           <button
             type="button"
             onClick={() => setMode('revision')}
             disabled={isPending}
-            className="
-              inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
-              bg-transparent border border-line text-dim
-              hover:text-ink hover:border-line-strong transition-colors
-              disabled:opacity-40 disabled:cursor-not-allowed
-            "
+            className="text-xs text-faint transition-colors hover:text-ink disabled:opacity-40"
           >
-            <RotateCcw className="h-4 w-4" />
-            Demander une nouvelle version
+            Demander des modifications sans commenter la vidéo
           </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={handleRevision}
-              disabled={isPending || (!message.trim() && commentCount === 0)}
-              className="
-                inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
-                bg-[#F59E0B]/10 border border-[#F59E0B]/25 text-[#F59E0B]
-                hover:bg-[#F59E0B]/20 transition-colors
-                disabled:opacity-40 disabled:cursor-not-allowed
-              "
-            >
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-              {commentCount > 0 ? 'Envoyer mes remarques' : 'Envoyer'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode('idle'); setMessage('') }}
-              disabled={isPending}
-              className="text-xs text-faint hover:text-ink transition-colors"
-            >
-              Annuler
-            </button>
-          </>
         )}
       </div>
     </div>
@@ -421,59 +507,47 @@ function ClientCommentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2">
+    <form onSubmit={handleSubmit} className="space-y-1.5">
       <div className="relative">
         <textarea
           id="client-video-comment"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onFocus={handleFocus}
-          placeholder="Laisser un commentaire… (la vidéo se met en pause)"
-          rows={2}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              e.currentTarget.form?.requestSubmit()
+            }
+          }}
+          placeholder="Écrivez votre remarque… (la vidéo se met en pause)"
+          rows={3}
           disabled={isPending}
-          className="
-            w-full bg-surface border border-line rounded-lg px-3 py-2 pr-24
-            text-sm text-ink placeholder-faint resize-none
-            focus:outline-none focus:border-line-strong transition-colors
-            disabled:opacity-50
-          "
+          className="w-full resize-none rounded-lg border border-line bg-surface py-2 pl-3 pr-12 text-sm text-ink placeholder-faint transition-colors focus:border-line-strong focus:outline-none disabled:opacity-50"
         />
-        {capturedTime !== null && (
-          <span className="absolute top-2 right-3 text-xs text-[#F59E0B] font-mono bg-[#F59E0B]/10 px-1.5 py-0.5 rounded">
-            {formatTime(capturedTime)}
-          </span>
-        )}
-      </div>
-      <div className="flex items-center justify-between">
-        {capturedTime !== null ? (
-          <p className="text-xs text-faint">
-            À{' '}
-            <span className="font-mono text-[#F59E0B]">{formatTime(capturedTime)}</span>
-            {' · '}
-            <button
-              type="button"
-              onClick={() => setCapturedTime(null)}
-              className="text-faint hover:text-dim transition-colors"
-            >
-              retirer
-            </button>
-          </p>
-        ) : (
-          <p className="text-xs text-faint">Timecode capturé à l’écriture</p>
-        )}
         <button
           type="submit"
           disabled={isPending || !content.trim()}
-          className="
-            inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-            bg-white text-black hover:bg-white/90 transition-colors
-            disabled:opacity-40 disabled:cursor-not-allowed
-          "
+          aria-label="Envoyer le commentaire"
+          className="absolute bottom-3 right-2.5 flex h-8 w-8 items-center justify-center rounded-md bg-brand text-[#020302] transition-opacity disabled:opacity-35"
         >
-          {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquare className="h-3.5 w-3.5" />}
-          Commenter
+          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
         </button>
       </div>
+      <p className="text-xs text-faint">
+        {capturedTime !== null ? (
+          <>
+            Au moment{' '}
+            <span className="font-mono text-[#F59E0B]">{formatTime(capturedTime)}</span>
+            {' · '}
+            <button type="button" onClick={() => setCapturedTime(null)} className="hover:text-dim">
+              sans moment précis
+            </button>
+          </>
+        ) : (
+          'Entrée pour envoyer · Maj+Entrée pour aller à la ligne'
+        )}
+      </p>
     </form>
   )
 }
@@ -573,6 +647,11 @@ export interface VideoViewerClientProps {
   initialVideo: VideoFile | null
   initialVersions: VideoFile[]
   initialComments: VideoComment[]
+  /**
+   * Intégré à la vue d'ensemble (colonne plus étroite) : les commentaires
+   * passent sous la vidéo, et ne se remettent à côté que sur très grand écran.
+   */
+  compact?: boolean
 }
 
 export default function VideoViewerClient({
@@ -585,6 +664,7 @@ export default function VideoViewerClient({
   initialVideo,
   initialVersions,
   initialComments,
+  compact = false,
 }: VideoViewerClientProps) {
   const [currentVideo, setCurrentVideo] = useState<VideoFile | null>(initialVideo)
   const [allVersions, setAllVersions] = useState<VideoFile[]>(initialVersions)
@@ -726,6 +806,28 @@ export default function VideoViewerClient({
     setTimeout(() => setHighlightedComment(null), 2000)
   }
 
+  const canCommentVideo = status === 'in_review' && !!currentVideo && isAuthenticated
+
+  async function addCommentAt(timecode: number, content: string): Promise<boolean> {
+    const result = await addClientVideoComment(projectId, phaseId, content, timecode)
+    if (!result?.success) {
+      toast.error(result?.error ?? 'Commentaire non envoyé')
+      return false
+    }
+    toast.success('Commentaire ajouté')
+    handleCommentAdded({
+      id: crypto.randomUUID(),
+      user_id: clientId,
+      content,
+      timecode_seconds: timecode,
+      video_version: selectedVersion,
+      is_resolved: false,
+      created_at: new Date().toISOString(),
+      author: null,
+    })
+    return true
+  }
+
   function handleCommentAdded(c: VideoComment) {
     setComments((prev) =>
       [...prev, c].sort((a, b) => (a.timecode_seconds ?? 0) - (b.timecode_seconds ?? 0)),
@@ -765,7 +867,9 @@ export default function VideoViewerClient({
       )}
 
       {/* Player + comments */}
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+      <div
+        className={`flex flex-col gap-5 ${compact ? '2xl:flex-row 2xl:items-start' : 'lg:flex-row lg:items-start'}`}
+      >
         {/* Player */}
         <div className="flex flex-col gap-3 flex-1 min-w-0">
           {/* Version selector */}
@@ -867,9 +971,9 @@ export default function VideoViewerClient({
                 )}
               </div>
 
-              {/* Contrôles SOUS la vidéo (toujours sur mobile, au survol sur desktop) */}
+              {/* Contrôles SOUS la vidéo, toujours visibles */}
               {!videoError && (
-                <div className="bg-surface border-t border-line px-3 sm:px-4 py-2.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                <div className="bg-surface border-t border-line px-3 sm:px-4 pb-2.5">
                   <VideoTimeline
                     currentTime={currentTime}
                     duration={duration}
@@ -877,6 +981,9 @@ export default function VideoViewerClient({
                     selectedVersion={selectedVersion}
                     onSeek={seekTo}
                     onMarkerClick={handleMarkerClick}
+                    canComment={canCommentVideo}
+                    onPause={pause}
+                    onAddComment={addCommentAt}
                   />
                   <div className="flex items-center gap-3 mt-1.5">
                     <button type="button" onClick={togglePlay} className="text-ink hover:text-ink/80 transition-colors">
@@ -913,17 +1020,23 @@ export default function VideoViewerClient({
         </div>
 
         {/* Comments sidebar */}
-        <div className="flex flex-col gap-4 lg:w-80 xl:w-96 flex-shrink-0">
+        <div
+          className={`flex flex-col gap-4 flex-shrink-0 ${
+            compact ? 'md:grid md:grid-cols-2 md:items-start 2xl:flex 2xl:w-96' : 'lg:w-80 xl:w-96'
+          }`}
+        >
           {/* Comment form (only authenticated + in review) */}
           {status === 'in_review' && currentVideo && isAuthenticated && (
             <div className="bg-surface border border-line rounded-xl p-4 space-y-3">
               <div className="space-y-1">
-                <h3 className="text-xs font-semibold text-faint uppercase tracking-wider">
-                  Laisser un commentaire
+                <h3 className="flex items-center gap-2 text-[15px] font-semibold text-ink">
+                  <MessageSquare className="h-4 w-4 text-brand" />
+                  Commenter la vidéo
                 </h3>
                 <p className="text-xs leading-relaxed text-dim">
-                  Chaque commentaire est rattaché au moment de la vidéo : mettez en pause là où
-                  vous voulez un changement, puis écrivez. Le timecode est noté automatiquement.
+                  Chaque commentaire est rattaché à un moment précis de la vidéo. Cliquez sur la
+                  timeline à l’endroit voulu, ou mettez en pause et écrivez ici : le moment est noté
+                  automatiquement.
                 </p>
               </div>
               <ClientCommentForm
@@ -934,16 +1047,6 @@ export default function VideoViewerClient({
                 onPause={pause}
                 onAdded={handleCommentAdded}
                 clientId={clientId}
-              />
-              <VideoApprovalPanel
-                projectId={projectId}
-                phaseId={phaseId}
-                status={status}
-                isAuthenticated={isAuthenticated}
-                loginHref="/login"
-                onStatusChange={setStatus}
-                commentCount={myCommentCount}
-                onComment={focusCommentBox}
               />
             </div>
           )}
@@ -980,6 +1083,20 @@ export default function VideoViewerClient({
               </div>
             )}
           </div>
+
+          {/* Dernière étape : décider, une fois les commentaires posés. */}
+          {status === 'in_review' && currentVideo && isAuthenticated && (
+            <VideoApprovalPanel
+              projectId={projectId}
+              phaseId={phaseId}
+              status={status}
+              isAuthenticated={isAuthenticated}
+              loginHref="/login"
+              onStatusChange={setStatus}
+              commentCount={myCommentCount}
+              onComment={focusCommentBox}
+            />
+          )}
         </div>
       </div>
     </div>

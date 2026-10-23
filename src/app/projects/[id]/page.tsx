@@ -99,83 +99,87 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         {/* Noter en call : tout atterrit dans « À trier » du Cadrage. */}
         <QuickNote projectId={project.id} />
 
-        {/* Rangée 1 — l'état du projet à gauche, les leviers admin à droite. */}
+        {/* Deux colonnes indépendantes : chacune empile ses cartes, sans
+            s'aligner sur la hauteur de l'autre (plus de trou sous la vue d'ensemble). */}
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-          <section className="min-w-0">
-            <h2 className="mono-label mb-3 text-faint">Vue d’ensemble</h2>
-            <ProjectOverviewCard
-              project={project}
-              client={client}
-              projectManager={projectManager}
-              phases={phases}
-            />
-          </section>
+          {/* L'état du projet, puis ce qui s'est dit. */}
+          <div className="min-w-0 space-y-6">
+            <section className="min-w-0">
+              <h2 className="mono-label mb-3 text-faint">Vue d’ensemble</h2>
+              <ProjectOverviewCard
+                project={project}
+                client={client}
+                projectManager={projectManager}
+                phases={phases}
+              />
+            </section>
 
-          <section className="min-w-0">
-            <h2 className="mono-label mb-3 text-faint">Admin</h2>
-            <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-              <div className="min-w-0 space-y-4">
-                <ProjectInfo
-                  project={project}
-                  client={client}
-                  clients={clients}
-                  projectManager={projectManager}
-                  isAdmin={true}
-                  availableClients={availableClients}
-                  availablePMs={availablePMs}
-                />
-                <Link
-                  href={`/projects/${project.id}/settings`}
-                  className="surface group flex items-center gap-3 px-4 py-3.5 transition-colors duration-[160ms] hover:bg-surface-2"
-                >
-                  <SlidersHorizontal
-                    className="h-[18px] w-[18px] flex-shrink-0 text-faint"
-                    strokeWidth={1.75}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13.5px] font-medium text-ink">
-                      Étapes du projet
-                    </span>
-                    <span className="mt-0.5 block text-[12.5px] text-faint">
-                      Ajouter, renommer ou supprimer une étape
-                    </span>
-                  </span>
-                  <ChevronRight className="h-4 w-4 flex-shrink-0 text-faint transition-colors group-hover:text-ink" />
-                </Link>
-              </div>
-
-              <div className="min-w-0 space-y-4">
-                <ShareTokenManager
-                  projectId={project.id}
-                  shareToken={project.share_token}
-                  appUrl={appUrl}
-                />
-                <DangerZone
-                  projectId={project.id}
-                  projectName={project.name}
-                  isArchived={project.status === 'archived'}
-                />
-              </div>
+            <div className="min-w-0">
+              <CommentSection
+                comments={comments}
+                projectId={project.id}
+                phases={phases.map((p) => ({ id: p.id, name: p.name }))}
+                userId={profile.id}
+                userRole={userRole}
+              />
             </div>
-          </section>
-        </div>
 
-        {/* Rangée 2 — ce qui s'est dit, et ce qui s'est passé. */}
-        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
-          <div className="min-w-0">
-            <CommentSection
-              comments={comments}
-              projectId={project.id}
-              phases={phases.map((p) => ({ id: p.id, name: p.name }))}
-              userId={profile.id}
-              userRole={userRole}
-            />
           </div>
 
-          <section className="min-w-0">
-            <h2 className="mono-label mb-3 text-faint">Activité récente</h2>
-            <ActivityLog activity={activity} projectId={project.id} />
-          </section>
+          {/* Les leviers admin, puis ce qui s'est passé. */}
+          <div className="min-w-0 space-y-6">
+            <section className="min-w-0">
+              <h2 className="mono-label mb-3 text-faint">Admin</h2>
+              <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+                <div className="min-w-0 space-y-4">
+                  <ProjectInfo
+                    project={project}
+                    client={client}
+                    clients={clients}
+                    projectManager={projectManager}
+                    isAdmin={true}
+                    availableClients={availableClients}
+                    availablePMs={availablePMs}
+                  />
+                  <Link
+                    href={`/projects/${project.id}/settings`}
+                    className="surface group flex items-center gap-3 px-4 py-3.5 transition-colors duration-[160ms] hover:bg-surface-2"
+                  >
+                    <SlidersHorizontal
+                      className="h-[18px] w-[18px] flex-shrink-0 text-faint"
+                      strokeWidth={1.75}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13.5px] font-medium text-ink">
+                        Étapes du projet
+                      </span>
+                      <span className="mt-0.5 block text-[12.5px] text-faint">
+                        Ajouter, renommer ou supprimer une étape
+                      </span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-faint transition-colors group-hover:text-ink" />
+                  </Link>
+                </div>
+
+                <div className="min-w-0 space-y-4">
+                  <ShareTokenManager
+                    projectId={project.id}
+                    shareToken={project.share_token}
+                    appUrl={appUrl}
+                  />
+                  <DangerZone
+                    projectId={project.id}
+                    projectName={project.name}
+                    isArchived={project.status === 'archived'}
+                  />
+                </div>
+              </div>
+            </section>
+            <section className="min-w-0">
+              <h2 className="mono-label mb-3 text-faint">Activité récente</h2>
+              <ActivityLog activity={activity} projectId={project.id} />
+            </section>
+          </div>
         </div>
       </div>
     </div>

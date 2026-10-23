@@ -90,11 +90,15 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
   let main: React.ReactNode
   if (current) {
     main = (
-      <ClientPhaseContent
-        params={{ token: params.token, phaseId: current.id }}
-        searchParams={{}}
-        embedded
-      />
+      // Une seule grande carte, en contraste avec la page : tout ce qui concerne
+      // l'étape (titre, statut, contenu, validation) se lit d'un bloc.
+      <section className="rounded-2xl bg-surface-3/70 p-4 ring-1 ring-line sm:p-6">
+        <ClientPhaseContent
+          params={{ token: params.token, phaseId: current.id }}
+          searchParams={{}}
+          embedded
+        />
+      </section>
     )
   } else {
     const [profile, board, comments] = await Promise.all([
@@ -103,13 +107,13 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
       loadBoardComments(admin, project.id),
     ])
     main = (
-      <div className="space-y-4">
+      <section className="space-y-4 rounded-2xl bg-surface-3/70 p-4 ring-1 ring-line sm:p-6">
         <div>
           <p className="mono-label text-faint">Cadrage</p>
           <h2 className="mt-1.5 text-[1.375rem] leading-tight text-ink">La vision commune du projet</h2>
         </div>
         <Board projectId={project.id} board={board} comments={comments} editable={false} canComment={!!profile} />
-      </div>
+      </section>
     )
   }
 

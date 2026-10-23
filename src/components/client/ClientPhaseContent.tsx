@@ -240,6 +240,7 @@ export default async function ClientPhaseContent({
           initialVideo={currentVideo}
           initialVersions={allVersions}
           initialComments={comments}
+          compact={embedded}
         />
       </div>
     )
