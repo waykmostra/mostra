@@ -483,3 +483,77 @@ export async function deleteVideoComment(commentId: string): Promise<VideoAction
   revalidatePath(`/projects/${comment.project_id}`)
   return { success: true }
 }
+
+// ── deleteVideoVersion ────────────────────────────────────────────
+// Supprime une version : fichier du bucket, ligne phase_files et commentaires
+// de cette version. Si c'était la version courante, la plus récente restante
+// le devient. Sans plus aucune vidéo, une étape en review repasse en cours
+// (le client ne doit pas avoir à valider une vidéo absente).
+
+export async function deleteVideoVersion(
+  fileId: string,
+): Promise<
+  | { success: true; current: VideoFile | null; status: ProjectPhase['status'] }
+  | { success: false; error: string }
+> {
+  const ctx = await getCreativeContext()
+  if (!ctx) return { success: false, error: 'Permissions insuffisantes' }
+
+  const admin = createAdminClient()
+
+  const { data: rawFile } = await admin
+    .from('phase_files')
+    .select('id, phase_id, file_url, version, is_current')
+    .eq('id', fileId)
+    .maybeSingle()
+  const file = rawFile as { id: string; phase_id: string; file_url: string; version: number; is_current: boolean } | null
+  if (!file) return { success: false, error: 'Version introuvable' }
+
+  const { data: rawPhase } = await admin
+    .from('project_phases')
+    .select('id, project_id, status')
+    .eq('id', file.phase_id)
+    .maybeSingle()
+  const phase = rawPhase as Pick<ProjectPhase, 'id' | 'project_id' | 'status'> | null
+  if (!phase) return { success: false, error: 'Étape introuvable' }
+
+  const { error } = await admin.from('phase_files').delete().eq('id', fileId)
+  if (error) return { success: false, error: error.message }
+
+  const path = extractStoragePath(file.file_url)
+  if (path) await admin.storage.from('project-files').remove([path])
+
+  await admin.from('comments').delete().eq('phase_id', phase.id).eq('video_version', file.version)
+
+  // Nouvelle version courante : la plus récente restante.
+  const { data: rawRest } = await admin
+    .from('phase_files')
+    .select('*')
+    .eq('phase_id', phase.id)
+    .order('version', { ascending: false })
+    .limit(1)
+  const latest = ((rawRest as VideoFile[] | null) ?? [])[0] ?? null
+
+  let current: VideoFile | null = null
+  if (latest) {
+    if (file.is_current) {
+      await db(admin).from('phase_files').update({ is_current: true }).eq('id', latest.id)
+    }
+    const storagePath = extractStoragePath(latest.file_url)
+    current = {
+      ...latest,
+      is_current: true,
+      file_url: storagePath ? await generateSignedUrl(admin, storagePath) : latest.file_url,
+    }
+  }
+
+  let status = phase.status
+  if (!latest && phase.status === 'in_review') {
+    status = 'in_progress'
+    await db(admin).from('project_phases').update({ status }).eq('id', phase.id)
+  }
+
+  revalidatePath(`/projects/${phase.project_id}`)
+  revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}`)
+  return { success: true, current, status }
+}

@@ -37,6 +37,7 @@ import {
   addTimecodedComment,
   resolveVideoComment,
   deleteVideoComment,
+  deleteVideoVersion,
 } from '@/app/projects/video-actions'
 import {
   startPhase,
@@ -870,6 +871,44 @@ export default function VideoReviewPlayer({
     setComments((prev) => prev.filter((c) => c.id !== id))
   }
 
+  // ── Suppression d'une version ─────────────────────────────────
+  const [confirmDeleteVersion, setConfirmDeleteVersion] = useState(false)
+  const [isDeletingVersion, startDeleteVersion] = useTransition()
+
+  function handleDeleteVersion() {
+    if (!currentVideo) return
+    if (!confirmDeleteVersion) {
+      setConfirmDeleteVersion(true)
+      return
+    }
+    const removed = currentVideo
+    startDeleteVersion(async () => {
+      const res = await deleteVideoVersion(removed.id)
+      setConfirmDeleteVersion(false)
+      if (!res?.success) {
+        toast.error(res?.error ?? 'Suppression impossible')
+        return
+      }
+      toast.success(`Version ${removed.version} supprimée`)
+      setAllVersions((prev) =>
+        prev
+          .filter((v) => v.id !== removed.id)
+          .map((v) => (res.current && v.id === res.current.id ? res.current : { ...v, is_current: false })),
+      )
+      setComments((prev) => prev.filter((c) => c.video_version !== removed.version))
+      setStatus(res.status)
+      setVideoError(false)
+      setCurrentTime(0)
+      setIsPlaying(false)
+      setCurrentVideo(res.current)
+      setSelectedVersion(res.current?.version ?? null)
+      if (videoRef.current && res.current) {
+        videoRef.current.src = res.current.file_url
+        videoRef.current.load()
+      }
+    })
+  }
+
   function handleVideoUploaded(file: VideoFile) {
     setCurrentVideo(file)
     setAllVersions((prev) => {
@@ -1172,12 +1211,40 @@ export default function VideoReviewPlayer({
           )}
         </div>
 
-        {/* Version info */}
+        {/* Version info + suppression (admin) */}
         {currentVideo && (
-          <div className="text-xs text-faint px-1">
-            Version {currentVideo.version} · {currentVideo.file_name}
-            {currentVideo.file_size && (
-              <> · {(currentVideo.file_size / 1024 / 1024).toFixed(1)} MB</>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs text-faint">
+            <span>
+              Version {currentVideo.version} · {currentVideo.file_name}
+              {currentVideo.file_size && (
+                <> · {(currentVideo.file_size / 1024 / 1024).toFixed(1)} MB</>
+              )}
+            </span>
+            {isAdmin && (
+              <span className="inline-flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDeleteVersion}
+                  disabled={isDeletingVersion}
+                  className={`inline-flex items-center gap-1 transition-colors disabled:opacity-50 ${
+                    confirmDeleteVersion ? 'font-medium text-[#EF4444]' : 'hover:text-[#EF4444]'
+                  }`}
+                >
+                  {isDeletingVersion ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                  {confirmDeleteVersion
+                    ? `Confirmer : supprimer la v${currentVideo.version} et ses commentaires`
+                    : 'Supprimer cette version'}
+                </button>
+                {confirmDeleteVersion && !isDeletingVersion && (
+                  <button type="button" onClick={() => setConfirmDeleteVersion(false)} className="hover:text-ink">
+                    Annuler
+                  </button>
+                )}
+              </span>
             )}
           </div>
         )}
