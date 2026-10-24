@@ -15,6 +15,10 @@ import CommentSection from '@/components/project/CommentSection'
 import DangerZone from '@/components/project/DangerZone'
 import ShareTokenManager from '@/components/project/ShareTokenManager'
 import QuickNote from '@/components/board/QuickNote'
+import PaymentRequestsManager from '@/components/payments/PaymentRequestsManager'
+import type { PaymentRequest } from '@/lib/types'
+
+type PaymentRequestRow = Pick<PaymentRequest, 'id' | 'label' | 'amount_cents' | 'status' | 'pay_token' | 'paid_at' | 'created_at'>
 
 interface ProjectPageProps {
   params: { id: string }
@@ -43,10 +47,16 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   const { project, client, clients, projectManager, phases, subPhasesByPhase, comments, activity } = data
 
-  const [clientOptions, adminOptions] = await Promise.all([
+  const [clientOptions, adminOptions, { data: rawPayments }] = await Promise.all([
     getAllClients(supabase),
     getAllAdmins(supabase),
+    supabase
+      .from('payment_requests')
+      .select('id, label, amount_cents, status, pay_token, paid_at, created_at')
+      .eq('project_id', params.id)
+      .order('created_at', { ascending: true }),
   ])
+  const paymentRequests = (rawPayments as PaymentRequestRow[] | null) ?? []
 
   const availableClients = clientOptions.map((c) => ({
     id: c.id,
@@ -162,6 +172,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                 </div>
 
                 <div className="min-w-0 space-y-4">
+                  <PaymentRequestsManager projectId={project.id} requests={paymentRequests} />
                   <ShareTokenManager
                     projectId={project.id}
                     shareToken={project.share_token}

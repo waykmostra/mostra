@@ -1,11 +1,14 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { ExternalLink, FileText, Receipt } from 'lucide-react'
+import { CheckCircle2, ExternalLink, FileText, Lock, Receipt } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatDate } from '@/lib/utils/dates'
 import Breadcrumb from '@/components/shared/Breadcrumb'
 import { EmptyState } from '@/components/shared/EmptyState'
-import type { PaymentStatus, Project } from '@/lib/types'
+import PayButton from '@/components/payments/PayButton'
+import PaymentStatusPill from '@/components/payments/PaymentStatusPill'
+import { confirmFromReturn, formatEur } from '@/lib/payments'
+import type { PaymentRequest, PaymentStatus, Project } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Paiement — MOSTRA' }
@@ -18,7 +21,13 @@ const PAYMENT_LABEL: Record<PaymentStatus, { label: string; tone: string }> = {
   overdue: { label: 'En retard', tone: 'bg-late/15 text-late' },
 }
 
-export default async function ClientPaymentPage({ params }: { params: { token: string } }) {
+export default async function ClientPaymentPage({
+  params,
+  searchParams,
+}: {
+  params: { token: string }
+  searchParams: { paiement?: string; session_id?: string }
+}) {
   const admin = createAdminClient()
 
   const { data: rawProject } = await admin
@@ -40,10 +49,33 @@ export default async function ClientPaymentPage({ params }: { params: { token: s
   > | null
   if (!project) notFound()
 
+  // Retour de Stripe : on relit la session côté serveur avant d'afficher l'état
+  // (le webhook peut arriver après le client).
+  if (searchParams.paiement === 'ok') {
+    await confirmFromReturn(searchParams.session_id, { projectId: project.id })
+  }
+
+  const { data: rawRequests } = await admin
+    .from('payment_requests')
+    .select('id, label, amount_cents, status, pay_token, paid_at')
+    .eq('project_id', project.id)
+    .neq('status', 'canceled')
+    .order('created_at', { ascending: true })
+  const requests =
+    (rawRequests as Pick<PaymentRequest, 'id' | 'label' | 'amount_cents' | 'status' | 'pay_token' | 'paid_at'>[] | null) ?? []
+
+  // Statut relu après une éventuelle confirmation.
+  const { data: fresh } = await admin
+    .from('projects')
+    .select('payment_status, paid_at')
+    .eq('id', project.id)
+    .maybeSingle()
+  if (fresh) Object.assign(project, fresh)
+
   const status = project.payment_status ?? 'pending'
   const { label, tone } = PAYMENT_LABEL[status]
   const hasDocuments = Boolean(project.quote_url || project.invoice_url)
-  const hasAnything = hasDocuments || project.value_eur !== null
+  const hasAnything = hasDocuments || project.value_eur !== null || requests.length > 0
 
   return (
     <div className="max-w-[900px] space-y-6">
@@ -56,6 +88,45 @@ export default async function ClientPaymentPage({ params }: { params: { token: s
         />
         <h1 className="mt-3 text-[1.625rem] leading-tight text-ink">Paiement</h1>
       </div>
+
+      {searchParams.paiement === 'ok' && (
+        <div className="flex items-center gap-3 rounded-xl border border-brand/30 bg-brand/10 px-5 py-4">
+          <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-brand-text" />
+          <p className="text-[14px] text-ink">Merci, votre paiement a bien été reçu.</p>
+        </div>
+      )}
+      {searchParams.paiement === 'annule' && (
+        <div className="rounded-xl border border-line bg-surface-2 px-5 py-4 text-[14px] text-dim">
+          Paiement annulé : rien n’a été débité. Vous pouvez réessayer quand vous le souhaitez.
+        </div>
+      )}
+
+      {requests.length > 0 && (
+        <section>
+          <h2 className="mono-label mb-3 text-faint">À régler</h2>
+          <div className="surface divide-y divide-line">
+            {requests.map((r) => (
+              <div key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14.5px] font-medium text-ink">{r.label}</p>
+                  <p className="tnum mt-0.5 text-[13px] text-dim">
+                    {formatEur(r.amount_cents)}
+                    {r.paid_at && ` · réglé le ${formatDate(r.paid_at)}`}
+                  </p>
+                </div>
+                {r.status === 'open' ? (
+                  <PayButton payToken={r.pay_token} returnTo="portal" label={`Payer ${formatEur(r.amount_cents)}`} />
+                ) : (
+                  <PaymentStatusPill status={r.status} />
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 flex items-center gap-1.5 text-[12px] text-faint">
+            <Lock className="h-3 w-3" /> Paiement sécurisé par Stripe. Mostra ne voit jamais vos données bancaires.
+          </p>
+        </section>
+      )}
 
       {!hasAnything ? (
         <div className="surface">

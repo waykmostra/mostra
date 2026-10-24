@@ -13,6 +13,7 @@ export type NotificationType =
   | 'phase_ready'
   | 'file_uploaded'
   | 'project_created'
+  | 'payment_received'
 
 export interface CreateNotificationInput {
   userId: string

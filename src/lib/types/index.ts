@@ -57,6 +57,10 @@ export type {
   TeamMemberInsert,
   TeamMemberUpdate,
   TeamMemberWithRoles,
+  // Paiements Stripe (migration 038)
+  PaymentRequestStatus,
+  PaymentRequest,
+  PaymentRequestInsert,
   // Cadrage (migration 037)
   BoardSectionType,
   BoardItemKind,

@@ -13,7 +13,8 @@ const PUBLIC_ROUTES = ['/login']
 // Préfixes publics — accessibles sans auth.
 // - /client/{token} : accès projet par token public (lecture seule sans login)
 // - /setup-password/{token} : flow initial pour définir le mot de passe
-const PUBLIC_PREFIXES = ['/client/', '/setup-password/']
+// - /pay/{token} : lien direct de paiement d'une demande (Stripe Checkout)
+const PUBLIC_PREFIXES = ['/client/', '/setup-password/', '/pay/']
 
 // Routes réservées à l'admin (Kylian).
 // Un client connecté qui tente d'y accéder est redirigé vers /client/dashboard.
@@ -72,5 +73,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // Le webhook Stripe échappe au middleware : il s'authentifie par sa signature
+  // et doit recevoir le corps brut, sans session ni redirection.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }

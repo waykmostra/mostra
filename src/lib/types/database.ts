@@ -76,6 +76,7 @@ export type NotificationType =
   | 'phase_ready'
   | 'file_uploaded'
   | 'project_created'
+  | 'payment_received'
 
 // ── Finance / Cashflow (migration 020) ────────────────────────────
 
@@ -912,6 +913,33 @@ export type BoardItemInsert = Pick<BoardItem, 'project_id' | 'kind' | 'content'>
   Partial<Pick<BoardItem, 'id' | 'section_id' | 'sort_order' | 'created_by'>>
 
 
+// ── Demandes de paiement Stripe (migration 038) ──────────────────
+
+export type PaymentRequestStatus = 'open' | 'paid' | 'canceled'
+
+/** Une demande de paiement d'un projet (« Acompte 50 % », « Solde »…). */
+export interface PaymentRequest {
+  id: string
+  project_id: string
+  label: string
+  /** Montant en centimes. */
+  amount_cents: number
+  currency: 'eur'
+  status: PaymentRequestStatus
+  /** Jeton du lien direct /pay/<token>. */
+  pay_token: string
+  stripe_session_id: string | null
+  stripe_payment_intent_id: string | null
+  paid_at: string | null
+  revenue_id: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type PaymentRequestInsert = Pick<PaymentRequest, 'project_id' | 'label' | 'amount_cents' | 'pay_token'> &
+  Partial<Pick<PaymentRequest, 'created_by'>>
+
 // ----------------------------------------------------------
 // Database type (structure Supabase)
 // ----------------------------------------------------------
@@ -1032,6 +1060,16 @@ export interface Database {
       team_member_roles: {
         Row:    TeamMemberRole
         Insert: Partial<TeamMemberRole>
+        Update: never
+      }
+      payment_requests: {
+        Row:    PaymentRequest
+        Insert: PaymentRequestInsert
+        Update: Partial<Omit<PaymentRequest, 'id' | 'project_id' | 'pay_token' | 'created_at'>>
+      }
+      stripe_events: {
+        Row:    { id: string; type: string; received_at: string }
+        Insert: { id: string; type: string }
         Update: never
       }
       board_columns: {
