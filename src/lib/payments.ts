@@ -183,18 +183,28 @@ export async function settleCheckoutSession(session: Stripe.Checkout.Session): P
 }
 
 /**
- * Statut de paiement du projet d'après ses demandes : toutes réglées → payé
- * (avec date d'encaissement) ; au moins une réglée → partiellement réglé ;
- * des demandes ouvertes seulement → facturé.
+ * Statut de paiement du projet d'après ses demandes. Si le projet a un montant
+ * (value_eur), c'est la somme encaissée qui compte : un acompte seul laisse le
+ * projet « partiellement réglé ». Sans montant, toutes les demandes réglées →
+ * payé. Aucune encaissée → facturé.
  */
 export async function syncProjectPaymentStatus(admin: Admin, projectId: string): Promise<void> {
-  const { data } = await admin.from('payment_requests').select('status, paid_at').eq('project_id', projectId)
-  const rows = ((data as Pick<PaymentRequest, 'status' | 'paid_at'>[] | null) ?? []).filter((r) => r.status !== 'canceled')
+  const [{ data }, { data: rawProject }] = await Promise.all([
+    admin.from('payment_requests').select('status, paid_at, amount_cents').eq('project_id', projectId),
+    admin.from('projects').select('value_eur').eq('id', projectId).maybeSingle(),
+  ])
+  const rows = ((data as Pick<PaymentRequest, 'status' | 'paid_at' | 'amount_cents'>[] | null) ?? []).filter(
+    (r) => r.status !== 'canceled',
+  )
   if (rows.length === 0) return
 
   const paid = rows.filter((r) => r.status === 'paid')
+  const paidCents = paid.reduce((s, r) => s + r.amount_cents, 0)
+  const valueCents = Math.round(((rawProject as { value_eur: number | null } | null)?.value_eur ?? 0) * 100)
+  const fullyPaid = valueCents > 0 ? paidCents >= valueCents : paid.length === rows.length
+
   let update: Record<string, unknown>
-  if (paid.length === rows.length) {
+  if (fullyPaid) {
     const lastPaid = paid.map((r) => r.paid_at ?? '').sort().pop() || new Date().toISOString()
     update = { payment_status: 'paid', paid_at: lastPaid }
   } else if (paid.length > 0) {

@@ -47,9 +47,10 @@ export async function getWeeklyKpiData(supabase: Sb): Promise<WeeklyKpiData> {
 
   const { data: rawProjects } = await supabase
     .from('projects')
-    .select('status, updated_at, value_eur, paid_at')
+    .select('id, status, updated_at, value_eur, paid_at')
   const projects =
     (rawProjects as {
+      id: string
       status: string
       updated_at: string
       value_eur: number | null
@@ -61,9 +62,17 @@ export async function getWeeklyKpiData(supabase: Sb): Promise<WeeklyKpiData> {
   ).length
   const autoActiveProjects = projects.filter((p) => p.status === 'active').length
 
+  // Les paiements Stripe ont leur propre revenu (table revenues) : le projet
+  // ne compte que le reste réglé hors Stripe, pour ne rien compter deux fois.
+  const { data: rawStripe } = await supabase.from('payment_requests').select('project_id, amount_cents').eq('status', 'paid')
+  const stripePaid = new Map<string, number>()
+  for (const r of (rawStripe as { project_id: string; amount_cents: number }[] | null) ?? []) {
+    stripePaid.set(r.project_id, (stripePaid.get(r.project_id) ?? 0) + r.amount_cents / 100)
+  }
+
   let autoCaCollected = projects
     .filter((p) => inWeek(p.paid_at))
-    .reduce((s, p) => s + (p.value_eur ?? 0), 0)
+    .reduce((s, p) => s + Math.max(0, (p.value_eur ?? 0) - (stripePaid.get(p.id) ?? 0)), 0)
 
   // + revenus libres encaissés cette semaine (table revenues, migration 032)
   const { data: rawRev } = await supabase.from('revenues').select('amount_eur, received_on')

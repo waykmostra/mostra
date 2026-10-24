@@ -583,6 +583,22 @@ export async function getRevenueEntries(supabase: Sb): Promise<RevenueEntry[]> {
 
   if (projects.length === 0) return []
 
+  // Paiements Stripe déjà encaissés : ils ont chacun leur revenu (table
+  // revenues, à leur date réelle). Le projet ne compte plus que le reste, réglé
+  // hors Stripe — sinon le même argent est compté deux fois.
+  const { data: rawStripe } = await supabase
+    .from('payment_requests')
+    .select('project_id, amount_cents')
+    .eq('status', 'paid')
+    .in(
+      'project_id',
+      projects.map((p) => p.id),
+    )
+  const stripePaid = new Map<string, number>()
+  for (const r of (rawStripe as { project_id: string; amount_cents: number }[] | null) ?? []) {
+    stripePaid.set(r.project_id, (stripePaid.get(r.project_id) ?? 0) + r.amount_cents / 100)
+  }
+
   // Résoudre le nom des clients CRM liés
   const clientIds = [...new Set(projects.map((p) => p.client_id).filter(Boolean) as string[])]
   const clientMap = new Map<string, string>()
@@ -601,10 +617,12 @@ export async function getRevenueEntries(supabase: Sb): Promise<RevenueEntry[]> {
       id: p.id,
       name: p.name,
       client_name: p.client_id ? (clientMap.get(p.client_id) ?? null) : null,
-      value_eur: p.value_eur ?? 0,
+      value_eur: Math.max(0, Math.round(((p.value_eur ?? 0) - (stripePaid.get(p.id) ?? 0)) * 100) / 100),
       paid_at: p.paid_at ?? null,
       payment_status: p.payment_status ?? 'pending',
     }))
+    // Entièrement réglé via Stripe : déjà compté par ses revenus.
+    .filter((p) => p.value_eur > 0)
     // Payés récents d'abord, puis le reste ; date d'encaissement décroissante.
     .sort((a, b) => {
       if (a.paid_at && b.paid_at) return b.paid_at.localeCompare(a.paid_at)
