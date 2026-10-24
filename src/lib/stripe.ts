@@ -22,7 +22,8 @@ export function getStripe(): Stripe {
 
 /** URL publique de l'app, pour les retours Stripe (succès / annulation). */
 export function appUrl(): string {
-  const url = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
-  if (!url) throw new Error('NEXT_PUBLIC_APP_URL manquante')
-  return url
+  const raw = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, '')
+  if (!raw) throw new Error('NEXT_PUBLIC_APP_URL manquante')
+  // Stripe exige une URL absolue : « app.mostra.agency » devient « https://app.mostra.agency ».
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
 }
