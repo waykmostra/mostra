@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import ClientProjectView from '@/components/client/ClientProjectView'
 import ContactManager from '@/components/client/ContactManager'
+import PaymentReminder, { type OpenPayment } from '@/components/payments/PaymentReminder'
 import ClientPhaseContent from '@/components/client/ClientPhaseContent'
 import Board from '@/components/board/Board'
 import { getCurrentProfile } from '@/lib/auth'
@@ -70,6 +71,15 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
     commentedSubPhaseIds.push(...seen)
   }
 
+  // 3c. Demandes de paiement à régler (rappel sur la vue d'ensemble)
+  const { data: rawOpenPayments } = await admin
+    .from('payment_requests')
+    .select('label, amount_cents, pay_token')
+    .eq('project_id', project.id)
+    .eq('status', 'open')
+    .order('created_at', { ascending: true })
+  const openPayments = (rawOpenPayments as OpenPayment[] | null) ?? []
+
   // 4. Project Manager
   let projectManager: Profile | null = null
   if (project.project_manager_id) {
@@ -127,6 +137,7 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
       subPhasesByPhase={subPhasesByPhase}
       commentedSubPhaseIds={commentedSubPhaseIds}
       token={params.token}
+      payment={<PaymentReminder token={params.token} payments={openPayments} />}
       aside={<ContactManager projectManager={projectManager} />}
     />
   )

@@ -76,6 +76,7 @@ export default async function ClientPaymentPage({
   const { label, tone } = PAYMENT_LABEL[status]
   const hasDocuments = Boolean(project.quote_url || project.invoice_url)
   const hasAnything = hasDocuments || project.value_eur !== null || requests.length > 0
+  const showTotal = requests.length === 0 && project.value_eur !== null
 
   return (
     <div className="max-w-[900px] space-y-6">
@@ -103,26 +104,28 @@ export default async function ClientPaymentPage({
 
       {requests.length > 0 && (
         <section>
-          <h2 className="mono-label mb-3 text-faint">À régler</h2>
-          <div className="surface divide-y divide-line">
+          <h2 className="mono-label mb-3 text-faint">Vos paiements</h2>
+          {/* Une carte par demande : le prix une seule fois, en grand, et l'action. */}
+          <div className="grid gap-4 sm:grid-cols-2">
             {requests.map((r) => (
-              <div key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14.5px] font-medium text-ink">{r.label}</p>
-                  <p className="tnum mt-0.5 text-[13px] text-dim">
-                    {formatEur(r.amount_cents)}
-                    {r.paid_at && ` · réglé le ${formatDate(r.paid_at)}`}
-                  </p>
-                </div>
-                {r.status === 'open' ? (
-                  <PayButton payToken={r.pay_token} returnTo="portal" label={`Payer ${formatEur(r.amount_cents)}`} />
-                ) : (
+              <div
+                key={r.id}
+                className={`surface flex flex-col gap-4 p-5 ${r.status === 'open' ? 'ring-1 ring-soon/40' : ''}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 text-[14.5px] font-medium text-ink">{r.label}</p>
                   <PaymentStatusPill status={r.status} />
+                </div>
+                <p className="font-display tnum text-[2rem] leading-none text-ink">{formatEur(r.amount_cents)}</p>
+                {r.status === 'open' ? (
+                  <PayButton payToken={r.pay_token} returnTo="portal" label="Payer" className="btn-brand w-full" />
+                ) : (
+                  r.paid_at && <p className="text-[13px] text-dim">Réglé le {formatDate(r.paid_at)}</p>
                 )}
               </div>
             ))}
           </div>
-          <p className="mt-2 flex items-center gap-1.5 text-[12px] text-faint">
+          <p className="mt-3 flex items-center gap-1.5 text-[12px] text-faint">
             <Lock className="h-3 w-3" /> Paiement sécurisé par Stripe. Mostra ne voit jamais vos données bancaires.
           </p>
         </section>
@@ -139,6 +142,8 @@ export default async function ClientPaymentPage({
       ) : (
         <>
           <div className="surface flex flex-col divide-y divide-line sm:flex-row sm:divide-x sm:divide-y-0">
+            {/* Avec des demandes de paiement, le prix est déjà sur leurs cartes. */}
+            {showTotal && (
             <div className="flex-1 px-5 py-4">
               <p className="mono-label text-faint">Montant</p>
               <p className="font-display tnum mt-2.5 text-[2rem] leading-none text-ink">
@@ -151,6 +156,7 @@ export default async function ClientPaymentPage({
                   : '—'}
               </p>
             </div>
+            )}
 
             <div className="flex-1 px-5 py-4">
               <p className="mono-label text-faint">Statut</p>

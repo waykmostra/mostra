@@ -20,6 +20,8 @@ interface ClientProjectViewProps {
   token: string
   /** Colonne de droite (interlocuteur…). */
   aside?: React.ReactNode
+  /** Rappel de paiement, en tête de la colonne de droite. */
+  payment?: React.ReactNode
   /**
    * Contenu principal (75 %) : l'étape en cours, ou le Cadrage tant qu'aucune
    * étape n'a démarré.
@@ -35,6 +37,7 @@ export default function ClientProjectView({
   token,
   subPhasesByPhase,
   aside,
+  payment,
   main,
 }: ClientProjectViewProps) {
   const done = phases.filter((p) => p.status === 'completed' || p.status === 'approved').length
@@ -80,11 +83,15 @@ export default function ClientProjectView({
         cadrage={{ href: `/client/${token}/cadrage`, active: !shownPhaseId }}
       />
 
+      {/* Sur mobile, le rappel de paiement passe avant le contenu. */}
+      {payment && <div className="lg:hidden">{payment}</div>}
+
       {/* L'étape en cours occupe la page (75 %) ; les repères du projet à droite. */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(260px,1fr)]">
         <div className="min-w-0">{main}</div>
 
         <div className="min-w-0 space-y-4 lg:sticky lg:top-[4.5rem]">
+          {payment && <div className="hidden lg:block">{payment}</div>}
           <div className="surface flex divide-x divide-line">
             <div className="flex-1 px-4 py-4">
               <p className="mono-label text-faint">Avancement</p>
