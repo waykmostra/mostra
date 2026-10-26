@@ -208,6 +208,9 @@ export interface ProjectPhase {
   status: PhaseStatus
   started_at: string | null
   completed_at: string | null
+  /** Planning (migration 040) : dates prévues 'YYYY-MM-DD'. Absentes avant la migration. */
+  planned_start?: string | null
+  planned_end?: string | null
   created_at: string
   updated_at: string
 }

@@ -182,8 +182,8 @@ src/
 2. Backend crée `auth.users` + `profiles` + `password_setup_tokens` (7 jours)
 3. UI affiche le lien `{APP_URL}/setup-password/{token}` à copier
 4. Admin transmet manuellement (WhatsApp, email perso, etc.)
-5. Client clique → définit mdp (pas de validation forte) → redirect login
-6. Client se connecte → `/client/dashboard`
+5. Client clique → définit mdp (pas de validation forte) → la session s'ouvre aussitôt
+6. Il arrive directement sur son projet (un seul projet actif) ou sur `/client/dashboard` ; `/login` ne sert qu'aux visites suivantes (repli sur `/login?email=…` si l'ouverture de session échoue)
 
 ### 6.2 Création de projet
 1. Admin → `/projects/new` → saisit nom, description, client, PM

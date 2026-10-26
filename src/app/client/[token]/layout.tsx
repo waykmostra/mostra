@@ -1,5 +1,7 @@
+import type { Metadata } from 'next'
 import { unstable_noStore as noStore } from 'next/cache'
 import { notFound } from 'next/navigation'
+import { getLinkPreview, previewTitle } from '@/lib/linkPreview'
 import { createAdminClient } from '@/lib/supabase/admin'
 import ClientProjectRail, { type RailPhase } from '@/components/client/ClientProjectRail'
 import ClientTopbar from '@/components/client/ClientTopbar'
@@ -7,6 +9,20 @@ import { loadClientPhases } from '@/lib/clientPhases'
 import type { Project } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
+
+/** Carte d'aperçu du lien (WhatsApp, iMessage…) : projet + étape en cours. */
+export async function generateMetadata({ params }: { params: { token: string } }): Promise<Metadata> {
+  const preview = await getLinkPreview(params.token)
+  if (!preview) return { title: 'Mostra' }
+  const title = previewTitle(preview)
+  const description = `Suivez l’avancement de ${preview.projectName} avec Mostra.`
+  return {
+    title,
+    description,
+    openGraph: { title, description, siteName: 'Mostra', type: 'website' },
+    twitter: { card: 'summary_large_image', title, description },
+  }
+}
 
 export default async function ClientProjectLayout({
   children,
@@ -36,6 +52,7 @@ export default async function ClientProjectLayout({
   const phases: RailPhase[] = allPhases.map((p) => ({
     id: p.id,
     name: p.name,
+    slug: p.slug,
     status: p.status,
     viewable: viewableIds.has(p.id),
   }))

@@ -3,11 +3,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import ClientProjectView from '@/components/client/ClientProjectView'
 import ContactManager from '@/components/client/ContactManager'
 import PaymentReminder, { type OpenPayment } from '@/components/payments/PaymentReminder'
-import ClientPhaseContent from '@/components/client/ClientPhaseContent'
+import CurrentPhaseCard, { type PhasePreview } from '@/components/client/CurrentPhaseCard'
+import ProjectPlanning from '@/components/project/ProjectPlanning'
 import Board from '@/components/board/Board'
 import { getCurrentProfile } from '@/lib/auth'
 import { loadBoard, loadBoardComments } from '@/lib/board'
-import { pickCurrentPhase } from '@/lib/currentPhase'
+import { activePhase, pickCurrentPhase } from '@/lib/currentPhase'
 import { loadClientPhases } from '@/lib/clientPhases'
 import type { Profile, Project, SubPhase } from '@/lib/types'
 
@@ -96,19 +97,35 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
   // Une étape encore en production chez Mostra (ex. Animation sans vidéo en
   // review) n'est pas ouvrable : on montre alors la dernière étape validée.
   const current = pickCurrentPhase(phases, (p) => viewableIds.has(p.id))
+  // La carte montre où en est vraiment le projet (en review, sinon en cours),
+  // même si l'étape est encore en production chez Mostra (carte non cliquable).
+  const shown = activePhase(phases) ?? current
 
   let main: React.ReactNode
-  if (current) {
+  if (shown) {
+    // Aperçu flouté : la dernière version de l'étape (vidéo ou image), s'il y en a une.
+    const { data: rawFile } = await admin
+      .from('phase_files')
+      .select('file_url, file_type')
+      .eq('phase_id', shown.id)
+      .eq('is_current', true)
+      .order('version', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const file = rawFile as { file_url: string; file_type: string | null } | null
+    let preview: PhasePreview | null = null
+    if (file && /^(video|image)\//.test(file.file_type ?? '')) {
+      const { data: signed } = await admin.storage.from('project-files').createSignedUrl(file.file_url, 3600)
+      if (signed?.signedUrl) preview = { url: signed.signedUrl, kind: file.file_type!.startsWith('video') ? 'video' : 'image' }
+    }
     main = (
-      // Une seule grande carte, en contraste avec la page : tout ce qui concerne
-      // l'étape (titre, statut, contenu, validation) se lit d'un bloc.
-      <section className="rounded-2xl bg-surface-3/70 p-4 ring-1 ring-line sm:p-6">
-        <ClientPhaseContent
-          params={{ token: params.token, phaseId: current.id }}
-          searchParams={{}}
-          embedded
-        />
-      </section>
+      <CurrentPhaseCard
+        href={`/client/${params.token}/${shown.slug}`}
+        name={shown.name}
+        status={shown.status}
+        preview={preview}
+        viewable={viewableIds.has(shown.id)}
+      />
     )
   } else {
     const [profile, board, comments] = await Promise.all([
@@ -133,7 +150,8 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
       project={project}
       phases={phases}
       viewablePhaseIds={[...viewableIds]}
-      shownPhaseId={current?.id ?? null}
+      shownPhaseId={shown?.id ?? null}
+      planning={phases.length > 0 ? <ProjectPlanning phases={phases} /> : null}
       subPhasesByPhase={subPhasesByPhase}
       commentedSubPhaseIds={commentedSubPhaseIds}
       token={params.token}

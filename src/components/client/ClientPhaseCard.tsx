@@ -41,7 +41,7 @@ export default function ClientPhaseCard({
   commentedSubPhaseIds = [],
 }: ClientPhaseCardProps) {
   const Icon = PHASE_ICONS[phase.slug] ?? FileText
-  const viewHref = `/client/${token}/phases/${phase.id}`
+  const viewHref = `/client/${token}/${phase.slug}`
 
   const isPending = phase.status === 'pending'
   const isInReview = phase.status === 'in_review'

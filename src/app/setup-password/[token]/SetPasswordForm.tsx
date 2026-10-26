@@ -27,8 +27,8 @@ export default function SetPasswordForm({ token }: SetPasswordFormProps) {
     const result = await setupPassword(token, password)
     setPending(false)
     if (result.success) {
-      toast.success('Mot de passe défini. Tu peux te connecter.')
-      router.push('/login')
+      toast.success(result.signedIn ? 'Bienvenue, ton espace est prêt.' : 'Mot de passe défini. Tu peux te connecter.')
+      router.replace(result.redirectTo)
       router.refresh()
     } else {
       setError(result.error)
@@ -80,7 +80,7 @@ export default function SetPasswordForm({ token }: SetPasswordFormProps) {
         "
       >
         {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-        Activer mon compte
+        Accéder à mon espace
       </button>
     </form>
   )

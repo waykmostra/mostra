@@ -27,6 +27,8 @@ function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
+    // Pre-filled after an invitation link whose automatic sign-in failed.
+    defaultValues: { email: searchParams.get('email') ?? '' },
   })
 
   async function onSubmit(data: LoginForm) {

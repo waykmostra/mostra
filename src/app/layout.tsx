@@ -22,6 +22,8 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
+  // URLs absolues des images d'aperçu (Open Graph) : obligatoire pour WhatsApp & co.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL?.startsWith('http') ? process.env.NEXT_PUBLIC_APP_URL : 'https://app.mostra.agency'),
   title: 'MOSTRA — Gestion de production créative',
   description: 'SaaS de gestion de production pour agences créatives',
   manifest: '/manifest.webmanifest',

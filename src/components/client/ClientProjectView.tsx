@@ -4,7 +4,6 @@ import ClientActionBanner from './ClientActionBanner'
 import PhaseStepper from '@/components/project/PhaseStepper'
 import Breadcrumb from '@/components/shared/Breadcrumb'
 import StatusBadge from '@/components/shared/StatusBadge'
-import { activePhase } from '@/lib/currentPhase'
 import type { Project, ProjectPhase, SubPhase } from '@/lib/types'
 
 interface ClientProjectViewProps {
@@ -23,10 +22,12 @@ interface ClientProjectViewProps {
   /** Rappel de paiement, en tête de la colonne de droite. */
   payment?: React.ReactNode
   /**
-   * Contenu principal (75 %) : l'étape en cours, ou le Cadrage tant qu'aucune
-   * étape n'a démarré.
+   * Contenu principal : la carte de l'étape en cours (aperçu flouté, cliquable),
+   * ou le Cadrage tant qu'aucune étape n'a démarré.
    */
   main?: React.ReactNode
+  /** Planning en escalier, pleine largeur sous la première rangée. */
+  planning?: React.ReactNode
 }
 
 export default function ClientProjectView({
@@ -39,12 +40,10 @@ export default function ClientProjectView({
   aside,
   payment,
   main,
+  planning,
 }: ClientProjectViewProps) {
   const done = phases.filter((p) => p.status === 'completed' || p.status === 'approved').length
   const viewable = new Set(viewablePhaseIds)
-  // Position réelle du projet (en review, sinon en cours) — même règle que la bannière.
-  const active = activePhase(phases)
-  const activeViewable = !!active && viewable.has(active.id)
 
   return (
     <div className="space-y-6">
@@ -77,7 +76,7 @@ export default function ClientProjectView({
       <PhaseStepper
         phases={phases}
         subPhasesByPhase={subPhasesByPhase}
-        hrefForPhase={(phase) => `/client/${token}/phases/${phase.id}`}
+        hrefForPhase={(phase) => `/client/${token}/${phase.slug}`}
         isLocked={(phase) => !viewable.has(phase.id)}
         currentPhaseId={shownPhaseId ?? undefined}
         cadrage={{ href: `/client/${token}/cadrage`, active: !shownPhaseId }}
@@ -86,66 +85,52 @@ export default function ClientProjectView({
       {/* Sur mobile, le rappel de paiement passe avant le contenu. */}
       {payment && <div className="lg:hidden">{payment}</div>}
 
-      {/* L'étape en cours occupe la page (75 %) ; les repères du projet à droite. */}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(260px,1fr)]">
+      {/* Première rangée : l'étape en cours à gauche, les repères du projet à
+          droite — une seule grille, donc même ligne de départ et même hauteur. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(260px,1fr)]">
         <div className="min-w-0">{main}</div>
 
-        <div className="min-w-0 space-y-4 lg:sticky lg:top-[4.5rem]">
+        <div className="flex min-w-0 flex-col gap-4">
           {payment && <div className="hidden lg:block">{payment}</div>}
           <div className="surface flex divide-x divide-line">
             <div className="flex-1 px-4 py-4">
-              <p className="mono-label text-faint">Avancement</p>
-              <p className="font-display tnum mt-2.5 text-[1.75rem] leading-none text-ink">
+              <p className="text-[13px] text-faint">Avancement</p>
+              <p className="font-display tnum mt-2 text-[1.75rem] leading-none text-ink">
                 {project.progress}
                 <span className="text-[1rem] text-faint">%</span>
               </p>
             </div>
             <div className="flex-1 px-4 py-4">
-              <p className="mono-label text-faint">Étapes validées</p>
-              <p className="font-display tnum mt-2.5 text-[1.75rem] leading-none text-ink">
+              <p className="text-[13px] text-faint">Étapes validées</p>
+              <p className="font-display tnum mt-2 text-[1.75rem] leading-none text-ink">
                 {done}
                 <span className="text-[1rem] text-faint"> / {phases.length}</span>
               </p>
             </div>
           </div>
-
-          {active &&
-            (activeViewable ? (
-              <Link
-                href={`/client/${token}/phases/${active.id}`}
-                className="surface group flex items-center gap-3 px-4 py-3.5 transition-colors duration-[160ms] hover:bg-surface-2"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="mono-label block text-faint">Étape en cours</span>
-                  <span className="mt-1.5 block truncate text-[14px] font-medium text-ink">{active.name}</span>
-                </span>
-                <ArrowRight className="h-4 w-4 flex-shrink-0 text-faint transition-colors group-hover:text-ink" />
-              </Link>
-            ) : (
-              // En production chez Mostra : rien à ouvrir pour le client.
-              <div className="surface flex items-center gap-3 px-4 py-3.5">
-                <span className="min-w-0 flex-1">
-                  <span className="mono-label block text-faint">Étape en cours</span>
-                  <span className="mt-1.5 block truncate text-[14px] font-medium text-ink">{active.name}</span>
-                  <span className="mt-0.5 block text-[12px] text-faint">En production chez Mostra</span>
-                </span>
-              </div>
-            ))}
-
-          <Link
-            href={`/client/${token}/cadrage`}
-            className="surface group flex items-center gap-3 px-4 py-3.5 transition-colors duration-[160ms] hover:bg-surface-2"
-          >
-            <span className="min-w-0 flex-1">
-              <span className="mono-label block text-faint">Cadrage</span>
-              <span className="mt-1.5 block truncate text-[14px] font-medium text-ink">Vision commune du projet</span>
-            </span>
-            <ArrowRight className="h-4 w-4 flex-shrink-0 text-faint transition-colors group-hover:text-ink" />
-          </Link>
-
           {aside}
         </div>
       </div>
+
+      {planning}
+
+      {/* Raccourcis du projet */}
+      <nav className="grid gap-3 sm:grid-cols-3" aria-label="Raccourcis du projet">
+        {[
+          { href: `/client/${token}/cadrage`, label: 'Cadrage', hint: 'La vision commune du projet' },
+          { href: `/client/${token}/documents`, label: 'Documents', hint: 'Devis, factures et fichiers' },
+          { href: `/client/${token}/paiement`, label: 'Paiement', hint: 'Acomptes et règlements' },
+        ].map((s) => (
+          <Link key={s.href} href={s.href}
+            className="surface group flex min-h-[44px] items-center gap-3 px-4 py-3.5 transition-colors duration-[160ms] hover:bg-surface-2">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[14px] font-medium text-ink">{s.label}</span>
+              <span className="mt-0.5 block truncate text-[12.5px] text-faint">{s.hint}</span>
+            </span>
+            <ArrowRight className="h-4 w-4 flex-shrink-0 text-faint transition-colors group-hover:text-ink" />
+          </Link>
+        ))}
+      </nav>
     </div>
   )
 }

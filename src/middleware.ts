@@ -37,9 +37,60 @@ async function getIsAdmin(
   return (data as { is_admin: boolean } | null)?.is_admin ?? false
 }
 
+// Liens clients (migration 039) : nouveau format « société-code ».
+const CLIENT_TOKEN_RE = /-[a-z2-7]{4}$/
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Un lien client à l'ancien format (`/client/<vieux token>/…`) ou une étape
+ * par son id (`/client/<token>/phases/<uuid>`) → URL au nouveau format, ou
+ * null s'il n'y a rien à rediriger. `resolve_client_link` (SECURITY DEFINER)
+ * ne renvoie que le token courant et le slug d'étape. Avant la migration 039,
+ * la fonction n'existe pas : on ne redirige rien et l'ancien lien sert tel quel.
+ */
+async function legacyClientRedirect(
+  supabase: SupabaseClient<Database>,
+  pathname: string,
+): Promise<string | null> {
+  const parts = pathname.split('/') // ['', 'client', token, ...rest]
+  const token = parts[2]
+  if (!token || token === 'dashboard') return null
+  const rest = parts.slice(3)
+  const phaseId = rest[0] === 'phases' && rest.length === 2 && UUID_RE.test(rest[1]) ? rest[1] : null
+  if (CLIENT_TOKEN_RE.test(token) && !phaseId) return null
+
+  // Appel de méthode (garde `this`) ; la fonction SQL n'est pas dans les types générés.
+  const client = supabase as unknown as {
+    rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: { token: string; phase_slug: string | null } | null; error: unknown }>
+  }
+  let data: { token: string; phase_slug: string | null } | null = null
+  try {
+    const res = await client.rpc('resolve_client_link', { p_token: token, p_phase_id: phaseId })
+    if (res.error) return null
+    data = res.data
+  } catch {
+    return null // jamais bloquer une page pour une redirection
+  }
+  if (!data?.token) return null
+
+  const tail = phaseId && data.phase_slug ? [data.phase_slug] : rest
+  const next = ['', 'client', data.token, ...tail].join('/')
+  return next === pathname ? null : next
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const { supabaseResponse, user, supabase } = await updateSession(request)
+
+  // Anciens liens clients déjà envoyés → nouveau format (308, garde la query).
+  if (pathname.startsWith('/client/')) {
+    const target = await legacyClientRedirect(supabase, pathname)
+    if (target) {
+      const url = request.nextUrl.clone()
+      url.pathname = target
+      return NextResponse.redirect(url, 308)
+    }
+  }
 
   // Utilisateur non authentifié sur une route protégée → /login
   if (!user && !isPublicRoute(pathname)) {

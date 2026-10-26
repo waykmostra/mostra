@@ -178,19 +178,7 @@ export default function ProjectInfo({
           <p className="text-sm text-dim">{formatDate(project.created_at)}</p>
         </div>
       </div>
-
-      {/* Share token (lien client) */}
-      {project.share_token && (
-        <>
-          <div className="h-px bg-surface-2" />
-          <div>
-            <SectionLabel>Lien client</SectionLabel>
-            <p className="text-xs text-faint font-mono break-all">
-              /client/{project.share_token}
-            </p>
-          </div>
-        </>
-      )}
+      {/* Le lien client vit dans un seul bloc : ShareTokenManager (page projet). */}
     </div>
   )
 }

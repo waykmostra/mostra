@@ -45,7 +45,7 @@ export default async function ClientPhaseContent({
     if (embedded) {
       return (
         <Link
-          href={`/client/${params.token}/phases/${params.phaseId}`}
+          href={`/client/${params.token}/${params.phaseId}`}
           className="surface flex items-center justify-between gap-3 px-5 py-4 text-[14px] font-medium text-ink transition-colors hover:bg-surface-2"
         >
           Ouvrir l’étape en cours
@@ -80,7 +80,8 @@ export default async function ClientPhaseContent({
       'id' | 'name' | 'slug' | 'status' | 'sort_order' | 'completed_at'
     >[] | null) ?? []
 
-  const phase = allPhases.find((p) => p.id === params.phaseId)
+  // L'étape arrive par son id (anciens liens) ou par son slug (/client/<lien>/animation).
+  const phase = allPhases.find((p) => p.id === params.phaseId || p.slug === params.phaseId)
   if (!phase) return leave()
 
   const isAnimation = ANIMATION_SLUGS.includes(phase.slug)
@@ -165,7 +166,7 @@ export default async function ClientPhaseContent({
             phases={allPhases}
             subPhasesByPhase={subsByPhase}
             currentPhaseId={phase.id}
-            hrefForPhase={(p) => `/client/${params.token}/phases/${p.id}`}
+            hrefForPhase={(p) => `/client/${params.token}/${p.slug}`}
             isLocked={(p) => !isPhaseViewable(p, !!subsByPhase[p.id]?.length)}
             cadrage={{ href: `/client/${params.token}/cadrage` }}
           />
@@ -176,7 +177,7 @@ export default async function ClientPhaseContent({
       {!isAnimation && (
       <ApprovalPanel
         projectId={project.id}
-        phaseId={params.phaseId}
+        phaseId={phase.id}
         phaseName={phase.name}
         status={phase.status}
         completedAt={phase.completed_at}
@@ -204,7 +205,7 @@ export default async function ClientPhaseContent({
         <SubPhaseTabs
           subPhases={subPhases}
           activeId={activeSub.id}
-          hrefFor={(sub) => `/client/${params.token}/phases/${phase.id}?sub=${sub.id}`}
+          hrefFor={(sub) => `/client/${params.token}/${phase.slug}?sub=${sub.id}`}
         />
 
         <ClientSubPhaseSection
@@ -225,7 +226,7 @@ export default async function ClientPhaseContent({
   if (isAnimation) {
     const { currentVideo, allVersions, comments } = await fetchVideoData(
       params.token,
-      params.phaseId,
+      phase.id,
     )
     return (
       <div className="space-y-6">
@@ -233,7 +234,7 @@ export default async function ClientPhaseContent({
         <VideoViewerClient
           token={params.token}
           projectId={project.id}
-          phaseId={params.phaseId}
+          phaseId={phase.id}
           phaseStatus={phase.status}
           clientId={clientId}
           isAuthenticated={isAuthenticated}
@@ -248,7 +249,7 @@ export default async function ClientPhaseContent({
 
   // ── Fichiers ─────────────────────────────────────────────────────
   const requestedVersion = searchParams.v ? Number(searchParams.v) : undefined
-  const data = await getClientPhaseViewData(params.token, params.phaseId, requestedVersion)
+  const data = await getClientPhaseViewData(params.token, phase.id, requestedVersion)
 
   async function clientGetSignedUrl(filePath: string) {
     'use server'
@@ -268,7 +269,7 @@ export default async function ClientPhaseContent({
           files={data.files}
           activeVersion={data.activeVersion ?? data.files[0].version}
           signedUrl={data.signedUrl ?? ''}
-          viewPath={`/client/${params.token}/phases/${params.phaseId}`}
+          viewPath={`/client/${params.token}/${phase.slug}`}
           uploaders={data.uploaders}
           getSignedUrlFn={clientGetSignedUrl}
         />

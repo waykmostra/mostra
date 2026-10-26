@@ -14,6 +14,7 @@ import ActivityLog from '@/components/project/ActivityLog'
 import CommentSection from '@/components/project/CommentSection'
 import DangerZone from '@/components/project/DangerZone'
 import ShareTokenManager from '@/components/project/ShareTokenManager'
+import ProjectPlanning from '@/components/project/ProjectPlanning'
 import QuickNote from '@/components/board/QuickNote'
 import PaymentRequestsManager from '@/components/payments/PaymentRequestsManager'
 import type { PaymentRequest } from '@/lib/types'
@@ -105,6 +106,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           hrefForPhase={(phase) => `/projects/${project.id}/phases/${phase.id}`}
           cadrage={{ href: `/projects/${project.id}/cadrage` }}
         />
+
+        {/* Planning en escalier : glisser une barre la déplace, tirer un bord l'allonge. */}
+        {phases.length > 0 && <ProjectPlanning phases={phases} editable />}
 
         {/* Noter en call : tout atterrit dans « À trier » du Cadrage. */}
         <QuickNote projectId={project.id} />

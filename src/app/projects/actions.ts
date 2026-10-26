@@ -7,26 +7,8 @@ import { createNotification } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
 import type { PhaseTemplate, SubPhaseDefinition, PaymentStatus, ProjectUpdate } from '@/lib/types'
 
-// ── Liens clients courts (migration 035) ─────────────────────────────────────
-// Token de partage = slug lisible du nom du projet + suffixe court unique.
-// Ex. « Flowride — Vidéo » → « flowride-video-a3f2c1 » → /client/flowride-video-a3f2c1
-
-function slugifyName(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 40) || 'projet'
-  )
-}
-
-function buildShareToken(name: string): string {
-  const code = crypto.randomUUID().replace(/-/g, '').slice(0, 6)
-  return `${slugifyName(name)}-${code}`
-}
+// Liens clients « société + code » (migration 039) : voir @/lib/shareLinks.
+import { buildClientToken } from '@/lib/shareLinks'
 
 export type CreateProjectInput = {
   name: string
@@ -64,7 +46,7 @@ export async function createProject(input: CreateProjectInput): Promise<CreatePr
       project_manager_id: input.projectManagerId || null,
       status: 'active',
       progress: 0,
-      share_token: buildShareToken(input.name.trim()),
+      share_token: await buildClientToken(admin, { projectName: input.name.trim(), crmClientId: input.crmClientId || null }),
     })
     .select('id, name')
     .single()
@@ -525,16 +507,21 @@ export async function regenerateShareToken(
 ): Promise<{ success: true; token: string } | { success: false; error: string }> {
   const auth = await requireAdmin()
   if ('error' in auth) return { success: false, error: auth.error }
-  const { supabase } = auth
+  const { supabase, admin } = auth
 
-  // Nouveau lien court, lisible : slug du nom + suffixe unique (migration 035).
+  // Nouveau lien « société + code » (migration 039) : le code change, l'ancien
+  // lien cesse de marcher (c'est le but d'une régénération).
   const { data: rawProj } = await supabase
     .from('projects')
-    .select('name')
+    .select('name, client_id')
     .eq('id', projectId)
     .maybeSingle()
-  const projName = (rawProj as { name: string } | null)?.name ?? 'projet'
-  const newToken = buildShareToken(projName)
+  const proj = rawProj as { name: string; client_id: string | null } | null
+  const newToken = await buildClientToken(admin, {
+    projectName: proj?.name ?? 'projet',
+    crmClientId: proj?.client_id ?? null,
+    projectId,
+  })
 
   const { data: updated, error } = await db(supabase)
     .from('projects')

@@ -10,6 +10,8 @@ import type { PhaseStatus } from '@/lib/types'
 export interface RailPhase {
   id: string
   name: string
+  /** Slug de l'étape : son lien court /client/<lien>/<slug>. */
+  slug: string
   status: PhaseStatus
   /** Le client peut ouvrir l'étape (sinon : pas de lien, cf. isPhaseViewable). */
   viewable: boolean
@@ -135,7 +137,7 @@ export default function ClientProjectRail({ token, projectName, progress, phases
             {phases.map((phase) => {
               const done = isDone(phase.status)
               const locked = !phase.viewable
-              const active = pathname.includes(`/phases/${phase.id}`)
+              const active = pathname === `${base}/${phase.slug}` || pathname.includes(`/phases/${phase.id}`)
               const review = phase.status === 'in_review'
 
               if (locked) {
@@ -160,7 +162,7 @@ export default function ClientProjectRail({ token, projectName, progress, phases
               return (
                 <Link
                   key={phase.id}
-                  href={`${base}/phases/${phase.id}`}
+                  href={`${base}/${phase.slug}`}
                   onClick={() => setMobileOpen(false)}
                   aria-current={active ? 'page' : undefined}
                   className={`flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] transition-colors duration-[160ms] ${
