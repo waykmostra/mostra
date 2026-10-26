@@ -2,50 +2,23 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ChevronDown, FolderPlus, Bell, Loader2 } from 'lucide-react'
+import { FolderPlus, Bell } from 'lucide-react'
 import { toast } from 'sonner'
-import { updateClient, updateClientStatus } from '../actions'
-import type { Client, ClientStatus } from '@/lib/types'
-
-const STATUSES: { id: ClientStatus; label: string; color: string; bg: string }[] = [
-  { id: 'active',   label: 'Actif',    color: '#22C55E', bg: '#22C55E15' },
-  { id: 'former',   label: 'Ancien',   color: '#64748B', bg: '#64748B15' },
-]
+import { updateClient } from '../actions'
+import type { Client } from '@/lib/types'
 
 interface ClientHeaderProps {
-  client: Pick<Client, 'id' | 'company_name' | 'contact_name' | 'status' | 'follow_up_pending'>
+  client: Pick<Client, 'id' | 'company_name' | 'contact_name' | 'follow_up_pending'>
+  /** Le statut ne se règle plus à la main : il se lit aux projets en cours. */
+  activeProjects: number
 }
 
-export default function ClientHeader({ client }: ClientHeaderProps) {
-  const [status, setStatus] = useState<ClientStatus>(client.status)
+export default function ClientHeader({ client, activeProjects }: ClientHeaderProps) {
   const [followUp, setFollowUp] = useState(client.follow_up_pending)
-  const [open, setOpen] = useState(false)
   const [, startTransition] = useTransition()
-  const [isPending, setPending] = useState(false)
 
-  const current = STATUSES.find((s) => s.id === status)!
   const displayName = client.company_name || client.contact_name
-
-  function changeStatus(newStatus: ClientStatus) {
-    if (newStatus === status) {
-      setOpen(false)
-      return
-    }
-    setStatus(newStatus)
-    setOpen(false)
-    setPending(true)
-    startTransition(async () => {
-      const result = await updateClientStatus(client.id, newStatus)
-      setPending(false)
-      if (!result.success) {
-        setStatus(client.status)
-        toast.error(result.error)
-      } else {
-        const label = STATUSES.find((s) => s.id === newStatus)!.label
-        toast.success(`Statut → ${label}`)
-      }
-    })
-  }
+  const busy = activeProjects > 0
 
   function toggleFollowUp() {
     const next = !followUp
@@ -77,50 +50,18 @@ export default function ClientHeader({ client }: ClientHeaderProps) {
               <p className="text-sm text-dim mt-0.5">{client.contact_name}</p>
             )}
 
-            {/* Édit inline du statut */}
-            <div className="relative inline-block mt-2">
-              <button
-                type="button"
-                onClick={() => setOpen((v) => !v)}
-                disabled={isPending}
-                className="
-                  inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border
-                  hover:brightness-110 transition-all disabled:opacity-50
-                "
-                style={{
-                  color: current.color,
-                  backgroundColor: current.bg,
-                  borderColor: `${current.color}40`,
-                }}
-              >
-                {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                {current.label}
-                <ChevronDown className="h-3 w-3" />
-              </button>
-
-              {open && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-                  <div className="absolute left-0 top-full mt-1 z-20 bg-surface-2 border border-line rounded-lg overflow-hidden min-w-[160px] shadow-xl">
-                    {STATUSES.map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => changeStatus(s.id)}
-                        className={`
-                          flex items-center gap-2 w-full px-3 py-2 text-xs text-left
-                          hover:bg-surface-3 transition-colors
-                          ${s.id === status ? 'bg-surface-2' : ''}
-                        `}
-                      >
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                        <span className="text-ink">{s.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+            <span
+              className={`mt-2 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
+                busy
+                  ? 'border-[#22C55E]/25 bg-[#22C55E]/10 text-[#22C55E]'
+                  : 'border-line bg-surface-2 text-faint'
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${busy ? 'bg-[#22C55E]' : 'bg-line-strong'}`} />
+              {busy
+                ? `${activeProjects} projet${activeProjects > 1 ? 's' : ''} en cours`
+                : 'Aucun projet en cours'}
+            </span>
           </div>
         </div>
 

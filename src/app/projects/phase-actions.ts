@@ -386,3 +386,59 @@ export async function renameProjectPhase(
   revalidatePath(`/projects/${phase.project_id}`)
   return { success: true }
 }
+
+// ── moveProjectPhase (mode éditeur) ───────────────────────────────
+// Monte ou descend une étape d'un cran (ex. passer l'animation en premier).
+// On renumérote tout le projet : les sort_order hérités ne sont pas forcément
+// contigus.
+
+export async function moveProjectPhase(
+  phaseId: string,
+  direction: 'up' | 'down',
+): Promise<PhaseActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { supabase, user } = auth
+
+  const { data: rawPhase } = await supabase
+    .from('project_phases')
+    .select('id, project_id, name')
+    .eq('id', phaseId)
+    .maybeSingle()
+  const phase = rawPhase as Pick<ProjectPhase, 'id' | 'project_id' | 'name'> | null
+  if (!phase) return { success: false, error: 'Étape introuvable' }
+
+  const { data: rawAll } = await supabase
+    .from('project_phases')
+    .select('id, sort_order')
+    .eq('project_id', phase.project_id)
+    .order('sort_order', { ascending: true })
+  const all = (rawAll as Pick<ProjectPhase, 'id' | 'sort_order'>[] | null) ?? []
+
+  const from = all.findIndex((p) => p.id === phaseId)
+  const to = direction === 'up' ? from - 1 : from + 1
+  if (from < 0 || to < 0 || to >= all.length) return { success: true }
+
+  const ordered = [...all]
+  const [moved] = ordered.splice(from, 1)
+  ordered.splice(to, 0, moved)
+
+  for (const [i, p] of ordered.entries()) {
+    if (p.sort_order === i + 1) continue
+    const { error } = await db(supabase)
+      .from('project_phases')
+      .update({ sort_order: i + 1 })
+      .eq('id', p.id)
+    if (error) return { success: false, error: error.message }
+  }
+
+  await db(supabase).from('activity_logs').insert({
+    project_id: phase.project_id,
+    user_id: user.id,
+    action: 'status_changed',
+    details: { phase_name: phase.name, message: 'Étape déplacée' },
+  })
+
+  revalidatePath(`/projects/${phase.project_id}`, 'layout')
+  return { success: true }
+}

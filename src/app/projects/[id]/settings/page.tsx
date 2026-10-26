@@ -34,7 +34,7 @@ export default async function ProjectSettingsPage({ params }: { params: { id: st
           />
           <h1 className="mt-3 text-[1.625rem] leading-tight text-ink">Étapes du projet</h1>
           <p className="mt-1.5 max-w-[64ch] text-[14px] leading-relaxed text-dim">
-            Ajoutez, renommez ou supprimez les étapes de ce projet. Active le mode éditeur pour
+            Ajoute, renomme, réordonne ou supprime les étapes de ce projet. Active le mode éditeur pour
             modifier la structure.
           </p>
         </div>

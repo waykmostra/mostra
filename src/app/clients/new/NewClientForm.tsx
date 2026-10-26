@@ -9,24 +9,14 @@ import { Loader2, ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { createClient } from '../actions'
-import type { ClientSource, ClientStatus } from '@/lib/types'
+import { createCompany } from '../companies/actions'
+import CompanyCombobox, { type CompanyChoice } from '../CompanyCombobox'
 
 // ── Zod schema ───────────────────────────────────────────────────
-
-const sourceValues = [
-  'instagram',
-  'linkedin',
-  'word_of_mouth',
-  'website',
-  'referral',
-  'cold_outreach',
-  'other',
-] as const
-
-const statusValues = ['active', 'former'] as const
+// Un contact = une personne. Le site web vit sur la société ; la source et le
+// statut ne servent plus (le statut se lit aux projets en cours).
 
 const schema = z.object({
-  companyName: z.string().max(100, 'Trop long').optional(),
   contactName: z.string().min(1, 'Le nom du contact est requis').max(100, 'Trop long'),
   email: z
     .string()
@@ -34,28 +24,10 @@ const schema = z.object({
     .optional()
     .refine((v) => !v || /^\S+@\S+\.\S+$/.test(v), 'Email invalide'),
   phone: z.string().max(30, 'Numéro trop long').optional(),
-  website: z.string().max(200).optional(),
-  source: z.enum(sourceValues),
-  status: z.enum(statusValues),
   notes: z.string().max(2000).optional(),
 })
 
 type FormValues = z.infer<typeof schema>
-
-const SOURCE_LABELS: Record<ClientSource, string> = {
-  instagram: 'Instagram',
-  linkedin: 'LinkedIn',
-  word_of_mouth: 'Bouche à oreille',
-  website: 'Site web',
-  referral: 'Recommandation',
-  cold_outreach: 'Démarchage à froid',
-  other: 'Autre',
-}
-
-const STATUS_LABELS: Record<ClientStatus, string> = {
-  active: 'Actif',
-  former: 'Ancien',
-}
 
 // ── Helpers UI ───────────────────────────────────────────────────
 
@@ -80,19 +52,22 @@ const inputClass = `
   disabled:opacity-50
 `
 
-const selectClass = `
-  w-full px-3 py-2.5 rounded-lg text-sm
-  bg-surface border border-line text-ink
-  outline-none transition-colors
-  focus:border-brand focus:ring-1 focus:ring-brand/30
-  disabled:opacity-50
-`
-
 // ── Composant ────────────────────────────────────────────────────
 
-export default function NewClientForm() {
+interface Props {
+  companies: { id: string; name: string }[]
+  /** Arrivée depuis une fiche société : elle est présélectionnée et on y revient. */
+  initialCompanyId?: string
+}
+
+export default function NewClientForm({ companies, initialCompanyId }: Props) {
   const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
+  const initialCompany = companies.find((c) => c.id === initialCompanyId)
+  const [company, setCompany] = useState<CompanyChoice>(
+    initialCompany ? { id: initialCompany.id, name: initialCompany.name } : { id: null, name: '' },
+  )
+  const backHref = initialCompany ? `/clients/companies/${initialCompany.id}` : '/clients'
 
   const {
     register,
@@ -100,20 +75,28 @@ export default function NewClientForm() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { source: 'other', status: 'active' },
   })
 
   async function onSubmit(values: FormValues) {
     setServerError(null)
 
+    // Société tapée mais inexistante : on la crée d'abord (renvoie l'existante
+    // si le nom est déjà pris, à la casse près).
+    let companyId = company.id ?? undefined
+    if (!companyId && company.name) {
+      const created = await createCompany({ name: company.name })
+      if (!created.success) {
+        setServerError(created.error)
+        return
+      }
+      companyId = created.companyId
+    }
+
     const result = await createClient({
-      companyName: values.companyName || undefined,
+      companyId,
       contactName: values.contactName,
       email: values.email || undefined,
       phone: values.phone || undefined,
-      website: values.website || undefined,
-      source: values.source as ClientSource,
-      status: values.status as ClientStatus,
       notes: values.notes || undefined,
     })
 
@@ -122,8 +105,8 @@ export default function NewClientForm() {
       return
     }
 
-    toast.success(`Client "${values.companyName || values.contactName}" créé !`)
-    router.push(`/clients/${result.clientId}`)
+    toast.success(`Contact « ${values.contactName} » créé`)
+    router.push(initialCompany ? backHref : `/clients/${result.clientId}`)
     router.refresh()
   }
 
@@ -132,31 +115,29 @@ export default function NewClientForm() {
       {/* Header */}
       <div className="mb-8">
         <Link
-          href="/clients"
+          href={backHref}
           className="inline-flex items-center gap-1.5 text-sm text-faint hover:text-ink transition-colors mb-4"
         >
           <ChevronLeft className="h-4 w-4" />
-          Retour aux clients
+          {initialCompany ? `Retour à ${initialCompany.name}` : 'Retour aux clients'}
         </Link>
-        <h1 className="text-xl font-semibold text-ink">Nouveau client</h1>
+        <h1 className="text-xl font-semibold text-ink">Nouveau contact</h1>
         <p className="text-sm text-faint mt-0.5">
-          Crée une fiche CRM. Le compte connectable sera généré plus tard depuis la fiche client.
+          Une personne, rattachée à sa société. Son accès client se génère ensuite depuis sa fiche.
         </p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
         {/* ── Société ── */}
         <div>
-          <Label htmlFor="companyName">Société</Label>
-          <input
-            id="companyName"
-            type="text"
-            placeholder="ex. Acme Inc."
-            {...register('companyName')}
-            className={inputClass}
+          <Label htmlFor="company">Société</Label>
+          <CompanyCombobox
+            companies={companies}
+            value={company}
+            onChange={setCompany}
             disabled={isSubmitting}
+            inputClassName={inputClass}
           />
-          <FieldError message={errors.companyName?.message} />
         </div>
 
         {/* ── Contact ── */}
@@ -203,56 +184,6 @@ export default function NewClientForm() {
           <FieldError message={errors.phone?.message} />
         </div>
 
-        {/* ── Site web ── */}
-        <div>
-          <Label htmlFor="website">Site web</Label>
-          <input
-            id="website"
-            type="text"
-            placeholder="https://exemple.com"
-            {...register('website')}
-            className={inputClass}
-            disabled={isSubmitting}
-          />
-          <FieldError message={errors.website?.message} />
-        </div>
-
-        {/* ── Source ── */}
-        <div>
-          <Label htmlFor="source">Source</Label>
-          <select
-            id="source"
-            {...register('source')}
-            className={selectClass}
-            disabled={isSubmitting}
-          >
-            {sourceValues.map((s) => (
-              <option key={s} value={s}>
-                {SOURCE_LABELS[s]}
-              </option>
-            ))}
-          </select>
-          <FieldError message={errors.source?.message} />
-        </div>
-
-        {/* ── Statut ── */}
-        <div>
-          <Label htmlFor="status">Statut</Label>
-          <select
-            id="status"
-            {...register('status')}
-            className={selectClass}
-            disabled={isSubmitting}
-          >
-            {statusValues.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABELS[s]}
-              </option>
-            ))}
-          </select>
-          <FieldError message={errors.status?.message} />
-        </div>
-
         {/* ── Notes ── */}
         <div>
           <Label htmlFor="notes">Notes</Label>
@@ -277,7 +208,7 @@ export default function NewClientForm() {
         {/* ── Actions ── */}
         <div className="flex items-center gap-3 pt-2">
           <Link
-            href="/clients"
+            href={backHref}
             className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium text-center
               border border-line text-dim hover:text-ink hover:border-line-strong
               transition-colors"
@@ -293,7 +224,7 @@ export default function NewClientForm() {
               flex items-center justify-center gap-2"
           >
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Créer le client
+            Créer le contact
           </button>
         </div>
       </form>

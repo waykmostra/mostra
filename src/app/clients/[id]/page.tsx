@@ -10,7 +10,7 @@ import DeleteClientButton from '../DeleteClientButton'
 import ClientHeader from './ClientHeader'
 import ClientInfoCard from './ClientInfoCard'
 import CompanyAssign from './CompanyAssign'
-import InteractionsTimeline from './InteractionsTimeline'
+import LinkProjectButton from './LinkProjectButton'
 import AccountSection from './AccountSection'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -36,15 +36,23 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const detail = await getClientDetail(supabase, params.id)
   if (!detail) notFound()
 
-  const { client, projects, interactions } = detail
+  const { client, projects } = detail
   const displayName = client.company_name || client.contact_name
   const hasAccount = !!client.profile_id
   const hasEmail = !!client.email
   const activeCount = projects.filter((p) => p.status === 'active').length
-  const [access, companies] = await Promise.all([
+  const [access, companies, allProjectsRes] = await Promise.all([
     getClientAccess(client.profile_id ?? null),
     getAllCompanies(supabase),
+    supabase
+      .from('projects')
+      .select('id, name, status')
+      .order('updated_at', { ascending: false }),
   ])
+  const linkedIds = new Set(projects.map((p) => p.id))
+  const linkableProjects = (
+    (allProjectsRes.data as { id: string; name: string; status: string }[] | null) ?? []
+  ).filter((p) => !linkedIds.has(p.id))
   const currentCompanyName = client.company_id
     ? (companies.find((c) => c.id === client.company_id)?.name ?? null)
     : null
@@ -60,8 +68,8 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
         Retour aux clients
       </Link>
 
-      {/* Header (statut éditable + follow-up + nouveau projet) */}
-      <ClientHeader client={client} />
+      {/* Header (projets en cours + follow-up + nouveau projet) */}
+      <ClientHeader client={client} activeProjects={activeCount} />
 
       {/* Infos commerciales éditables */}
       <ClientInfoCard client={client} />
@@ -82,9 +90,6 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
         access={access}
       />
 
-      {/* Interactions */}
-      <InteractionsTimeline clientId={client.id} initialInteractions={interactions} />
-
       {/* Projets liés */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -94,17 +99,20 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               {projects.length} au total · {activeCount} actif{activeCount !== 1 ? 's' : ''}
             </span>
           </h2>
-          <Link
-            href={`/projects/new?clientId=${client.id}`}
-            className="
-              inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-              bg-surface-2 border border-line text-ink hover:bg-surface-3
-              transition-colors
-            "
-          >
-            <FolderOpen className="h-3.5 w-3.5" />
-            Nouveau projet
-          </Link>
+          <div className="flex items-center gap-2">
+            <LinkProjectButton clientId={client.id} projects={linkableProjects} />
+            <Link
+              href={`/projects/new?clientId=${client.id}`}
+              className="
+                inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                bg-surface-2 border border-line text-ink hover:bg-surface-3
+                transition-colors
+              "
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+              Nouveau projet
+            </Link>
+          </div>
         </div>
 
         <div className="bg-surface border border-line rounded-xl overflow-hidden">
@@ -191,8 +199,8 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           <div>
             <h3 className="text-sm font-semibold text-ink">Zone de danger</h3>
             <p className="text-xs text-faint mt-0.5">
-              Supprimer ce client supprime aussi son compte auth le cas échéant et toutes ses
-              interactions. Les projets associés sont conservés mais détachés.
+              Supprimer ce contact supprime aussi son compte client le cas échéant. Les projets
+              associés sont conservés mais détachés.
             </p>
           </div>
         </div>

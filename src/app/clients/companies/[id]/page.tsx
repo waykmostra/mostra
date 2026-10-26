@@ -6,6 +6,7 @@ import { getCurrentProfile } from '@/lib/auth'
 import { getCompanyDetail } from '@/lib/supabase/queries'
 import { formatDate } from '@/lib/utils/dates'
 import CompanyHeader from './CompanyHeader'
+import AddContactMenu from './AddContactMenu'
 
 const STATUS_LABEL: Record<string, string> = {
   active: 'Actif',
@@ -34,6 +35,14 @@ export default async function CompanyDetailPage({ params }: { params: { id: stri
   if (!detail) notFound()
 
   const { company, clients, projects, totalRevenue } = detail
+
+  const { data: rawContacts } = await supabase
+    .from('clients')
+    .select('id, contact_name, company_name, company_id')
+    .order('contact_name', { ascending: true })
+  const attachable = (
+    (rawContacts as { id: string; contact_name: string; company_name: string | null; company_id: string | null }[] | null) ?? []
+  ).filter((c) => c.company_id !== company.id)
 
   return (
     <div className="space-y-5 max-w-4xl">
@@ -72,16 +81,22 @@ export default async function CompanyDetailPage({ params }: { params: { id: stri
 
       {/* Contacts */}
       <div>
-        <h2 className="text-sm font-semibold text-ink mb-3">
-          Contacts
-          <span className="ml-2 text-faint font-normal">{clients.length}</span>
-        </h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-ink">
+            Contacts
+            <span className="ml-2 text-faint font-normal">{clients.length}</span>
+          </h2>
+          <AddContactMenu
+            companyId={company.id}
+            contacts={attachable.map(({ id, contact_name, company_name }) => ({ id, contact_name, company_name }))}
+          />
+        </div>
         <div className="bg-surface border border-line rounded-xl overflow-hidden">
           {clients.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <Users className="h-8 w-8 text-[rgb(var(--c-border))]" />
               <p className="text-sm text-faint">
-                Aucun contact. Rattache un client à cette société depuis sa fiche.
+                Aucun contact pour l’instant.
               </p>
             </div>
           ) : (

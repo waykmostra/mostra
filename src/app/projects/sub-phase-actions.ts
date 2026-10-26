@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createNotifications, getProjectRecipients } from '@/lib/notifications'
 import { sendEmail } from '@/lib/email/send'
 import type { SubPhase, ProjectPhase } from '@/lib/types'
+import { SUB_PHASE_TYPES, type SubPhaseType } from '@/lib/subPhaseTypes'
 
 export type SubPhaseActionResult = { success: true } | { success: false; error: string }
 
@@ -87,6 +88,7 @@ export async function startSubPhase(subPhaseId: string): Promise<SubPhaseActionR
   })
 
   revalidatePath(`/projects/${phase.project_id}`)
+  revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}`)
   revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}/sub/${subPhaseId}`)
   return { success: true }
 }
@@ -171,6 +173,7 @@ export async function sendSubPhaseToReview(subPhaseId: string): Promise<SubPhase
   })()
 
   revalidatePath(`/projects/${phase.project_id}`)
+  revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}`)
   revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}/sub/${subPhaseId}`)
   return { success: true }
 }
@@ -240,6 +243,7 @@ export async function approveSubPhase(subPhaseId: string): Promise<SubPhaseActio
   })()
 
   revalidatePath(`/projects/${phase.project_id}`)
+  revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}`)
   revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}/sub/${subPhaseId}`)
   return { success: true }
 }
@@ -276,6 +280,7 @@ export async function unapproveSubPhase(subPhaseId: string): Promise<SubPhaseAct
   })
 
   revalidatePath(`/projects/${phase.project_id}`)
+  revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}`)
   revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}/sub/${subPhaseId}`)
   return { success: true }
 }
@@ -283,25 +288,6 @@ export async function unapproveSubPhase(subPhaseId: string): Promise<SubPhaseAct
 // ── CRUD des sous-étapes (mode éditeur) ───────────────────────────
 // Le type détermine l'interface rendue côté admin et côté client : c'est le
 // `slug` qui aiguille (formulaire, script, moodboard, storyboard, design, VO…).
-
-export type SubPhaseType =
-  | 'formulaire'
-  | 'script'
-  | 'style'
-  | 'storyboard'
-  | 'design'
-  | 'vo'
-  | 'musique'
-
-export const SUB_PHASE_TYPES: { type: SubPhaseType; slug: string; name: string }[] = [
-  { type: 'formulaire', slug: 'formulaire', name: 'Formulaire de brief' },
-  { type: 'script', slug: 'script', name: 'Script' },
-  { type: 'style', slug: 'style', name: 'Moodboard / Style' },
-  { type: 'storyboard', slug: 'storyboard', name: 'Storyboard' },
-  { type: 'design', slug: 'design', name: 'Maquettes' },
-  { type: 'vo', slug: 'vo', name: 'Voix off' },
-  { type: 'musique', slug: 'musique', name: 'Musique' },
-]
 
 export async function addSubPhase(
   phaseId: string,
@@ -351,6 +337,7 @@ export async function addSubPhase(
   })
 
   revalidatePath(`/projects/${phase.project_id}`)
+  revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}`)
   revalidatePath(`/projects/${phase.project_id}/phases/${phaseId}`)
   return { success: true }
 }
@@ -377,6 +364,7 @@ export async function renameSubPhase(
   if (error) return { success: false, error: error.message }
 
   revalidatePath(`/projects/${phase.project_id}`)
+  revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}`)
   revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}`)
   return { success: true }
 }
@@ -409,6 +397,7 @@ export async function deleteSubPhase(subPhaseId: string): Promise<SubPhaseAction
   })
 
   revalidatePath(`/projects/${phase.project_id}`)
+  revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}`)
   revalidatePath(`/projects/${phase.project_id}/phases/${phase.id}`)
   return { success: true }
 }

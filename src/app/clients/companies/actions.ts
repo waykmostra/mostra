@@ -104,6 +104,11 @@ export async function updateCompany(id: string, input: UpdateCompanyInput): Prom
     return { success: false, error: error.message }
   }
 
+  // Les contacts affichent encore le nom texte : il suit le renommage.
+  if (patch.name) {
+    await db(admin).from('clients').update({ company_name: patch.name }).eq('company_id', id)
+  }
+
   revalidate(id)
   return { success: true }
 }
@@ -130,9 +135,22 @@ export async function setClientCompany(
   if ('error' in auth) return { success: false, error: auth.error }
   const { admin } = auth
 
+  // Le nom texte (affichage, ancien champ) suit la société rattachée.
+  let companyName: string | null = null
+  if (companyId) {
+    const { data: rawCompany } = await admin
+      .from('companies')
+      .select('name')
+      .eq('id', companyId)
+      .maybeSingle()
+    const company = rawCompany as { name: string } | null
+    if (!company) return { success: false, error: 'Société introuvable.' }
+    companyName = company.name
+  }
+
   const { error } = await db(admin)
     .from('clients')
-    .update({ company_id: companyId })
+    .update({ company_id: companyId, company_name: companyName })
     .eq('id', clientId)
   if (error) return { success: false, error: error.message }
 

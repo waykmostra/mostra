@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Loader2,
   Save,
@@ -236,6 +237,7 @@ export default function ScriptEditor({
   const [view, setView] = useState<'table' | 'summary'>('summary')
   const [openRowKey, setOpenRowKey] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const router = useRouter()
   const [transitioning, setTransitioning] = useState<'start' | 'review' | 'approve' | null>(null)
 
   const allComments = useRealtimeBlockComments(projectId ?? '', subPhaseId, initialComments)
@@ -328,14 +330,22 @@ export default function ScriptEditor({
         return
       }
     }
-    const result =
-      action === 'start'
-        ? await startSubPhase(subPhaseId)
-        : action === 'review'
-          ? await sendSubPhaseToReview(subPhaseId)
-          : await approveSubPhase(subPhaseId)
-    setTransitioning(null)
-    if (!result.success) toast.error((result as { error: string }).error)
+    // try/finally : une action qui échoue côté serveur ne laisse jamais le
+    // bouton tourner à l'infini.
+    try {
+      const result =
+        action === 'start'
+          ? await startSubPhase(subPhaseId)
+          : action === 'review'
+            ? await sendSubPhaseToReview(subPhaseId)
+            : await approveSubPhase(subPhaseId)
+      if (!result.success) toast.error((result as { error: string }).error)
+      else router.refresh()
+    } catch {
+      toast.error('L’action n’a pas abouti. Recharge la page et réessaie.')
+    } finally {
+      setTransitioning(null)
+    }
   }
 
   const btnBase =

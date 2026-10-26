@@ -16,7 +16,7 @@ interface Props {
 
 /**
  * Pipeline de phases + « Mode éditeur ». Par défaut, l'édition des étapes
- * (ajout / suppression / renommage) est VERROUILLÉE — on l'active via le
+ * (ajout / suppression / renommage / ordre) est VERROUILLÉE — on l'active via le
  * bouton « Mode éditeur » pour éviter les modifs accidentelles pendant la
  * gestion quotidienne du projet.
  */
@@ -36,7 +36,7 @@ export default function PhasePipeline({
         <div className="flex items-center justify-between mb-3">
           {editMode ? (
             <p className="text-[11px] text-brand">
-              Édition activée — tu peux renommer, ajouter ou supprimer des étapes.
+              Édition activée — tu peux renommer, déplacer, ajouter ou supprimer des étapes.
             </p>
           ) : (
             <span />
@@ -74,6 +74,7 @@ export default function PhasePipeline({
               key={phase.id}
               phase={phase}
               projectId={projectId}
+              isFirst={i === 0}
               isLast={i === phases.length - 1}
               canStart={canStart}
               files={filesByPhase[phase.id] ?? []}

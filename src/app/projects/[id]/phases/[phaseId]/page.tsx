@@ -139,7 +139,9 @@ export default async function PhasePage({ params, searchParams }: PageProps) {
               shareToken={project.share_token}
               activeScriptParam={searchParams?.script}
               forceGrid={searchParams?.grid === '1'}
-              showHeading={subPhases.length === 1}
+              // Le titre de l'étape est déjà en tête de page (une seule sous-étape)
+              // ou dans les onglets (plusieurs) : pas de second titre.
+              showHeading={false}
             />
           </>
         )}

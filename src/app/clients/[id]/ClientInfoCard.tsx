@@ -4,11 +4,8 @@ import { useState, useTransition } from 'react'
 import {
   Mail,
   Phone,
-  Globe,
-  Building2,
   User,
   StickyNote,
-  Tag,
   Pencil,
   Check,
   X,
@@ -16,30 +13,15 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { updateClient } from '../actions'
-import type { Client, ClientSource } from '@/lib/types'
-
-const SOURCE_LABEL: Record<ClientSource, string> = {
-  instagram:     'Instagram',
-  linkedin:      'LinkedIn',
-  word_of_mouth: 'Bouche-à-oreille',
-  website:       'Site web',
-  referral:      'Recommandation',
-  cold_outreach: 'Démarchage',
-  other:         'Autre',
-}
+import type { Client } from '@/lib/types'
 
 interface ClientInfoCardProps {
   client: Client
 }
 
-type FieldKey =
-  | 'company_name'
-  | 'contact_name'
-  | 'email'
-  | 'phone'
-  | 'website'
-  | 'source'
-  | 'notes'
+// Société (bloc dédié), site web (porté par la société), source et statut ne
+// sont plus éditables ici : un contact = une personne et ses coordonnées.
+type FieldKey = 'contact_name' | 'email' | 'phone' | 'notes'
 
 export default function ClientInfoCard({ client: initialClient }: ClientInfoCardProps) {
   const [client, setClient] = useState(initialClient)
@@ -58,19 +40,6 @@ export default function ClientInfoCard({ client: initialClient }: ClientInfoCard
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <EditableField
-          icon={<Building2 className="h-3.5 w-3.5" />}
-          label="Société"
-          field="company_name"
-          value={client.company_name}
-          editing={editing === 'company_name'}
-          onEdit={() => setEditing('company_name')}
-          onCancel={() => setEditing(null)}
-          onSave={(v) => commit('company_name', v || null)}
-          clientId={client.id}
-          placeholder="ex. Acme Corp"
-        />
-
         <EditableField
           icon={<User className="h-3.5 w-3.5" />}
           label="Contact"
@@ -108,29 +77,6 @@ export default function ClientInfoCard({ client: initialClient }: ClientInfoCard
           onCancel={() => setEditing(null)}
           onSave={(v) => commit('phone', v || null)}
           link={client.phone ? `tel:${client.phone}` : undefined}
-          clientId={client.id}
-        />
-
-        <EditableField
-          icon={<Globe className="h-3.5 w-3.5" />}
-          label="Site web"
-          field="website"
-          value={client.website}
-          editing={editing === 'website'}
-          onEdit={() => setEditing('website')}
-          onCancel={() => setEditing(null)}
-          onSave={(v) => commit('website', v || null)}
-          link={client.website || undefined}
-          clientId={client.id}
-        />
-
-        <SelectField
-          icon={<Tag className="h-3.5 w-3.5" />}
-          label="Source"
-          value={client.source}
-          onChange={(v) => {
-            setClient((c) => ({ ...c, source: v }))
-          }}
           clientId={client.id}
         />
       </div>
@@ -273,55 +219,6 @@ function EditableField({
           </button>
         </div>
       )}
-    </div>
-  )
-}
-
-// ─── SelectField (source) ───────────────────────────────────────
-
-function SelectField({
-  icon,
-  label,
-  value,
-  onChange,
-  clientId,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: ClientSource
-  onChange: (v: ClientSource) => void
-  clientId: string
-}) {
-  const [isPending, startTransition] = useTransition()
-
-  function handleChange(v: ClientSource) {
-    onChange(v)
-    startTransition(async () => {
-      const result = await updateClient(clientId, { source: v })
-      if (!result.success) toast.error(result.error)
-    })
-  }
-
-  return (
-    <div className="bg-surface border border-line rounded-lg px-3 py-2.5">
-      <p className="text-[10px] uppercase tracking-widest text-faint font-medium mb-1 flex items-center gap-1.5">
-        {icon}
-        {label}
-      </p>
-      <select
-        value={value}
-        onChange={(e) => handleChange(e.target.value as ClientSource)}
-        disabled={isPending}
-        className="
-          w-full bg-transparent text-sm text-ink
-          focus:outline-none cursor-pointer
-          disabled:opacity-50
-        "
-      >
-        {Object.entries(SOURCE_LABEL).map(([k, v]) => (
-          <option key={k} value={k} className="bg-surface-2">{v}</option>
-        ))}
-      </select>
     </div>
   )
 }

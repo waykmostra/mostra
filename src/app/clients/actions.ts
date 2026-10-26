@@ -50,12 +50,14 @@ export type ClientActionResult = { success: true } | { success: false; error: st
 // createAccountForClient si on veut générer un lien set-password).
 
 export interface CreateClientInput {
+  /** Société de rattachement (choisie ou créée juste avant dans le formulaire). */
+  companyId?: string
   companyName?: string
   contactName: string
   email?: string
   phone?: string
   website?: string
-  source: ClientSource
+  source?: ClientSource
   status?: ClientStatus
   notes?: string
 }
@@ -74,13 +76,27 @@ export async function createClient(input: CreateClientInput): Promise<CreateClie
     return { success: false, error: 'Le nom du contact est requis.' }
   }
 
+  // Le nom texte suit la société rattachée : il sert encore à l'affichage.
+  let companyName = input.companyName?.trim() || null
+  if (input.companyId) {
+    const { data: rawCompany } = await admin
+      .from('companies')
+      .select('name')
+      .eq('id', input.companyId)
+      .maybeSingle()
+    const company = rawCompany as { name: string } | null
+    if (!company) return { success: false, error: 'Société introuvable.' }
+    companyName = company.name
+  }
+
   const payload = {
-    company_name: input.companyName?.trim() || null,
+    company_id: input.companyId ?? null,
+    company_name: companyName,
     contact_name: contactName,
     email: input.email?.trim().toLowerCase() || null,
     phone: input.phone?.trim() || null,
     website: input.website?.trim() || null,
-    source: input.source,
+    source: input.source ?? ('other' as ClientSource),
     status: input.status ?? ('active' as ClientStatus),
     notes: input.notes?.trim() || null,
   }
@@ -96,7 +112,48 @@ export async function createClient(input: CreateClientInput): Promise<CreateClie
   }
 
   revalidatePath('/clients')
+  if (input.companyId) revalidatePath(`/clients/companies/${input.companyId}`)
   return { success: true, clientId: (row as { id: string }).id }
+}
+
+// ── linkProjectToClient ──────────────────────────────────────────
+// Rattache un projet existant à un contact depuis sa fiche. Le contact gagne
+// l'accès au projet (project_clients) ; il en devient le client principal
+// seulement si le projet n'en avait pas.
+
+export async function linkProjectToClient(
+  clientId: string,
+  projectId: string,
+): Promise<ClientActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return { success: false, error: auth.error }
+  const { admin } = auth
+
+  const { data: rawProject } = await admin
+    .from('projects')
+    .select('id, client_id')
+    .eq('id', projectId)
+    .maybeSingle()
+  const project = rawProject as { id: string; client_id: string | null } | null
+  if (!project) return { success: false, error: 'Projet introuvable.' }
+
+  const { error } = await db(admin)
+    .from('project_clients')
+    .upsert({ project_id: projectId, client_id: clientId }, { onConflict: 'project_id,client_id' })
+  if (error) return { success: false, error: error.message }
+
+  if (!project.client_id) {
+    const { error: primaryErr } = await db(admin)
+      .from('projects')
+      .update({ client_id: clientId })
+      .eq('id', projectId)
+    if (primaryErr) return { success: false, error: primaryErr.message }
+  }
+
+  revalidatePath(`/clients/${clientId}`)
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath('/clients')
+  return { success: true }
 }
 
 // ── updateClient ─────────────────────────────────────────────────

@@ -18,6 +18,7 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Loader2,
   X,
   Trash2,
@@ -34,7 +35,7 @@ import FileUpload from '@/components/project/FileUpload'
 import SubPhaseManager from '@/components/project/SubPhaseManager'
 import FileVersionHistory from '@/components/project/FileVersionHistory'
 import { formatDate } from '@/lib/utils/dates'
-import { startPhase, sendToReview, completePhase, unapprovePhase, deleteProjectPhase, renameProjectPhase } from '@/app/projects/phase-actions'
+import { startPhase, sendToReview, completePhase, unapprovePhase, deleteProjectPhase, renameProjectPhase, moveProjectPhase } from '@/app/projects/phase-actions'
 import {
   startSubPhase,
   sendSubPhaseToReview,
@@ -67,12 +68,13 @@ const PHASE_ICONS: Record<string, LucideIcon> = {
 interface PhaseCardProps {
   phase: ProjectPhase
   projectId: string
+  isFirst?: boolean
   isLast?: boolean
   canStart: boolean
   files: PhaseFile[]
   subPhases: SubPhase[]
   userRole: UserRole
-  /** Mode éditeur actif → renommage + suppression des étapes autorisés. */
+  /** Mode éditeur actif → renommage, déplacement et suppression des étapes. */
   editMode?: boolean
 }
 
@@ -83,6 +85,7 @@ type LoadingAction = 'start' | 'review' | 'complete' | 'unapprove' | null
 export default function PhaseCard({
   phase,
   projectId,
+  isFirst = false,
   isLast = false,
   canStart,
   files,
@@ -101,6 +104,7 @@ export default function PhaseCard({
   )
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [moving, setMoving] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [nameDraft, setNameDraft] = useState(phase.name)
   const [savingName, setSavingName] = useState(false)
@@ -111,6 +115,9 @@ export default function PhaseCard({
   const isActive = phase.status === 'in_progress' || phase.status === 'in_review'
   const Icon = PHASE_ICONS[phase.slug] ?? FileText
   const hasSubPhases = subPhases.length > 0
+  // Une seule sous-étape (Script, Design…) : c'est le contenu de l'étape, pas
+  // une subdivision. On n'affiche ni liste repliable ni second nom.
+  const singleSubPhase = subPhases.length === 1
 
   async function handle(action: NonNullable<LoadingAction>) {
     setLoading(action)
@@ -132,6 +139,13 @@ export default function PhaseCard({
       toast.error(result.error)
       setConfirmDelete(false)
     }
+  }
+
+  async function handleMove(direction: 'up' | 'down') {
+    setMoving(true)
+    const result = await moveProjectPhase(phase.id, direction)
+    setMoving(false)
+    if (!result.success) toast.error(result.error)
   }
 
   async function handleRename() {
@@ -252,7 +266,7 @@ export default function PhaseCard({
                     )}
                   </>
                 )}
-                {hasSubPhases && !renaming && (
+                {hasSubPhases && !singleSubPhase && !renaming && (
                   <button
                     type="button"
                     onClick={() => setSubPhasesOpen((v) => !v)}
@@ -281,6 +295,30 @@ export default function PhaseCard({
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <StatusBadge status={phase.status} />
+              {isAdmin && editMode && !confirmDelete && (
+                <span className="inline-flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => handleMove('up')}
+                    disabled={isFirst || moving}
+                    title="Monter l’étape"
+                    aria-label="Monter l’étape"
+                    className="w-6 h-6 flex items-center justify-center rounded-md text-faint hover:text-ink hover:bg-surface-3 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMove('down')}
+                    disabled={isLast || moving}
+                    title="Descendre l’étape"
+                    aria-label="Descendre l’étape"
+                    className="w-6 h-6 flex items-center justify-center rounded-md text-faint hover:text-ink hover:bg-surface-3 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              )}
               {isAdmin && editMode && (
                 confirmDelete ? (
                   <span className="inline-flex items-center gap-1">
@@ -316,8 +354,9 @@ export default function PhaseCard({
           </div>
 
           {/* ── Sous-phases (si présentes et développées) ── */}
-          {hasSubPhases && subPhasesOpen && (
+          {hasSubPhases && (subPhasesOpen || singleSubPhase) && (
             <SubPhaseList
+              single={singleSubPhase}
               subPhases={subPhases}
               projectId={projectId}
               phaseId={phase.id}
@@ -403,9 +442,12 @@ interface SubPhaseListProps {
   canStart: boolean   // la phase elle-même est démarrable (prev phase ok)
   canAct: boolean
   isAdmin: boolean
+  /** Sous-étape unique : on garde ses actions, sans libellé ni nom en double. */
+  single?: boolean
 }
 
 function SubPhaseList({
+  single = false,
   subPhases,
   projectId,
   phaseId,
@@ -442,7 +484,7 @@ function SubPhaseList({
 
   return (
     <div className="mb-3 space-y-1.5 pl-1">
-      <p className="text-[10px] text-faint uppercase tracking-widest mb-2">Sous-phases</p>
+      {!single && <p className="text-[10px] text-faint uppercase tracking-widest mb-2">Sous-phases</p>}
       {subPhases.map((sp, i) => {
         const busy = !!spLoading[sp.id]
         const spHref = `/projects/${projectId}/phases/${phaseId}/sub/${sp.id}`
@@ -458,6 +500,107 @@ function SubPhaseList({
         const canApproveSp = isAdmin && sp.status === 'in_review'
         const canUnapproveSp = isAdmin && (sp.status === 'completed' || sp.status === 'approved' || sp.status === 'in_review')
         const canView = sp.status !== 'pending'
+
+        const actions = (
+          <>
+          {/* Voir — toujours visible dès que la sp n'est pas pending */}
+          {canView && (
+            <Link href={spHref} className={btnGhost}>
+              <Eye className="h-3 w-3" />
+              Voir
+            </Link>
+          )}
+
+          {canStartSp && (
+            <button
+              type="button"
+              className={btnGreen}
+              disabled={busy}
+              onClick={() => handleSp(sp.id, 'start')}
+            >
+              {spLoading[sp.id] === 'start' ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Play className="h-3 w-3" />
+              )}
+              Démarrer
+            </button>
+          )}
+
+          {canReview && (
+            <button
+              type="button"
+              className={btnGhost}
+              disabled={busy}
+              onClick={() => handleSp(sp.id, 'review')}
+            >
+              {spLoading[sp.id] === 'review' ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Send className="h-3 w-3" />
+              )}
+              Review
+            </button>
+          )}
+
+          {canApproveSp && (
+            <button
+              type="button"
+              className={btnAmber}
+              disabled={busy}
+              onClick={() => handleSp(sp.id, 'approve')}
+            >
+              {spLoading[sp.id] === 'approve' ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <CheckCircle className="h-3 w-3" />
+              )}
+              Approuver
+            </button>
+          )}
+
+          {/* Désapprouver — 2-click confirm */}
+          {canUnapproveSp && (
+            confirmUnapprove === sp.id ? (
+              <button
+                type="button"
+                className={btnRed}
+                disabled={busy}
+                onClick={() => handleSp(sp.id, 'unapprove')}
+              >
+                {spLoading[sp.id] === 'unapprove' ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-3 w-3" />
+                )}
+                Confirmer ?
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={btnGhost}
+                disabled={busy}
+                onClick={() => setConfirmUnapprove(sp.id)}
+              >
+                <RotateCcw className="h-3 w-3" />
+                Désapprouver
+              </button>
+            )
+          )}
+
+          {!canStartSp && sp.status === 'pending' && (
+            <Lock className="h-3 w-3 text-faint" />
+          )}
+          </>
+        )
+
+        if (single) {
+          return (
+            <div key={sp.id} className="flex items-center gap-1.5 flex-wrap">
+              {actions}
+            </div>
+          )
+        }
 
         return (
           <div
@@ -502,94 +645,7 @@ function SubPhaseList({
             <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap sm:flex-shrink-0">
               <StatusBadge status={sp.status} className="text-[10px]" />
 
-              {/* Voir — toujours visible dès que la sp n'est pas pending */}
-              {canView && (
-                <Link href={spHref} className={btnGhost}>
-                  <Eye className="h-3 w-3" />
-                  Voir
-                </Link>
-              )}
-
-              {canStartSp && (
-                <button
-                  type="button"
-                  className={btnGreen}
-                  disabled={busy}
-                  onClick={() => handleSp(sp.id, 'start')}
-                >
-                  {spLoading[sp.id] === 'start' ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Play className="h-3 w-3" />
-                  )}
-                  Démarrer
-                </button>
-              )}
-
-              {canReview && (
-                <button
-                  type="button"
-                  className={btnGhost}
-                  disabled={busy}
-                  onClick={() => handleSp(sp.id, 'review')}
-                >
-                  {spLoading[sp.id] === 'review' ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Send className="h-3 w-3" />
-                  )}
-                  Review
-                </button>
-              )}
-
-              {canApproveSp && (
-                <button
-                  type="button"
-                  className={btnAmber}
-                  disabled={busy}
-                  onClick={() => handleSp(sp.id, 'approve')}
-                >
-                  {spLoading[sp.id] === 'approve' ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <CheckCircle className="h-3 w-3" />
-                  )}
-                  Approuver
-                </button>
-              )}
-
-              {/* Désapprouver — 2-click confirm */}
-              {canUnapproveSp && (
-                confirmUnapprove === sp.id ? (
-                  <button
-                    type="button"
-                    className={btnRed}
-                    disabled={busy}
-                    onClick={() => handleSp(sp.id, 'unapprove')}
-                  >
-                    {spLoading[sp.id] === 'unapprove' ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <RotateCcw className="h-3 w-3" />
-                    )}
-                    Confirmer ?
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className={btnGhost}
-                    disabled={busy}
-                    onClick={() => setConfirmUnapprove(sp.id)}
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                    Désapprouver
-                  </button>
-                )
-              )}
-
-              {!canStartSp && sp.status === 'pending' && (
-                <Lock className="h-3 w-3 text-faint" />
-              )}
+              {actions}
             </div>
           </div>
         )

@@ -4,13 +4,8 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  addSubPhase,
-  deleteSubPhase,
-  renameSubPhase,
-  SUB_PHASE_TYPES,
-  type SubPhaseType,
-} from '@/app/projects/sub-phase-actions'
+import { addSubPhase, deleteSubPhase, renameSubPhase } from '@/app/projects/sub-phase-actions'
+import { SUB_PHASE_TYPES, type SubPhaseType } from '@/lib/subPhaseTypes'
 import type { SubPhase } from '@/lib/types'
 
 interface Props {
@@ -22,6 +17,9 @@ interface Props {
  * Édition de la structure d'une étape : ajouter, renommer ou supprimer ses
  * sous-étapes. Visible uniquement en mode éditeur — supprimer une sous-étape
  * emporte son contenu (réponses, script, images) et ses commentaires.
+ *
+ * Découper une étape reste rare : tant qu'elle n'a qu'un contenu (le script de
+ * l'étape Script…), on ne montre qu'un lien discret pour en ajouter un second.
  */
 export default function SubPhaseManager({ phaseId, subPhases }: Props) {
   const router = useRouter()
@@ -38,6 +36,50 @@ export default function SubPhaseManager({ phaseId, subPhases }: Props) {
     })
   }
 
+  const typePicker = (
+    <div className="space-y-2 pt-1">
+      <div className="flex items-center justify-between">
+        <p className="text-[12.5px] text-dim">Type de sous-étape</p>
+        <button
+          type="button"
+          onClick={() => setAdding(false)}
+          className="text-faint hover:text-ink transition-colors"
+          aria-label="Annuler"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        {SUB_PHASE_TYPES.map((t) => (
+          <button
+            key={t.type}
+            type="button"
+            disabled={isPending}
+            onClick={() => add(t.type)}
+            className="rounded-md bg-surface-2 px-2.5 py-2 text-[12.5px] text-dim transition-colors hover:bg-surface-3 hover:text-ink disabled:opacity-50"
+          >
+            {t.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
+  const addButton = (
+    <button
+      type="button"
+      onClick={() => setAdding(true)}
+      className="inline-flex items-center gap-1.5 text-[12.5px] text-dim transition-colors hover:text-ink"
+    >
+      <Plus className="h-3.5 w-3.5" />
+      Ajouter une sous-étape
+    </button>
+  )
+
+  if (subPhases.length <= 1 && !adding) {
+    return <div className="mt-2">{addButton}</div>
+  }
+
   return (
     <div className="mt-3 rounded-xl border border-dashed border-line p-3 space-y-2">
       <p className="mono-label text-faint">Structure de l’étape</p>
@@ -52,43 +94,7 @@ export default function SubPhaseManager({ phaseId, subPhases }: Props) {
         </div>
       )}
 
-      {adding ? (
-        <div className="space-y-2 pt-1">
-          <div className="flex items-center justify-between">
-            <p className="text-[12.5px] text-dim">Type de sous-étape</p>
-            <button
-              type="button"
-              onClick={() => setAdding(false)}
-              className="text-faint hover:text-ink transition-colors"
-              aria-label="Annuler"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-            {SUB_PHASE_TYPES.map((t) => (
-              <button
-                key={t.type}
-                type="button"
-                disabled={isPending}
-                onClick={() => add(t.type)}
-                className="rounded-md bg-surface-2 px-2.5 py-2 text-[12.5px] text-dim transition-colors hover:bg-surface-3 hover:text-ink disabled:opacity-50"
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-1.5 text-[12.5px] text-dim transition-colors hover:text-ink"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Ajouter une sous-étape
-        </button>
-      )}
+      {adding ? typePicker : addButton}
     </div>
   )
 }

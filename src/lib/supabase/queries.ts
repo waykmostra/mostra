@@ -469,11 +469,20 @@ export async function getClientDetail(
   const client = rawClient as Client | null
   if (!client) return null
 
+  // Projets dont il est le client principal OU un client additionnel.
+  const { data: rawLinks } = await supabase
+    .from('project_clients')
+    .select('project_id')
+    .eq('client_id', clientId)
+  const linkedIds = ((rawLinks as { project_id: string }[] | null) ?? []).map((l) => l.project_id)
+  const projectFilter =
+    linkedIds.length > 0 ? `client_id.eq.${clientId},id.in.(${linkedIds.join(',')})` : `client_id.eq.${clientId}`
+
   const [projectsRes, interactionsRes] = await Promise.all([
     supabase
       .from('projects')
       .select('id, name, status, progress, deadline, value_eur, updated_at')
-      .eq('client_id', clientId)
+      .or(projectFilter)
       .order('updated_at', { ascending: false }),
     supabase
       .from('client_interactions')
