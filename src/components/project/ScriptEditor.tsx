@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Loader2,
@@ -12,14 +12,13 @@ import {
   MessageSquare,
   Table2,
   AlignLeft,
-  X,
+  Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatRelative } from '@/lib/utils/dates'
 import ScriptTableView from '@/components/project/script/ScriptTableView'
 import ScriptSummaryView from '@/components/project/script/ScriptSummaryView'
+import ScriptCommentRail, { RowCommentThread, type RowThread } from '@/components/project/script/ScriptCommentRail'
 import { saveScript } from '@/app/projects/script-actions'
-import { addComment, toggleResolveComment } from '@/app/projects/comment-actions'
 import {
   startSubPhase,
   sendSubPhaseToReview,
@@ -30,7 +29,7 @@ import {
   type BlockComment,
 } from '@/lib/hooks/useRealtimeBlockComments'
 import { hasAnyContent, type EditorRow } from '@/lib/scriptTable'
-import type { PhaseStatus, UserRole, ScriptColumn, ScriptCategory, ScriptBeat } from '@/lib/types'
+import type { PhaseStatus, UserRole, ScriptColumn, ScriptCategory, ScriptBeat, ColumnTag } from '@/lib/types'
 
 // ── Props ─────────────────────────────────────────────────────────
 
@@ -61,151 +60,56 @@ function rowPreview(row: EditorRow, columns: ScriptColumn[]): string {
   return 'Ligne sans texte'
 }
 
-// ── AdminRowCommentDock ───────────────────────────────────────────
-// Panneau de commentaires d'UNE ligne, ancré sous le tableau (évite tout
-// clipping dans le scroll horizontal). Réutilise les actions commentaires.
+// ── Cases d'affichage (vue Résumé) ────────────────────────────────
 
-function AdminRowCommentDock({
-  row,
-  rowTitle,
-  blockColor,
-  projectId,
-  phaseId,
-  subPhaseId,
-  allComments,
-  onClose,
-}: {
-  row: EditorRow
-  rowTitle: string
-  blockColor: string
-  projectId: string
-  phaseId: string
-  subPhaseId: string
-  allComments: BlockComment[]
-  onClose: () => void
-}) {
-  const [text, setText] = useState('')
-  const [sending, setSending] = useState(false)
+/** Libellés des cases : le vocabulaire de Kylian, pas celui des tags. */
+const TAG_TOGGLE_LABEL: Record<ColumnTag, string> = {
+  voixoff: 'Voix',
+  visuals: 'Visuels',
+  intention: 'Intentions',
+  sfx: 'SFX',
+  section: 'Sections',
+  texte: 'Texte',
+}
 
-  const blockComments = allComments.filter((c) => c.block_id === row.id)
+/** Ordre des cases : du texte principal aux annotations. */
+const TOGGLE_ORDER: ColumnTag[] = ['voixoff', 'visuals', 'intention', 'sfx', 'section', 'texte']
 
-  async function handleSubmit() {
-    if (!text.trim() || !row.id) return
-    setSending(true)
-    const result = await addComment({
-      projectId,
-      phaseId,
-      subPhaseId,
-      blockId: row.id,
-      content: text.trim(),
-    })
-    setSending(false)
-    if (!result.success) toast.error((result as { error: string }).error)
-    else {
-      toast.success('Commentaire ajouté')
-      setText('')
+const DISPLAY_KEY = 'mostra.script.display'
+
+function readDisplay(): { hiddenTags: ColumnTag[]; showBeats: boolean } {
+  try {
+    const raw = window.localStorage.getItem(DISPLAY_KEY)
+    if (raw) {
+      const v = JSON.parse(raw) as { hiddenTags?: ColumnTag[]; showBeats?: boolean }
+      return { hiddenTags: Array.isArray(v.hiddenTags) ? v.hiddenTags : [], showBeats: v.showBeats !== false }
     }
+  } catch {
+    // stockage indisponible (navigation privée…) : réglages par défaut
   }
+  return { hiddenTags: [], showBeats: true }
+}
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault()
-      handleSubmit()
-    }
-  }
-
-  async function handleResolve(commentId: string) {
-    const result = await toggleResolveComment(commentId)
-    if (!result.success) toast.error((result as { error: string }).error)
-  }
-
+function DisplayToggle({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
   return (
-    <div
-      className="rounded-2xl border bg-surface overflow-hidden"
-      style={{ borderColor: `${blockColor}40` }}
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      onClick={onToggle}
+      className={`inline-flex h-8 items-center gap-2 rounded-lg px-2.5 text-[12.5px] font-medium transition-colors ${
+        checked ? 'bg-surface text-ink shadow-[var(--hairline),var(--e1)]' : 'text-faint hover:text-ink'
+      }`}
     >
-      <div
-        className="flex items-center gap-2 px-4 py-2.5 border-b"
-        style={{ borderColor: `${blockColor}22`, background: `${blockColor}10` }}
+      <span
+        className={`grid h-3.5 w-3.5 place-items-center rounded-[4px] border transition-colors ${
+          checked ? 'border-brand bg-brand text-[#052e16]' : 'border-line-strong'
+        }`}
       >
-        <MessageSquare className="h-3.5 w-3.5" style={{ color: blockColor }} />
-        <span className="text-xs font-medium text-ink truncate flex-1">
-          Commentaires · <span className="text-dim">{rowTitle}</span>
-        </span>
-        <button
-          type="button"
-          onClick={onClose}
-          className="h-6 w-6 grid place-items-center rounded text-faint hover:text-ink hover:bg-surface-2"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      <div className="px-4 py-3 space-y-3">
-        {blockComments.length > 0 && (
-          <div className="space-y-3">
-            {blockComments.map((c) => {
-              const authorName = c.author?.full_name ?? 'Utilisateur'
-              const initials = authorName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-              return (
-                <div key={c.id} className={`flex gap-3 ${c.is_resolved ? 'opacity-40' : ''}`}>
-                  <div className="w-6 h-6 rounded-full bg-surface-3 border border-line flex items-center justify-center flex-shrink-0 mt-0.5 overflow-hidden">
-                    {c.author?.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.author.avatar_url} alt={authorName} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-[9px] text-faint font-medium">{initials}</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                      <span className="text-[11px] font-medium text-ink">{authorName}</span>
-                      <span className="text-[10px] text-faint">{formatRelative(c.created_at)}</span>
-                      {c.is_resolved && (
-                        <span className="text-[10px] text-brand bg-brand/10 px-1.5 py-0.5 rounded-full border border-brand/20">
-                          Résolu
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-dim leading-relaxed">{c.content}</p>
-                  </div>
-                  {!c.is_resolved && (
-                    <button
-                      type="button"
-                      onClick={() => handleResolve(c.id)}
-                      className="text-faint hover:text-brand transition-colors flex-shrink-0 mt-0.5"
-                      title="Marquer comme résolu"
-                    >
-                      <CheckCircle className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Commentaire interne… (Ctrl+Entrée pour envoyer)"
-            rows={2}
-            className="w-full bg-surface border border-line rounded-lg px-3 py-2 text-xs text-ink placeholder-faint focus:outline-none focus:border-line-strong resize-none leading-relaxed"
-          />
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!text.trim() || sending}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand/10 border border-brand/20 text-brand text-[11px] font-medium hover:bg-brand/20 transition-colors disabled:opacity-40"
-          >
-            {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-            Envoyer
-          </button>
-        </div>
-      </div>
-    </div>
+        {checked && <Check className="h-2.5 w-2.5" strokeWidth={3.5} />}
+      </span>
+      {label}
+    </button>
   )
 }
 
@@ -234,7 +138,36 @@ export default function ScriptEditor({
   const [categories, setCategories] = useState<ScriptCategory[]>(initialCategories)
   const [rows, setRows] = useState<EditorRow[]>(initialRows)
   const [beats, setBeats] = useState<ScriptBeat[]>(initialBeats)
-  const [view, setView] = useState<'table' | 'summary'>('summary')
+  // Le tableau d'abord : c'est là qu'on écrit. Le résumé sert à relire.
+  const [view, setView] = useState<'table' | 'summary'>('table')
+  const [hiddenTags, setHiddenTags] = useState<ColumnTag[]>([])
+  const [showBeats, setShowBeats] = useState(true)
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const d = readDisplay()
+    setHiddenTags(d.hiddenTags)
+    setShowBeats(d.showBeats)
+  }, [])
+
+  function saveDisplay(next: { hiddenTags: ColumnTag[]; showBeats: boolean }) {
+    try {
+      window.localStorage.setItem(DISPLAY_KEY, JSON.stringify(next))
+    } catch {
+      // pas grave : le réglage tiendra le temps de la page
+    }
+  }
+
+  function toggleTag(tag: ColumnTag) {
+    const next = hiddenTags.includes(tag) ? hiddenTags.filter((t) => t !== tag) : [...hiddenTags, tag]
+    setHiddenTags(next)
+    saveDisplay({ hiddenTags: next, showBeats })
+  }
+
+  function toggleBeats() {
+    setShowBeats(!showBeats)
+    saveDisplay({ hiddenTags, showBeats: !showBeats })
+  }
   const [openRowKey, setOpenRowKey] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const router = useRouter()
@@ -353,14 +286,22 @@ export default function ScriptEditor({
   const busy = saving || transitioning !== null
   const empty = !hasAnyContent(rows)
 
-  const openRow = openRowKey ? rows.find((r) => r._key === openRowKey) ?? null : null
-  const openRowColor = (() => {
-    if (!openRow) return 'rgb(var(--c-brand))'
-    const cat = categories.find((c) => c.id === openRow.categoryId)
-    return cat?.color ?? 'rgb(var(--c-brand))'
-  })()
-
   const canComment = !!(projectId && phaseId)
+
+  // Fils affichés dans la colonne : ceux qui ont un commentaire ouvert, plus
+  // la ligne qu'on est en train de commenter.
+  const threads: RowThread[] = useMemo(() => {
+    if (!canComment) return []
+    return rows
+      .filter((r) => r.id)
+      .map((r) => ({ row: r, title: rowPreview(r, columns), comments: allComments.filter((c) => c.block_id === r.id) }))
+      .filter((t) => t.row._key === openRowKey || t.comments.some((c) => !c.is_resolved))
+  }, [canComment, rows, columns, allComments, openRowKey])
+  const openThread = threads.find((t) => t.row._key === openRowKey) ?? null
+
+  // Types de ligne présents dans ce script.
+  const presentTags = TOGGLE_ORDER.filter((id) => columns.some((c) => c.tag === id))
+  const layoutKey = `${view}|${rows.length}|${hiddenTags.join(',')}|${showBeats}`
 
   /** Bouton commentaire d'une ligne (partagé tableau + résumé). */
   const rowCommentNode = (row: EditorRow) => {
@@ -497,60 +438,108 @@ export default function ScriptEditor({
         </div>
       </div>
 
-      {/* Bascule Résumé / Tableau */}
-      <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-surface border border-line">
-        <button
-          type="button"
-          onClick={() => setView('summary')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'summary' ? 'bg-[rgb(var(--c-border))] text-ink' : 'text-faint hover:text-ink'}`}
-        >
-          <AlignLeft className="h-3.5 w-3.5" /> Résumé
-        </button>
-        <button
-          type="button"
-          onClick={() => setView('table')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'table' ? 'bg-[rgb(var(--c-border))] text-ink' : 'text-faint hover:text-ink'}`}
-        >
-          <Table2 className="h-3.5 w-3.5" /> Tableau
-        </button>
+      {/* Bascule Tableau / Résumé + cases d'affichage du résumé */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-surface border border-line">
+          <button
+            type="button"
+            onClick={() => setView('table')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'table' ? 'bg-[rgb(var(--c-border))] text-ink' : 'text-faint hover:text-ink'}`}
+          >
+            <Table2 className="h-3.5 w-3.5" /> Tableau
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('summary')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === 'summary' ? 'bg-[rgb(var(--c-border))] text-ink' : 'text-faint hover:text-ink'}`}
+          >
+            <AlignLeft className="h-3.5 w-3.5" /> Résumé
+          </button>
+        </div>
+
+        {view === 'summary' && (
+          <div
+            role="group"
+            aria-label="Afficher dans le résumé"
+            className="inline-flex flex-wrap items-center gap-0.5 rounded-xl border border-line bg-surface-2/60 p-1"
+          >
+            {presentTags.map((tag) => (
+              <DisplayToggle
+                key={tag}
+                label={TAG_TOGGLE_LABEL[tag]}
+                checked={!hiddenTags.includes(tag)}
+                onToggle={() => toggleTag(tag)}
+              />
+            ))}
+            <DisplayToggle label="Rythme" checked={showBeats} onToggle={toggleBeats} />
+          </div>
+        )}
       </div>
 
-      {/* Corps */}
-      {view === 'table' ? (
-        <ScriptTableView
-          columns={columns}
-          categories={categories}
-          rows={rows}
-          readOnly={readOnly}
-          onColumns={setColumns}
-          onRows={setRows}
-          onCategories={setCategories}
-          renderRowComments={canComment ? rowCommentNode : undefined}
-        />
-      ) : (
-        <ScriptSummaryView
-          columns={columns}
-          categories={categories}
-          rows={rows}
-          beats={beats}
-          onBeatsChange={readOnly ? undefined : setBeats}
-          renderRowComment={canComment ? rowCommentNode : undefined}
-          rowHasComments={(row) => !!row.id && allComments.some((c) => c.block_id === row.id)}
-        />
-      )}
+      {/* Corps : le script, et à droite la colonne de commentaires (≥ xl) */}
+      <div
+        ref={bodyRef}
+        className={canComment ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_288px] xl:items-start xl:gap-5' : undefined}
+      >
+        <div className="min-w-0">
+          {view === 'table' ? (
+            <ScriptTableView
+              columns={columns}
+              categories={categories}
+              rows={rows}
+              readOnly={readOnly}
+              onColumns={setColumns}
+              onRows={setRows}
+              onCategories={setCategories}
+              renderRowComments={canComment ? rowCommentNode : undefined}
+              activeRowKey={openRowKey}
+            />
+          ) : (
+            <ScriptSummaryView
+              columns={columns}
+              categories={categories}
+              rows={rows}
+              beats={beats}
+              onBeatsChange={readOnly ? undefined : setBeats}
+              renderRowComment={canComment ? rowCommentNode : undefined}
+              rowHasComments={(row) => !!row.id && allComments.some((c) => c.block_id === row.id)}
+              hiddenTags={hiddenTags}
+              showBeats={showBeats}
+              activeRowKey={openRowKey}
+            />
+          )}
+        </div>
 
-      {/* Panneau commentaires de la ligne ouverte (sous la vue active) */}
-      {openRow && openRow.id && projectId && phaseId && (
-        <AdminRowCommentDock
-          row={openRow}
-          rowTitle={rowPreview(openRow, columns)}
-          blockColor={openRowColor}
-          projectId={projectId}
-          phaseId={phaseId}
-          subPhaseId={subPhaseId}
-          allComments={allComments}
-          onClose={() => setOpenRowKey(null)}
-        />
+        {canComment && projectId && phaseId && (
+          <aside className="hidden xl:block" aria-label="Commentaires du script">
+            <ScriptCommentRail
+              containerRef={bodyRef}
+              threads={threads}
+              activeRowKey={openRowKey}
+              projectId={projectId}
+              phaseId={phaseId}
+              subPhaseId={subPhaseId}
+              onActivate={setOpenRowKey}
+              onClose={() => setOpenRowKey(null)}
+              layoutKey={layoutKey}
+            />
+          </aside>
+        )}
+      </div>
+
+      {/* Sans place pour la colonne : le fil flotte à droite (en bas sur mobile) */}
+      {openThread && projectId && phaseId && (
+        <div className="fixed inset-x-3 bottom-3 z-40 max-h-[70vh] overflow-y-auto md:inset-x-auto md:bottom-auto md:right-5 md:top-24 md:w-80 xl:hidden">
+          <RowCommentThread
+            thread={openThread}
+            active
+            projectId={projectId}
+            phaseId={phaseId}
+            subPhaseId={subPhaseId}
+            onActivate={() => {}}
+            onClose={() => setOpenRowKey(null)}
+          />
+        </div>
       )}
 
       {subPhaseStatus === 'in_progress' && !readOnly && (

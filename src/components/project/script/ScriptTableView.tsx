@@ -39,6 +39,8 @@ interface ScriptTableViewProps {
   onCategories?: (cats: ScriptCategory[]) => void
   /** Contenu de la gouttière commentaires pour une ligne (à droite). */
   renderRowComments?: (row: EditorRow) => React.ReactNode
+  /** Ligne dont le fil de commentaires est ouvert : surlignée. */
+  activeRowKey?: string | null
 }
 
 export default function ScriptTableView({
@@ -50,6 +52,7 @@ export default function ScriptTableView({
   onRows,
   onCategories,
   renderRowComments,
+  activeRowKey = null,
 }: ScriptTableViewProps) {
   const [tagMenu, setTagMenu] = useState<string | null>(null)
   const [dragRow, setDragRow] = useState<string | null>(null)
@@ -478,7 +481,8 @@ export default function ScriptTableView({
                 {catRows.map((row, ri) => (
                   <div key={row._key}>
                     <div
-                      className={`flex items-stretch group/row ${ri ? 'border-t border-[rgb(var(--c-surface-3))]' : ''} ${overRow === row._key ? 'bg-brand/5' : ''}`}
+                      data-row-key={row._key}
+                      className={`flex items-stretch group/row ${ri ? 'border-t border-[rgb(var(--c-surface-3))]' : ''} ${overRow === row._key ? 'bg-brand/5' : row._key === activeRowKey ? 'bg-[#F59E0B]/[0.10]' : ''}`}
                       onDragOver={(e) => {
                         if (dragRow) {
                           e.preventDefault()

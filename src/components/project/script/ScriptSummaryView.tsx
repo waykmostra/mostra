@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { AlignLeft, Plus, Trash2, Wind } from 'lucide-react'
 import AutoGrowTextarea from '@/components/shared/AutoGrowTextarea'
-import type { ScriptColumn, ScriptCategory, ScriptBeat } from '@/lib/types'
+import type { ScriptColumn, ScriptCategory, ScriptBeat, ColumnTag } from '@/lib/types'
 import {
   tableWordCount,
   categoryWordCount,
@@ -25,6 +25,32 @@ interface ScriptSummaryViewProps {
   renderRowComment?: (row: EditorRow) => React.ReactNode
   /** Vrai si la ligne a déjà des commentaires → indicateur affiché en permanence. */
   rowHasComments?: (row: EditorRow) => boolean
+  /** Types de ligne masqués par les cases d'affichage (Visuels, Intentions…). */
+  hiddenTags?: ColumnTag[]
+  /** Faux => le bloc « Rythme & intentions » est masqué. */
+  showBeats?: boolean
+  /** Ligne dont le fil de commentaires est ouvert : surlignée, comme dans un Google Doc. */
+  activeRowKey?: string | null
+}
+
+// Hiérarchie de lecture : la narration est le texte principal, chaque autre
+// type a son style propre pour se repérer d'un coup d'œil. La couleur de
+// catégorie (structure de la vidéo) reste sur la gouttière, jamais sur le texte.
+const LINE_STYLE: Record<ColumnTag, { className: string; color?: string; label: boolean }> = {
+  voixoff: { className: 'text-[19px] leading-[1.55] font-semibold text-ink', label: false },
+  visuals: { className: 'text-[15px] leading-relaxed', color: 'var(--script-visual)', label: true },
+  intention: {
+    className: 'text-[15px] leading-relaxed italic border-l-2 pl-3',
+    color: 'var(--script-intent)',
+    label: true,
+  },
+  sfx: { className: 'text-[14px] leading-relaxed', color: 'var(--script-sfx)', label: true },
+  section: {
+    className: 'text-[12px] font-semibold uppercase tracking-widest',
+    color: 'var(--script-section)',
+    label: false,
+  },
+  texte: { className: 'text-[15px] leading-relaxed text-dim', label: true },
 }
 
 const REVEAL = 48 // largeur révélée au swipe (mobile)
@@ -35,10 +61,14 @@ const REVEAL = 48 // largeur révélée au swipe (mobile)
  *  - sinon (affordance « ajouter ») : desktop = icône au survol ; mobile = swipe à droite.
  */
 function SummaryRow({
+  rowKey,
+  active = false,
   comment,
   hasComments = false,
   children,
 }: {
+  rowKey: string
+  active?: boolean
   comment?: React.ReactNode
   hasComments?: boolean
   children: React.ReactNode
@@ -48,22 +78,28 @@ function SummaryRow({
   const start = useRef<{ x: number; y: number; base: number } | null>(null)
   const horiz = useRef(false)
 
+  const frame = `-mx-2 rounded-lg px-2 py-1 transition-colors ${active ? 'bg-[#F59E0B]/[0.12]' : ''}`
+
   if (!comment) {
-    return <div className="text-[14px] leading-relaxed">{children}</div>
+    return (
+      <div data-row-key={rowKey} className={`${frame} space-y-1.5`}>
+        {children}
+      </div>
+    )
   }
 
   // Ligne déjà commentée → indicateur permanent (visible sans survol ni swipe).
   if (hasComments) {
     return (
-      <div className="relative">
-        <div className="text-[14px] leading-relaxed pr-9">{children}</div>
-        <div className="absolute right-0 top-0 flex items-start pt-0.5">{comment}</div>
+      <div data-row-key={rowKey} className={`relative ${frame}`}>
+        <div className="space-y-1.5 pr-9">{children}</div>
+        <div className="absolute right-0 top-1 flex items-start pt-0.5">{comment}</div>
       </div>
     )
   }
 
   return (
-    <div className="relative group/srow">
+    <div data-row-key={rowKey} className={`relative group/srow ${frame}`}>
       {/* slot gauche — mobile, révélé au swipe */}
       <div
         className="md:hidden absolute left-0 top-0 flex items-start pt-0.5"
@@ -108,11 +144,11 @@ function SummaryRow({
           start.current = null
         }}
       >
-        <div className="text-[14px] leading-relaxed pr-7 md:pr-9">{children}</div>
+        <div className="space-y-1.5 pr-7 md:pr-9">{children}</div>
       </div>
 
       {/* slot droite — desktop, au survol */}
-      <div className="hidden md:flex absolute right-0 top-0 items-start pt-0.5 opacity-0 group-hover/srow:opacity-100 transition-opacity">
+      <div className="hidden md:flex absolute right-0 top-1 items-start pt-0.5 opacity-0 group-hover/srow:opacity-100 transition-opacity">
         {comment}
       </div>
     </div>
@@ -132,12 +168,16 @@ export default function ScriptSummaryView({
   onBeatsChange,
   renderRowComment,
   rowHasComments,
+  hiddenTags = [],
+  showBeats = true,
+  activeRowKey = null,
 }: ScriptSummaryViewProps) {
   const total = tableWordCount(columns, rows)
   const editable = !!onBeatsChange
 
-  const voCols = columns.filter((c) => c.tag === 'voixoff' && !c.collapsed)
-  const otherCols = columns.filter((c) => c.tag !== 'voixoff' && !c.collapsed)
+  const shown = (c: ScriptColumn) => !c.collapsed && !hiddenTags.includes(c.tag)
+  const voCols = columns.filter((c) => c.tag === 'voixoff' && shown(c))
+  const otherCols = columns.filter((c) => c.tag !== 'voixoff' && shown(c))
 
   const addBeat = () => onBeatsChange?.([...(beats || []), makeBeat()])
   const updateBeat = (id: string, patch: Partial<ScriptBeat>) =>
@@ -150,7 +190,7 @@ export default function ScriptSummaryView({
     <div className="bg-surface border border-line rounded-2xl overflow-hidden">
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-line">
         <AlignLeft className="w-4 h-4 text-brand" />
-        <span className="text-[13px] font-semibold text-ink">Résumé du script</span>
+        <span className="text-[14px] font-semibold text-ink">Résumé du script</span>
         <span
           className="ml-auto text-[11px] font-mono text-dim bg-surface-2 px-2 py-0.5 rounded-full"
           title="Mots de narration"
@@ -160,9 +200,9 @@ export default function ScriptSummaryView({
         <span className="text-[10px] text-faint hidden sm:inline">~{Math.round(total / 130)} min</span>
       </div>
 
-      <div className="px-3 sm:px-5 pb-5 pt-4">
+      <div className="px-4 sm:px-8 pb-8 pt-6">
         {/* Rythme & intentions — non compté */}
-        {(editable || (beats && beats.length > 0)) && (
+        {showBeats && (editable || (beats && beats.length > 0)) && (
           <div className="mb-4 rounded-xl border border-dashed border-line p-3">
             <div className="flex items-center gap-2 mb-2">
               <Wind className="w-3.5 h-3.5 text-faint" />
@@ -201,7 +241,7 @@ export default function ScriptSummaryView({
                         onChange={(e) => updateBeat(b.id, { note: e.target.value })}
                         placeholder="Note de rythme…"
                         minRows={1}
-                        className="flex-1 min-w-0 bg-surface-2 border border-line rounded-md px-2 py-1 text-[13px] text-ink outline-none focus:border-brand"
+                        className="flex-1 min-w-0 bg-surface-2 border border-line rounded-md px-2 py-1 text-[14px] leading-relaxed text-ink outline-none focus:border-brand"
                       />
                       <button
                         type="button"
@@ -212,8 +252,8 @@ export default function ScriptSummaryView({
                       </button>
                     </div>
                   ) : (
-                    <div key={b.id} className="flex items-start gap-2 text-[13px]">
-                      <span className="w-20 sm:w-28 shrink-0 text-[12px] font-semibold text-dim">{b.title}</span>
+                    <div key={b.id} className="flex items-start gap-2 text-[14px] leading-relaxed">
+                      <span className="w-20 sm:w-28 shrink-0 text-[12px] font-semibold text-dim pt-0.5">{b.title}</span>
                       <span className="flex-1 min-w-0 text-dim whitespace-pre-wrap">{b.note}</span>
                     </div>
                   ),
@@ -228,7 +268,7 @@ export default function ScriptSummaryView({
             Le résumé apparaîtra ici à mesure que tu remplis le tableau.
           </p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-7">
             {categories.map((cat, ci) => {
               const catRows = rows.filter((r) => r.categoryId === cat.id)
               const any = catRows.some((r) => Object.values(r.cells || {}).some((v) => (v || '').trim()))
@@ -236,8 +276,8 @@ export default function ScriptSummaryView({
               const color = cat.color || categoryColor(ci)
               const words = categoryWordCount(columns, rows, cat.id)
               return (
-                <div key={cat.id} className="flex gap-2 sm:gap-3">
-                  <div className="w-16 sm:w-24 shrink-0 text-right pt-0.5">
+                <div key={cat.id} className="flex gap-3 sm:gap-4">
+                  <div className="w-16 sm:w-28 shrink-0 text-right pt-1.5">
                     <div
                       className="font-bold text-[11px] sm:text-[12px] uppercase tracking-widest break-words leading-tight"
                       style={{ color }}
@@ -249,7 +289,7 @@ export default function ScriptSummaryView({
                     </div>
                   </div>
                   <div className="w-[3px] rounded-full shrink-0" style={{ background: color }} />
-                  <div className="flex-1 min-w-0 space-y-2">
+                  <div className="flex-1 min-w-0 max-w-[760px] space-y-3">
                     {catRows.map((row) => {
                       const vo = voCols.map((c) => (row.cells?.[c.id] || '').trim()).filter(Boolean)
                       const others = otherCols
@@ -259,17 +299,23 @@ export default function ScriptSummaryView({
                       const body = (
                         <>
                           {vo.map((v, i) => (
-                            <p key={i} className="font-semibold text-ink whitespace-pre-wrap">
+                            <p key={i} className={`${LINE_STYLE.voixoff.className} whitespace-pre-wrap`}>
                               {v}
                             </p>
                           ))}
                           {others.map(({ c, val }) => {
-                            const t = tagInfo(c.tag)
+                            const st = LINE_STYLE[c.tag] ?? LINE_STYLE.texte
                             return (
-                              <p key={c.id} className="text-[12px] text-dim">
-                                <span className="mr-1.5 font-medium" style={{ color: t.color }}>
-                                  {c.title || t.label} :
-                                </span>
+                              <p
+                                key={c.id}
+                                className={`${st.className} whitespace-pre-wrap`}
+                                style={st.color ? { color: st.color, borderColor: st.color } : undefined}
+                              >
+                                {st.label && (
+                                  <span className="mr-2 text-[11px] font-semibold not-italic uppercase tracking-wider opacity-75">
+                                    {c.title || tagInfo(c.tag).label}
+                                  </span>
+                                )}
                                 {val}
                               </p>
                             )
@@ -279,6 +325,8 @@ export default function ScriptSummaryView({
                       return (
                         <SummaryRow
                           key={row._key}
+                          rowKey={row._key}
+                          active={row._key === activeRowKey}
                           comment={renderRowComment?.(row)}
                           hasComments={rowHasComments?.(row) ?? false}
                         >

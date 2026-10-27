@@ -53,6 +53,14 @@
   --c-soon: #e8950c;
   --c-ok: #16a34a;
 
+  /* ── Script : un style par type de ligne (vue Résumé) ──────────────── */
+  /* Versions foncées des couleurs de tag : les teintes vives du tableau
+     tombent sous 3:1 en texte sur papier. */
+  --script-visual: #0e7490;
+  --script-intent: #7e22ce;
+  --script-sfx: #b45309;
+  --script-section: #1d4ed8;
+
   /* ── Rayons : échelle fermée, choisie par taille d'objet ───────────── */
   --r-xs: 4px;    /* pastilles */
   --r-sm: 8px;    /* boutons, champs, onglets */
@@ -115,6 +123,11 @@
   --c-late: #ff6166;
   --c-soon: #f0a935;
   --c-ok: #34c759;
+
+  --script-visual: #22d3ee;
+  --script-intent: #c084fc;
+  --script-sfx: #fbbf24;
+  --script-section: #60a5fa;
 
   /* Sur fond sombre le vert de marque est à 10:1 : il redevient lisible
      en texte, la variante foncée n'a plus de raison d'être. */
