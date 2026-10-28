@@ -64,6 +64,7 @@ export default function ClientInfoCard({ client: initialClient }: ClientInfoCard
           onCancel={() => setEditing(null)}
           onSave={(v) => commit('email', v || null)}
           link={client.email ? `mailto:${client.email}` : undefined}
+          placeholder="Ajouter un email"
           clientId={client.id}
         />
 
@@ -77,6 +78,7 @@ export default function ClientInfoCard({ client: initialClient }: ClientInfoCard
           onCancel={() => setEditing(null)}
           onSave={(v) => commit('phone', v || null)}
           link={client.phone ? `tel:${client.phone}` : undefined}
+          placeholder="Ajouter un numéro"
           clientId={client.id}
         />
       </div>
@@ -125,6 +127,11 @@ function EditableField({
   const [draft, setDraft] = useState(value ?? '')
   const [isPending, startTransition] = useTransition()
 
+  function startEdit() {
+    setDraft(value ?? '')
+    onEdit()
+  }
+
   function handleSave() {
     if (required && !draft.trim()) {
       toast.error(`${label} ne peut pas être vide.`)
@@ -161,8 +168,8 @@ function EditableField({
             autoFocus
             disabled={isPending}
             className="
-              flex-1 bg-surface-2 border border-line-strong rounded px-2 py-1
-              text-sm text-ink focus:outline-none focus:border-[rgb(var(--c-text-faint))]
+              min-w-0 flex-1 bg-surface-2 border border-line-strong rounded px-2 py-1.5
+              text-base sm:text-sm text-ink focus:outline-none focus:border-[rgb(var(--c-text-faint))]
               disabled:opacity-50
             "
           />
@@ -170,9 +177,10 @@ function EditableField({
             type="button"
             onClick={handleSave}
             disabled={isPending}
-            className="p-1 rounded text-[#22C55E] hover:bg-[#22C55E]/10 transition-colors"
+            aria-label="Enregistrer"
+            className="p-2 rounded text-[#22C55E] hover:bg-[#22C55E]/10 transition-colors"
           >
-            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
           </button>
           <button
             type="button"
@@ -181,9 +189,10 @@ function EditableField({
               onCancel()
             }}
             disabled={isPending}
-            className="p-1 rounded text-faint hover:bg-surface-3 transition-colors"
+            aria-label="Annuler"
+            className="p-2 rounded text-faint hover:bg-surface-3 transition-colors"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
       ) : (
@@ -199,23 +208,26 @@ function EditableField({
                 {value}
               </a>
             ) : (
-              <p className="text-sm text-ink truncate">{value}</p>
+              <button type="button" onClick={startEdit} className="min-w-0 flex-1 text-left text-sm text-ink truncate">
+                {value}
+              </button>
             )
           ) : (
-            <p className="text-sm text-faint italic">—</p>
+            <button type="button" onClick={startEdit} className="min-w-0 flex-1 text-left text-sm text-faint italic">
+              {placeholder ?? 'Ajouter'}
+            </button>
           )}
+          {/* Sans souris (mobile, tablette), pas de survol : le crayon reste visible. */}
           <button
             type="button"
-            onClick={() => {
-              setDraft(value ?? '')
-              onEdit()
-            }}
+            onClick={startEdit}
+            aria-label={`Modifier ${label.toLowerCase()}`}
             className="
-              opacity-0 group-hover:opacity-100 transition-opacity
-              p-1 rounded text-faint hover:text-ink hover:bg-surface-3
+              opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity
+              -m-1 p-2 rounded text-faint hover:text-ink hover:bg-surface-3 flex-shrink-0
             "
           >
-            <Pencil className="h-3 w-3" />
+            <Pencil className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
@@ -237,6 +249,11 @@ function NotesField({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value ?? '')
   const [isPending, startTransition] = useTransition()
+
+  function startEdit() {
+    setDraft(value ?? '')
+    setEditing(true)
+  }
 
   function handleSave() {
     startTransition(async () => {
@@ -260,16 +277,14 @@ function NotesField({
         {!editing && (
           <button
             type="button"
-            onClick={() => {
-              setDraft(value ?? '')
-              setEditing(true)
-            }}
+            onClick={startEdit}
+            aria-label="Modifier les notes"
             className="
-              opacity-0 group-hover:opacity-100 transition-opacity
-              p-1 rounded text-faint hover:text-ink hover:bg-surface-3
+              opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity
+              -m-1 p-2 rounded text-faint hover:text-ink hover:bg-surface-3
             "
           >
-            <Pencil className="h-3 w-3" />
+            <Pencil className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
@@ -285,7 +300,7 @@ function NotesField({
             placeholder="Notes libres sur ce client…"
             className="
               w-full bg-surface-2 border border-line-strong rounded px-2 py-1.5
-              text-sm text-ink placeholder-faint
+              text-base sm:text-sm text-ink placeholder-faint
               focus:outline-none focus:border-[rgb(var(--c-text-faint))] resize-none
               disabled:opacity-50
             "
@@ -318,9 +333,13 @@ function NotesField({
           </div>
         </div>
       ) : value ? (
-        <p className="text-sm text-dim whitespace-pre-wrap">{value}</p>
+        <button type="button" onClick={startEdit} className="block w-full text-left text-sm text-dim whitespace-pre-wrap">
+          {value}
+        </button>
       ) : (
-        <p className="text-sm text-faint italic">Aucune note. Survolez pour ajouter.</p>
+        <button type="button" onClick={startEdit} className="text-sm text-faint italic">
+          Ajouter une note
+        </button>
       )}
     </div>
   )
