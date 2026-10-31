@@ -1,6 +1,3 @@
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
-import ClientActionBanner from './ClientActionBanner'
 import PhaseStepper from '@/components/project/PhaseStepper'
 import Breadcrumb from '@/components/shared/Breadcrumb'
 import StatusBadge from '@/components/shared/StatusBadge'
@@ -17,17 +14,37 @@ interface ClientProjectViewProps {
   /** Sous-phases ayant des commentaires → cliquables même en révision (in_progress). */
   commentedSubPhaseIds: string[]
   token: string
-  /** Colonne de droite (interlocuteur…). */
-  aside?: React.ReactNode
-  /** Rappel de paiement, en tête de la colonne de droite. */
+  /** Rappel de paiement (absent quand rien n'est à régler), à droite du contenu. */
   payment?: React.ReactNode
   /**
    * Contenu principal : la carte de l'étape en cours (aperçu flouté, cliquable),
    * ou le Cadrage tant qu'aucune étape n'a démarré.
    */
   main?: React.ReactNode
-  /** Planning en escalier, pleine largeur sous la première rangée. */
+  /** Planning en escalier, pleine largeur sous le contenu. */
   planning?: React.ReactNode
+}
+
+/** Mini cadran d'avancement, à côté du titre : il ne doit pas prendre de place. */
+function ProgressDial({ progress, done, total }: { progress: number; done: number; total: number }) {
+  const r = 15
+  const c = 2 * Math.PI * r
+  const pct = Math.max(0, Math.min(100, progress))
+
+  return (
+    <div className="flex items-center gap-2.5" aria-label={`Avancement ${pct} %, ${done} étapes validées sur ${total}`}>
+      <svg viewBox="0 0 36 36" className="h-9 w-9 -rotate-90" aria-hidden>
+        <circle cx="18" cy="18" r={r} fill="none" strokeWidth="3" className="stroke-line" />
+        <circle cx="18" cy="18" r={r} fill="none" strokeWidth="3" strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)}
+          className="stroke-brand transition-[stroke-dashoffset] duration-500" />
+      </svg>
+      <div className="leading-tight">
+        <p className="font-display tnum text-[15px] text-ink">{pct}<span className="text-faint"> %</span></p>
+        <p className="tnum text-[12px] text-faint">{done}/{total} étapes validées</p>
+      </div>
+    </div>
+  )
 }
 
 export default function ClientProjectView({
@@ -37,7 +54,6 @@ export default function ClientProjectView({
   shownPhaseId,
   token,
   subPhasesByPhase,
-  aside,
   payment,
   main,
   planning,
@@ -59,18 +75,14 @@ export default function ClientProjectView({
               </p>
             )}
           </div>
-          <StatusBadge status={project.status} className="mt-1 flex-shrink-0" />
+          <div className="flex flex-shrink-0 items-center gap-4">
+            {phases.length > 0 && (
+              <ProgressDial progress={project.progress} done={done} total={phases.length} />
+            )}
+            <StatusBadge status={project.status} />
+          </div>
         </div>
       </div>
-
-      {/* Ce qui attend le client passe avant tout le reste. */}
-      {phases.length > 0 && (
-        <ClientActionBanner
-          phases={phases}
-          subPhasesByPhase={subPhasesByPhase}
-          token={token}
-        />
-      )}
 
       {/* Les onglets du projet — c'est par là qu'on entre dans une étape. */}
       <PhaseStepper
@@ -82,55 +94,17 @@ export default function ClientProjectView({
         cadrage={{ href: `/client/${token}/cadrage`, active: !shownPhaseId }}
       />
 
-      {/* Sur mobile, le rappel de paiement passe avant le contenu. */}
-      {payment && <div className="lg:hidden">{payment}</div>}
-
-      {/* Première rangée : l'étape en cours à gauche, les repères du projet à
-          droite — une seule grille, donc même ligne de départ et même hauteur. */}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(260px,1fr)]">
-        <div className="min-w-0">{main}</div>
-
-        <div className="flex min-w-0 flex-col gap-4">
-          {payment && <div className="hidden lg:block">{payment}</div>}
-          <div className="surface flex divide-x divide-line">
-            <div className="flex-1 px-4 py-4">
-              <p className="text-[13px] text-faint">Avancement</p>
-              <p className="font-display tnum mt-2 text-[1.75rem] leading-none text-ink">
-                {project.progress}
-                <span className="text-[1rem] text-faint">%</span>
-              </p>
-            </div>
-            <div className="flex-1 px-4 py-4">
-              <p className="text-[13px] text-faint">Étapes validées</p>
-              <p className="font-display tnum mt-2 text-[1.75rem] leading-none text-ink">
-                {done}
-                <span className="text-[1rem] text-faint"> / {phases.length}</span>
-              </p>
-            </div>
-          </div>
-          {aside}
+      {payment ? (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(260px,1fr)]">
+          {/* Sur mobile, le rappel de paiement passe avant le contenu. */}
+          <div className="min-w-0 lg:order-2">{payment}</div>
+          <div className="min-w-0 lg:order-1">{main}</div>
         </div>
-      </div>
+      ) : (
+        main
+      )}
 
       {planning}
-
-      {/* Raccourcis du projet */}
-      <nav className="grid gap-3 sm:grid-cols-3" aria-label="Raccourcis du projet">
-        {[
-          { href: `/client/${token}/cadrage`, label: 'Cadrage', hint: 'La vision commune du projet' },
-          { href: `/client/${token}/documents`, label: 'Documents', hint: 'Devis, factures et fichiers' },
-          { href: `/client/${token}/paiement`, label: 'Paiement', hint: 'Acomptes et règlements' },
-        ].map((s) => (
-          <Link key={s.href} href={s.href}
-            className="surface group flex min-h-[44px] items-center gap-3 px-4 py-3.5 transition-colors duration-[160ms] hover:bg-surface-2">
-            <span className="min-w-0 flex-1">
-              <span className="block text-[14px] font-medium text-ink">{s.label}</span>
-              <span className="mt-0.5 block truncate text-[12.5px] text-faint">{s.hint}</span>
-            </span>
-            <ArrowRight className="h-4 w-4 flex-shrink-0 text-faint transition-colors group-hover:text-ink" />
-          </Link>
-        ))}
-      </nav>
     </div>
   )
 }

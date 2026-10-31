@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+import { AlertCircle, ArrowRight } from 'lucide-react'
 import type { PhaseStatus } from '@/lib/types'
 
 // L'étape en cours sur la vue d'ensemble : un aperçu flouté (dernière version :
@@ -20,13 +20,15 @@ export interface PhasePreview {
   kind: 'video' | 'image'
 }
 
-export default function CurrentPhaseCard({ href, name, status, preview, viewable }: {
+export default function CurrentPhaseCard({ href, name, status, preview, viewable, awaiting }: {
   href: string
   name: string
   status: PhaseStatus
   preview: PhasePreview | null
   /** Faux : étape encore en production chez Mostra, rien à ouvrir. */
   viewable: boolean
+  /** Ce que le client doit faire sur cette étape (« En attente de votre validation »…). */
+  awaiting?: string | null
 }) {
   const media = preview ? (
     preview.kind === 'video' ? (
@@ -50,10 +52,20 @@ export default function CurrentPhaseCard({ href, name, status, preview, viewable
         <p className="text-[13px] font-medium text-white/70">Étape en cours</p>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="text-[1.75rem] leading-tight text-white sm:text-[2rem]">{name}</h2>
-            <p className={`mt-1 text-[14px] font-medium ${status === 'in_review' ? 'text-brand' : 'text-white/75'}`}>
-              {viewable ? STATUS[status] : 'En production chez Mostra'}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <h2 className="text-[1.75rem] leading-tight text-white sm:text-[2rem]">{name}</h2>
+              {awaiting && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-soon/20 px-3 py-1.5 text-[14px] font-semibold text-soon ring-1 ring-soon/40">
+                  <AlertCircle className="h-4 w-4" aria-hidden />
+                  {awaiting}
+                </span>
+              )}
+            </div>
+            {!awaiting && (
+              <p className="mt-1 text-[14px] font-medium text-white/75">
+                {viewable ? STATUS[status] : 'En production chez Mostra'}
+              </p>
+            )}
           </div>
           {viewable && (
             <span className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand px-4 text-[14px] font-semibold text-[#020302]">

@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import ClientProjectView from '@/components/client/ClientProjectView'
-import ContactManager from '@/components/client/ContactManager'
 import PaymentReminder, { type OpenPayment } from '@/components/payments/PaymentReminder'
 import CurrentPhaseCard, { type PhasePreview } from '@/components/client/CurrentPhaseCard'
 import ProjectPlanning from '@/components/project/ProjectPlanning'
@@ -10,7 +9,7 @@ import { getCurrentProfile } from '@/lib/auth'
 import { loadBoard, loadBoardComments } from '@/lib/board'
 import { activePhase, pickCurrentPhase } from '@/lib/currentPhase'
 import { loadClientPhases } from '@/lib/clientPhases'
-import type { Profile, Project, SubPhase } from '@/lib/types'
+import type { Project, SubPhase } from '@/lib/types'
 
 // Toujours lire l'état réel : le client doit voir les ajouts/suppressions/démarrages
 // de phases faits côté admin (les actions admin ne revalident pas la route client).
@@ -81,18 +80,7 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
     .order('created_at', { ascending: true })
   const openPayments = (rawOpenPayments as OpenPayment[] | null) ?? []
 
-  // 4. Project Manager
-  let projectManager: Profile | null = null
-  if (project.project_manager_id) {
-    const { data: rawPm } = await admin
-      .from('profiles')
-      .select('*')
-      .eq('id', project.project_manager_id)
-      .maybeSingle()
-    projectManager = rawPm as Profile | null
-  }
-
-  // 5. Contenu principal : l'étape en cours (ou la dernière validée), sinon le
+  // 4. Contenu principal : l'étape en cours (ou la dernière validée), sinon le
   //    Cadrage (avant le R3, rien n'a démarré — la vision commune se construit là).
   // Une étape encore en production chez Mostra (ex. Animation sans vidéo en
   // review) n'est pas ouvrable : on montre alors la dernière étape validée.
@@ -118,9 +106,21 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
       const { data: signed } = await admin.storage.from('project-files').createSignedUrl(file.file_url, 3600)
       if (signed?.signedUrl) preview = { url: signed.signedUrl, kind: file.file_type!.startsWith('video') ? 'video' : 'image' }
     }
+    // Ce que le client doit faire sur l'étape (remplace l'ancien bandeau d'action) :
+    // brief à remplir, sous-étape à valider, ou l'étape entière en review.
+    const subs = subPhasesByPhase[shown.id] ?? []
+    const form = subs.find((sp) => ['formulaire', 'form'].includes(sp.slug) && sp.status === 'in_progress')
+    const subInReview = subs.find((sp) => sp.status === 'in_review')
+    const awaiting = form
+      ? 'Brief à remplir'
+      : subInReview || shown.status === 'in_review'
+        ? 'En attente de votre validation'
+        : null
+    const target = form ?? subInReview
     main = (
       <CurrentPhaseCard
-        href={`/client/${params.token}/${shown.slug}`}
+        href={`/client/${params.token}/${shown.slug}${target ? `?sub=${target.id}` : ''}`}
+        awaiting={awaiting}
         name={shown.name}
         status={shown.status}
         preview={preview}
@@ -155,8 +155,7 @@ export default async function ClientProjectPage({ params }: ClientProjectPagePro
       subPhasesByPhase={subPhasesByPhase}
       commentedSubPhaseIds={commentedSubPhaseIds}
       token={params.token}
-      payment={<PaymentReminder token={params.token} payments={openPayments} />}
-      aside={<ContactManager projectManager={projectManager} />}
+      payment={openPayments.length > 0 ? <PaymentReminder token={params.token} payments={openPayments} /> : null}
     />
   )
 }
