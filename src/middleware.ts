@@ -14,7 +14,8 @@ const PUBLIC_ROUTES = ['/login']
 // - /client/{token} : accès projet par token public (lecture seule sans login)
 // - /setup-password/{token} : flow initial pour définir le mot de passe
 // - /pay/{token} : lien direct de paiement d'une demande (Stripe Checkout)
-const PUBLIC_PREFIXES = ['/client/', '/setup-password/', '/pay/']
+// - /s/{token} : script d'un contenu partagé depuis Mostra Compagnon (lecture seule)
+const PUBLIC_PREFIXES = ['/client/', '/setup-password/', '/pay/', '/s/']
 
 // Routes réservées à l'admin (Kylian).
 // Un client connecté qui tente d'y accéder est redirigé vers /client/dashboard.
@@ -125,6 +126,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // Le webhook Stripe échappe au middleware : il s'authentifie par sa signature
-  // et doit recevoir le corps brut, sans session ni redirection.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // et doit recevoir le corps brut, sans session ni redirection. Même chose pour
+  // les liens de partage du Compagnon : jeton Supabase en en-tête, pas de cookie.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|api/content-share|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }
